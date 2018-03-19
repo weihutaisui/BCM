@@ -1,0 +1,106 @@
+#!/bin/sh
+
+if test $# -lt 4
+then
+   echo "error: A minimum of three arguments is required"
+   echo "usage: makeGen3UnsecureBootCfe <spi | nand | emmc> <4908 | 6858> <profile_dir> <out image id>"
+   exit 1
+fi
+
+BIN=
+TEMP=`getopt -o c: --long cferom: -n "$0" -- "$@"`
+if [ $? -ne 0 ]
+then
+   exit 1
+fi
+eval set -- "$TEMP"
+ 
+ 
+while true ; do
+  case "$1" in
+    --cferom)
+      BIN=${2} ; shift 2 ;;
+    --)
+      shift ; break ;;
+    *)
+      echo "bad option $1 passed to $0" ; exit 1;;
+  esac
+done
+CHIP_ID=${2}
+
+BIN=${BIN:-cfe${CHIP_ID}rom.bin}
+
+
+profile_dir=$3
+base_bld_dir=$profile_dir/../..
+btldr_dir=$base_bld_dir/targets/cfe
+hostTools_dir=$base_bld_dir/hostTools
+tools_dir=$hostTools_dir/SecureBootUtils
+
+[ "$1" == "emmc" ] && fout=${4:-"./cfe${CHIP_ID}bi_emmc.bin"} || fout=${4:-"./cfe${CHIP_ID}bi_nand.bin"}
+[ "$1" == "spi" ] && fout=${4:-"./cfe${CHIP_ID}bi_nor.bin"}
+cd $btldr_dir
+
+cp $BIN ./cferom.bin
+
+numCfeBytes=`cat ./cferom.bin | wc -c`
+
+# dec2bin utility converts a decimal number to it's hex 32 bit binary equivalent 
+# The input to dec2bin is a decimal number and cannot by larger than 999999
+# The 4 byte binary is written to ./size.tmp 
+
+# Create the unauthenticated header
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 183954 
+cat ./size.tmp | head --bytes=4 > ./unsigned_cfesbi.tmp
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 145257 
+cat ./size.tmp | head --bytes=4 >> ./unsigned_cfesbi.tmp
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 1 
+cat ./size.tmp | head --bytes=4 >> ./unsigned_cfesbi.tmp
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 1 
+cat ./size.tmp | head --bytes=4 >> ./unsigned_cfesbi.tmp
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 28 
+cat ./size.tmp | head --bytes=4 >> ./unsigned_cfesbi.tmp
+imageSize=`expr $numCfeBytes + 28 + 32 + 516`
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf $imageSize
+cat ./size.tmp | head --bytes=4 >> ./unsigned_cfesbi.tmp
+$tools_dir/secutil.pl --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf crc2bin
+cat ./unsigned_cfesbi.tmp ./crc.tmp > ./unauthHdr.bin
+
+# Create minimal authenticated header
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 1 
+cat ./size.tmp | head --bytes=4 > ./authHdr.bin
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 32
+cat ./size.tmp | head --bytes=4 >> ./authHdr.bin
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 0
+cat ./size.tmp | head --bytes=4 >> ./authHdr.bin
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 0 
+cat ./size.tmp | head --bytes=4 >> ./authHdr.bin
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 0 
+cat ./size.tmp | head --bytes=4 >> ./authHdr.bin
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 0 
+cat ./size.tmp | head --bytes=4 >> ./authHdr.bin
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 0 
+cat ./size.tmp | head --bytes=4 >> ./authHdr.bin
+$tools_dir/secutil.pl dec2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf 0 
+cat ./size.tmp | head --bytes=4 >> ./authHdr.bin
+
+
+
+dd if=/dev/zero of=./file512.tmp bs=512 count=1
+
+# Create the Trailer: 2 signatures (all zeroes) and a crc
+# Create a CRC across the entire BI image (4 byte crc in binary format will be stored in the file ./crc.tmp)
+# crc2bin expects a local file called unsigned_cfesbi.tmp
+cat ./authHdr.bin ./cferom.bin > ./unsigned_cfesbi.tmp
+$tools_dir/secutil.pl crc2bin --config=${HOSTTOOLS_DIR}/local_install/conf/${TOOLCHAIN_PREFIX}.conf
+cat ./file512.tmp ./crc.tmp > ./trailer.bin
+
+# Create the headered image 
+cat ./unauthHdr.bin ./authHdr.bin ./cferom.bin ./trailer.bin > ./cfe${CHIP_ID}bi.bin
+
+# clean up
+rm -f ./unauthHdr.bin ./authHdr.bin ./trailer.bin ./cferom.bin
+rm -f *.tmp
+
+# rename BI .bin 
+mv ./cfe${CHIP_ID}bi.bin ${fout}

@@ -1,0 +1,125 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use bytes;
+use Getopt::Long;
+use File::stat;
+use FindBin qw($Bin);
+use lib "$Bin";
+#BEGIN {push @INC, "$ENV{HOSTTOOLS_DIR}/SecureBootUtils";};
+use BrcmSecUtils;
+
+# Arguments 
+# 
+
+my $cferam;
+my $tdir;
+GetOptions("cferam=s",\$cferam, "tdir=s",\$tdir) or die("Invalid option");
+
+my %secarch=("6858"=>"Gen3",
+        "6838"=>"Gen3",
+        "4908"=>"Gen3",
+        "6836"=>"Gen3",
+        "6856"=>"Gen3",
+        "63158"=>"Gen3",
+        "6846"=>"Gen3",
+        "63138"=>"Gen2",
+        "63148"=>"Gen2",
+        "63381"=>"Gen2",
+        "6838"=>"Gen2",
+        "6848"=>"Gen2",
+        "63268"=>"Gen1");
+
+
+
+
+sub gen_signed_bi
+{
+	my ($f_ek, $f_iv, $f_pem, $endian, $buildtop, $in, $out) = @_;
+	my $temp="./_tmp_data_t";
+	my $comp_sz;
+	my $hdr_size = 12;
+	my $hdr_field_offs = 8;
+	my %split_file = ("left"=>0,"right"=>0);
+
+	BrcmSecUtils::fsplit($hdr_size, $in, \%split_file);
+	BrcmSecUtils::fdump($temp, $split_file{"right"});
+
+	$comp_sz = BrcmSecUtils::compress_lzma($temp,"$temp.comp","$buildtop/hostTools");
+	#update header's size field
+	BrcmSecUtils::set_val_at(\$split_file{"left"}, $hdr_field_offs, $comp_sz, $endian);
+
+	BrcmSecUtils::fdump("$temp.hdr",$split_file{"left"});
+	BrcmSecUtils::run_shell("cat $temp.hdr $temp.comp > $temp.hdr.comp");
+
+	BrcmSecUtils::encrypt_aes_128_cbc($f_ek, $f_iv, "$temp.hdr.comp", "$temp.hdr.comp.enc");
+	BrcmSecUtils::sign_sha256($f_pem, "$temp.hdr.comp.enc", "$temp.sig");
+	BrcmSecUtils::run_shell("cat $temp.sig $temp.hdr.comp.enc > $out");
+	BrcmSecUtils::run_shell("rm -f $temp $temp.*");
+}
+
+
+# create an compressed, encrypted, signed version of the cfe ram 
+
+# First 12 bytes of cferam.bin will not be compressed. Get the size of 
+# the cferam.bin and create a copy of it without the 12 byte header
+# update header at offset 8 with compressed size 
+
+sub build_image {
+
+	my ($sec_arch, $secarch_opt, $inf, $outf) = @_;
+	my $f_ek; 
+	my $f_iv; 
+	my $f_pem;
+
+	my $sec_data_dir = "$ENV{BUILD_DIR}/cfe/cfe/board/bcm63xx_btrm/data";
+
+	if ($sec_arch eq "Gen3") {
+   		if ( $secarch_opt eq "fld_oem" ) {
+			$f_ek = "$sec_data_dir/gen3_common/Kaes-fld-ek.bin";
+			$f_iv = "$sec_data_dir/gen3_common/Kaes-fld-iv.bin";
+			$f_pem = "$sec_data_dir/gen3_common/Krsa-fld.pem";
+		} elsif ($secarch_opt eq "fld") {
+			$f_ek = "$sec_data_dir/gen3_common/Kroe-fld-ek.bin";
+			$f_iv = "$sec_data_dir/gen3_common/Kroe-fld-iv.bin";
+			$f_pem = "$sec_data_dir/gen3_common/Krot-fld.pem";
+		} elsif ($secarch_opt eq "mfg") {
+			$f_ek = "$sec_data_dir/gen3_common/Kaes-mfg-ek.bin";
+			$f_iv = "$sec_data_dir/gen3_common/Kaes-mfg-iv.bin";
+			$f_pem = "$sec_data_dir/gen3_common/Krsa-mfg.pem";
+		} else {
+			die "$0 Unsupported SecOpt\n";
+		} 
+	
+	} elsif ($sec_arch  eq "Gen2") {
+			$f_ek = "$sec_data_dir/mfg.ek.bin";
+			$f_iv = "$sec_data_dir/mfg.iv.bin";
+			$f_pem = "$sec_data_dir/mfg.pem";
+	} else {
+		die "$0 Unsupported Sec implementation\n";
+	}
+	gen_signed_bi($f_ek, $f_iv, $f_pem, $ENV{ARCH_ENDIAN}, $ENV{BUILD_DIR}, $inf, $outf);
+}
+
+sub build_images {
+	my ($sec_arch, $sec_arch_opt, $tgdir, $inf) = @_;
+	my $out1 = "secmfg.000";
+	my $out2 = "secram.000";
+	if ($sec_arch eq "Gen3") {
+		#print "--------- Arguments $sec_arch @_ \n";
+		# Gen 3 secure boot. Build mfg bootloader first (secmfg.xxx)
+		build_image($sec_arch, "mfg", $inf, "$tgdir/$out1");
+   		BrcmSecUtils::fappend("$ENV{HOSTTOOLS_DIR}/nocomprlist","/$out1");
+		build_image($sec_arch, $sec_arch_opt eq "" ? "fld" :"fld_oem", $inf, "$tgdir/$out2");
+   		BrcmSecUtils::fappend("$ENV{HOSTTOOLS_DIR}/nocomprlist","/$out2");
+	} elsif ($sec_arch eq "Gen2") {
+   		# Gen 2 secure boot. Build the only encrypted bootloader (secram.xxx)
+		build_image($sec_arch, $sec_arch_opt, $inf, "$tgdir/$out2");
+   		BrcmSecUtils::fappend("$ENV{HOSTTOOLS_DIR}/nocomprlist","/$out2");
+	} else {
+		die "$0 Unsupported Sec architecture \n";
+	}
+}
+# main call
+build_images( $secarch{$ENV{BRCM_CHIP}}, $ENV{SECURE_BOOT_PROCESS_FLD_OEM_COT}, $tdir, $cferam);
+
