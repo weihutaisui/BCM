@@ -1,0 +1,8 @@
+#
+# Add the first TR181 objects to the InternetGatewayDevice.Device. tree.
+#
+# See 0000-README.txt for more details
+#
+
+addFirstChildObjToObj cms-dm-tr181-beginsection.xml Device.
+addLastChildObjToObj cms-dm-tr181-gatewayinfo.xml Device.

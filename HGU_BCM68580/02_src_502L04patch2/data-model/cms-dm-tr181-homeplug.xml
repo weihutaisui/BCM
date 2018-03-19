@@ -1,0 +1,223 @@
+<?xml version="1.0"?>
+<xmlMandatorySingleRootNode copyright="Broadcom Corporation, 2012" >
+
+
+
+
+<object name="InternetGatewayDevice." shortObjectName="FakeParentObject" specSource="Broadcom" profile="Unspecified" requirements="P" supportLevel="Present" />
+  <description source="BROADCOM">This is a fake object node for the DataModelDesigner to draw the object hierarchy properly.  It will not be inserted into the data model.   The Short Object Name must be FakeParentObject. </description>
+
+
+
+
+<object name="InternetGatewayDevice.Device." shortObjectName="FakeParentObject" specSource="Broadcom" profile="Unspecified" requirements="P" supportLevel="Present" />
+  <description source="BROADCOM">This is a fake object node for the DataModelDesigner to draw the object hierarchy properly.  It will not be inserted into the data model.   The Short Object Name must be FakeParentObject. </description>
+
+
+
+
+<object name="InternetGatewayDevice.Device.HomePlug." shortObjectName="DeviceHomePlugObject" specSource="TR181" profile="Device2_HomePlug:1" requirements="P" supportLevel="Present" oid="1230" />
+  <description source="TRx">HomePlug object that contains the Interface table. The HomePlug industry standard [HPAV1.1] defines peer to peer communication over powerline medium.</description>
+
+  <parameter name="InterfaceNumberOfEntries" type="unsignedInt" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="0" alwaysWriteToConfigFile="true" />
+    <description source="TRx">The number of entries in the Interface table.</description>
+
+
+
+
+<object name="InternetGatewayDevice.Device.HomePlug.Interface.{i}." shortObjectName="HomePlugInterfaceObject" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="MultipleInstances" />
+  <description source="TRx">HomePlug interface table (a stackable interface object as described in [Section 4.2/TR-181i2]). Each table entry models the PHY and MAC levels of a HomePlug interface [HPAV1.1].</description>
+
+  <parameter name="Enable" type="boolean" specSource="TR181" profile="Device2_HomePlug:1" requirements="W" supportLevel="ReadWrite" defaultValue="false" />
+    <description source="TRx">Enables or disables the interface.</description>
+    <description source="BROADCOM">This parameter should have requirements=&quot;W&quot; and supportLevel=&quot;ReadWrite&quot;.  Leave as is (supportLevel=&quot;ReadOnly&quot;) for now.</description>
+
+  <parameter name="Status" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="Down" validValuesArray="ifOperStatusValues" />
+    <description source="TRx">The current operational state of the interface.</description>
+
+  <parameter name="Alias" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="W" supportLevel="ReadWrite" defaultValue="" maxLength="64" />
+    <description source="TRx">A non-volatile handle used to reference this instance. Alias provides a mechanism for an ACS to label this instance for future reference. An initial unique value MUST be assigned when the CPE creates an instance of this object.</description>
+
+  <parameter name="Name" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="plc0" maxLength="64" alwaysWriteToConfigFile="true" />
+    <description source="TRx">The textual name of the interface as assigned by the CPE.</description>
+
+  <parameter name="LastChange" type="unsignedInt" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The accumulated time in seconds since the interface entered its current operational state.</description>
+
+  <parameter name="LowerLayers" type="string" specSource="TR181" profile="Unspecified" requirements="W" supportLevel="ReadWrite" maxLength="1024" />
+    <description source="TRx">Comma-separated list (maximum length 1024) of strings. Each list item MUST be the path name of an interface object that is stacked immediately below this interface object. If the referenced object is deleted, the corresponding item MUST be removed from the list.</description>
+
+  <parameter name="Upstream" type="boolean" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="false" alwaysWriteToConfigFile="true" />
+    <description source="TRx">Indicates whether the interface points towards the Internet (true) or towards End Devices (false).</description>
+
+  <parameter name="MACAddress" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="" maxLength="17" />
+    <description source="TRx">The MAC Address of the interface. Note: This is not necessarily the same as the Ethernet header source or destination MAC address, which is associated with the IP interface and is modeled via the {{param|.Ethernet.Link.{i}.MACAddress}} parameter. </description>
+
+  <parameter name="LogicalNetwork" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="W" supportLevel="ReadWrite" defaultValue="" maxLength="64" />
+    <description source="TRx">The textual name of the HomePlug Logical Network.</description>
+
+  <parameter name="Version" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="" maxLength="16" />
+    <description source="TRx">Indicates the HomePlug version of the interface. </description>
+
+  <parameter name="FirmwareVersion" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="" maxLength="64" />
+    <description source="TRx">The firmware version of the interface.</description>
+
+  <parameter name="X_BROADCOM_COM_PLCFwBuildMsg" type="string" specSource="Custom" profile="Unspecified" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="" maxLength="256" />
+    <description source="custom">A string with the firmware build message.</description>
+
+  <parameter name="ForceCCo" type="boolean" specSource="TR181" profile="Device2_HomePlug:1" requirements="W" supportLevel="ReadWrite" defaultValue="false" />
+    <description source="TRx">Central Coordinator (CCo) selection mode.&#10;If false, CCo selection is automatic. If true, the local HomePlug interface is forced to be CCo and all other devices in the Logical Network MUST be set to automatic CCo selection.&#10;Typically ForceCCo is set to automatic CCo selection (false).&#10;&#10;The factory default value MUST be false.</description>
+
+  <parameter name="NetworkPassword" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="W" supportLevel="ReadWrite" defaultValue="" maxLength="32" />
+    <description source="TRx">The network password of the device. This is a human readable ASCII string that is hashed per the HomePlug specification to generate the Network Membership Key (NMK). Note that care needs to be taken when setting this parameter as it might prohibit communication with other adapters or equipment connected via the powerline network.&#10;&#10;When read, this parameter returns an empty string, regardless of the actual value.</description>
+
+  <parameter name="OtherNetworksPresent" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="" maxLength="64" />
+    <description source="TRx">Comma-separated list (maximum length 64) of strings. Indicates whether any other HomePlug networks are currently visible via this interface.</description>
+
+  <parameter name="MaxBitRate" type="unsignedInt" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="" />
+    <description source="TRx">The maximum PHY bit rate supported by this interface (expressed in Mbps).</description>
+
+  <parameter name="AssociatedDeviceNumberOfEntries" type="unsignedInt" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The number of entries in the AssociatedDevice table.</description>
+
+  <parameter name="X_BROADCOM_COM_DiagPeriodicInterval" type="unsignedInt" specSource="Custom" profile="Device2_HomePlug_Debug:1" supportLevel="ReadWrite" defaultValue="20" />
+    <description source="BROADCOM">The interval, measured in seconds, in which the device polls diagnostic data like X_BROADCOM_COM_Overview. &#10;If the value is 0 then an internal value of 20 secs is used. &#10;If the value is greater than 0 then the device uses this value as the periodic interval to recover diagnostic data.</description>
+
+  <parameter name="X_BROADCOM_COM_PLCPHY_Counters" type="base64" specSource="Custom" profile="Device2_HomePlug_Debug:1" supportLevel="ReadOnly" defaultValue="" maxLength="3072" />
+    <description source="custom">PLC-PHY firmware counters</description>
+
+  <parameter name="X_BROADCOM_COM_PLCPHY_Temperature" type="int" specSource="Custom" profile="Device2_HomePlug:1" supportLevel="ReadOnly" defaultValue="0" minValue="0" maxValue="255" />
+    <description source="custom">HomePlug SoC temperature</description>
+
+
+
+
+<object name="InternetGatewayDevice.Device.HomePlug.Interface.{i}.Stats." shortObjectName="HomePlugInterfaceStatsObject" specSource="TR181" profile="Device2_HomePlug:1" requirements="P" supportLevel="Present" />
+  <description source="TRx">Throughput statistics for this interface. The CPE MUST reset the interface's Stats parameters (unless otherwise stated in individual object or parameter descriptions) either when the interface becomes operationally down due to a previous administrative down (i.e. the interface's {{param|#.Status}} parameter transitions to a down state after the interface is disabled) or when the interface becomes administratively up (i.e. the interface's {{param|#.Enable}} parameter transitions from {{false}} to {{true}}). Administrative and operational interface status is discussed in {{bibref|TR-181i2|section 4.2.2}}. </description>
+
+  <parameter name="BytesSent" type="unsignedLong" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of bytes transmitted out of the interface, including framing characters.</description>
+
+  <parameter name="BytesReceived" type="unsignedLong" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of bytes received on the interface, including framing characters.</description>
+
+  <parameter name="PacketsSent" type="unsignedLong" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of packets transmitted out of the interface.</description>
+
+  <parameter name="PacketsReceived" type="unsignedLong" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of packets received on the interface.</description>
+
+  <parameter name="ErrorsSent" type="unsignedInt" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of outbound packets that could not be transmitted because of errors.</description>
+
+  <parameter name="ErrorsReceived" type="unsignedInt" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of inbound packets that contained errors preventing them from being delivered to a higher-layer protocol.</description>
+
+  <parameter name="UnicastPacketsSent" type="unsignedLong" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of packets requested for transmission which were not addressed to a multicast or broadcast address at this layer, including those that were discarded or not sent.</description>
+
+  <parameter name="UnicastPacketsReceived" type="unsignedLong" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of received packets, delivered by this layer to a higher layer, which were not addressed to a multicast or broadcast address at this layer.</description>
+
+  <parameter name="DiscardPacketsSent" type="unsignedInt" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of outbound packets which were chosen to be discarded even though no errors had been detected to prevent their being transmitted. One possible reason for discarding such a packet could be to free up buffer space.</description>
+
+  <parameter name="DiscardPacketsReceived" type="unsignedInt" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of inbound packets which were chosen to be discarded even though no errors had been detected to prevent their being delivered. One possible reason for discarding such a packet could be to free up buffer space.</description>
+
+  <parameter name="MulticastPacketsSent" type="unsignedLong" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of packets that higher-level protocols requested for transmission and which were addressed to a multicast address at this layer, including those that were discarded or not sent.</description>
+
+  <parameter name="MulticastPacketsReceived" type="unsignedLong" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of received packets, delivered by this layer to a higher layer, which were addressed to a multicast address at this layer.</description>
+
+  <parameter name="BroadcastPacketsSent" type="unsignedLong" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of packets that higher-level protocols requested for transmission and which were addressed to a broadcast address at this layer, including those that were discarded or not sent.</description>
+
+  <parameter name="BroadcastPacketsReceived" type="unsignedLong" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of received packets, delivered by this layer to a higher layer, which were addressed to a broadcast address at this layer.</description>
+
+  <parameter name="UnknownProtoPacketsReceived" type="unsignedInt" specSource="TR181" profile="Unspecified" requirements="R" mayDenyActiveNotification="true" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The total number of packets received via the interface which were discarded because of an unknown or unsupported protocol.</description>
+
+  <parameter name="MPDUTxAck" type="unsignedLong" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">HomePlug-specific statistic. The Number of MAC Protocol Data Units (MPDUs) Transmitted and Acknowledged.</description>
+
+  <parameter name="MPDUTxCol" type="unsignedLong" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">HomePlug-specific statistic. The Number of MAC Protocol Data Units (MPDUs) Transmitted and Collided</description>
+
+  <parameter name="MPDUTxFailed" type="unsignedLong" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">HomePlug-specific statistic. The Number of MAC Protocol Data Units (MPDUs) Transmitted and Failed</description>
+
+  <parameter name="MPDURxAck" type="unsignedLong" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">HomePlug-specific statistic. The Number of MAC Protocol Data Units (MPDUs) Received and Acknowledged</description>
+
+  <parameter name="MPDURxFailed" type="unsignedLong" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">HomePlug-specific statistic. The Number of MAC Protocol Data Units (MPDUs) Received and Failed 	</description>
+
+
+
+
+<object name="InternetGatewayDevice.Device.HomePlug.Interface.{i}.AssociatedDevice.{i}." shortObjectName="HomePlugInterfaceAssociatedDeviceObject" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="MultipleInstances" pruneWriteToConfigFile="true" />
+  <description source="TRx">This table contains information about other HomePlug devices connected to this HomePlug interface.</description>
+
+  <parameter name="MACAddress" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="" maxLength="17" />
+    <description source="TRx">MAC address of remote HomePlug device. It is used to uniquely identify and easily correlate with the connected remote HomePlug device.</description>
+
+  <parameter name="TxPhyRate" type="unsignedInt" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The PHY transmit Rate (expressed in Mbps) to this remote device.</description>
+
+  <parameter name="RxPhyRate" type="unsignedInt" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The PHY receive Rate (expressed in Mbps) from this remote device.</description>
+
+  <parameter name="SNRPerTone" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="" />
+    <description source="TRx">Comma-separated list (0 to 1155 items) of unsigned integers. List items indicate Signal to Noise Ratio (SNR) per tone from this remote device (expressed in 0.1dB).</description>
+
+  <parameter name="AvgAttenuation" type="unsignedInt" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">Average attenuation from this remote device (expressed in 0.1dB).</description>
+
+  <parameter name="EndStationMACs" type="string" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="" />
+    <description source="TRx">Comma-separated list (up to 16 items) of MACAddresses. List items represent MAC addresses of end stations bridged by the remote HomePlug device.</description>
+
+  <parameter name="Active" type="boolean" specSource="TR181" profile="Device2_HomePlug:1" requirements="R" supportLevel="ReadOnly" defaultValue="true" />
+    <description source="TRx">Whether or not this device is currently present in the HomePlug network.&#10;&#10;The ability to list inactive nodes is OPTIONAL. If the CPE includes inactive nodes in this table, Active MUST be set to false for each inactive node. The length of time an inactive node remains listed in this table is a local matter to the CPE.</description>
+
+  <parameter name="X_BROADCOM_COM_FirmwareVersion" type="string" specSource="Custom" profile="Unspecified" supportLevel="ReadOnly" defaultValue="" maxLength="64" />
+    <description source="TRx">The firmware version of the Associated Device.</description>
+
+  <parameter name="X_BROADCOM_COM_Uptime" type="unsignedInt" specSource="Custom" profile="Unspecified" supportLevel="ReadOnly" defaultValue="0" />
+    <description source="TRx">The accumulated time in seconds since the Associated Device was last restarted.</description>
+
+  <parameter name="X_BROADCOM_COM_Overview" type="base64" specSource="Custom" profile="Device2_HomePlug_Debug:1" supportLevel="ReadOnly" defaultValue="" maxLength="450" />
+    <description source="custom">Channel overview information </description>
+
+  <parameter name="X_BROADCOM_COM_SNRPerTone" type="base64" specSource="Custom" profile="Device2_HomePlug_Debug:1" denyActiveNotification="true" supportLevel="ReadOnly" defaultValue="" maxLength="9300" />
+    <description source="custom">Base64 encoded array (0 to 6908 items) of unsigned 8-bit integers. List items indicate Signal to Noise Ratio (SNR) per tone from this remote device (expressed in 0.25dB) </description>
+
+
+<vsaInfo>
+
+<validstringarray name="ifOperStatusValues" />
+  <element>Up</element>
+  <element>Down</element>
+  <element>Unknown</element>
+  <element>Dormant</element>
+  <element>NotPresent</element>
+  <element>LowerLayerDown</element>
+  <element>Error</element>
+
+</vsaInfo>
+
+
+
+<profileInfo>
+<profile name="Device2_Baseline:1" /> 
+<profile name="Device2_Baseline:2" /> 
+<profile name="Device2_Baseline:3" /> 
+<profile name="Device2_HomePlug:1" /> 
+<profile name="Device2_HomePlug_Debug:1" /> 
+<profile name="Unspecified" /> 
+</profileInfo>
+
+
+</xmlMandatorySingleRootNode>
