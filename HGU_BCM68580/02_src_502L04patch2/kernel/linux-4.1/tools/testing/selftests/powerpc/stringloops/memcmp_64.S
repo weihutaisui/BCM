@@ -1,0 +1,1 @@
+link ../../../../../arch/powerpc/lib/memcmp_64.S
