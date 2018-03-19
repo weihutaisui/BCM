@@ -1,0 +1,73 @@
+#***************************************
+#
+#  Copyright (c) 2014  Broadcom
+#  All Rights Reserved
+#
+#**************************************/
+
+PLATFORM = BCM63158
+CHIP_TYPE = BCM63158_A0
+MAIN_INSTR_SIZE = 32
+
+PROJ_DEFS += -D$(PLATFORM)
+PROJ_DEFS += -D$(CHIP_TYPE)
+PROJ_DEFS += -DVALIDATE_PARMS
+PROJ_DEFS += -DXRDP
+PROJ_DEFS += -DCONFIG_BCM_TCONT
+PROJ_DEFS += -D_BYTE_ORDER_LITTLE_ENDIAN_
+PROJ_DEFS += -DFIRMWARE_LITTLE_ENDIAN
+PROJ_DEFS += -DCONFIG_LINENOISE
+PROJ_DEFS += -DXRDP_BBH_PER_IMP_PORT
+PROJ_DEFS += -DUSE_NATC_VAR_CONTEXT_LEN
+PROJ_DEFS += -DRDPA_MULTI_WAN_SUPPORT
+PROJ_DEFS += -DQM_TOTAL_VALID_COUNTER_LEGACY_STRUCTURE
+
+CONFIG_LINENOISE = y
+COMMENGINE_DIR := $(TOP_DIR)/../
+
+ifeq ($(OS_PLATFORM),linux)
+HOST_PLATFORM_FLAGS = -m64
+PROJ_DEFS += -DPHYS_ADDR_64BIT
+endif
+
+ifeq ("$(RU_FUNCTION_REG_ACCESS)", "y")
+    PROJ_DEFS += -DRU_FUNCTION_REG_ACCESS=1
+endif
+
+ifeq ("$(XRDP_EMU)", "y")
+    PROJ_DEFS += -fPIC -DXRDP_EMULATION -w
+endif
+
+ifeq ("$(RU_OFFLINE_TEST)", "y")
+    PROJ_DEFS += -DRU_OFFLINE_TEST=1
+endif    
+
+PROJ_CFLAGS = $(PROJ_DEFS) -I$(RDP_SUBSYSTEM_DIR)/$(CHIP_TYPE)
+
+TABLE_MANAGER_FLAGS=-p $(PLATFORM)
+PROJ_UT_PHASE = rdp
+
+NUM_FW_IMAGES = 0 1 2 3 4
+GEN = 4
+RUNNER_VERSION_FOR_TOOLS = 41
+
+# Packet Runner UT Definitions
+ifneq ($(filter ut,$(MAKECMDGOALS)),)
+    export PKTRUNNER_UT_SIM=y
+endif
+ifeq ($(XRDP_EMU),y)
+    export PKTRUNNER_UT_SIM=y
+endif
+ifeq ($(PKTRUNNER_UT_SIM),y)
+    # Early check for COMMENGINE_DIR
+    ifndef COMMENGINE_DIR
+        $(error COMMENGINE_DIR must be defined to run UT on DSL projects.)
+    endif
+    
+    export PKTRNR_IMPL = impl2
+    export CMDLIST_IMPL = impl1
+    export PKTRNR_SOURCE_DIR = $(COMMENGINE_DIR)/bcmdrivers/broadcom/char/pktrunner/$(PKTRNR_IMPL)
+    export CMDLIST_SOURCE_DIR = $(COMMENGINE_DIR)/bcmdrivers/broadcom/char/cmdlist/$(CMDLIST_IMPL)
+    export PKTRNR_SHARED_DIR = $(COMMENGINE_DIR)/bcmdrivers/broadcom/char/pktrunner/shared
+    export BCM963XX_INCLUDE_DIR = $(COMMENGINE_DIR)/bcmdrivers/broadcom/include/bcm963xx
+endif
