@@ -1,0 +1,1264 @@
+#!/bin/bash
+
+##
+## BCM963xx Consumer Release Script.
+##
+## This script must be run from the bcm963xx/release directory.
+## The final tarball will also appear in this directory.
+##
+
+# Automatically figure out where we are
+# The old version of this script effectively had dr_base_arg=/opt
+dr_base_arg=`pwd | sed -e 's/\/bcm963xx\/release//'`
+
+dr_user=`whoami`
+dr_date=`date +%m%d%Y`
+dr_base_dir=$dr_base_arg/bcm963xx
+dr_output_dir=$dr_base_dir/release/out
+dr_bcmdrivers_subdir=bcmdrivers
+dr_bcmdrivers_broadcom_subdir=$dr_bcmdrivers_subdir/broadcom
+dr_bcmdrivers_opensource_subdir=$dr_bcmdrivers_subdir/opensource
+dr_kernel_subdir=kernel/linux-4.1
+dr_bcminstall_dir=$dr_base_dir/release
+dr_bcminstall_name=consumer_install
+dr_win_usb_name=bcm963xxwinusbrndis.zip
+dr_win_usb_file=$dr_base_arg/$dr_win_usb_name
+
+
+#
+# Even though the name of the variable and the code implies that you can
+# put more than 1 profile in the dr_profiles_to_build list, we have only
+# tested this script with a single profile.
+#
+if [ "$1" == "voice" ]; then
+   dr_profiles_to_build="96328GWV"
+else
+   dr_profiles_to_build="96362GW"
+fi
+
+yflag=""
+force=""
+set -- `getopt vFyp: $*`
+
+while [ $# -gt 0 ]
+do
+ case "$1" in
+  (-y) yflag="y";;
+  (-v) set -x ;;
+  (-F) force=1 ;;
+  (-p) pflag="p"; dr_profiles_to_build=$2 ; shift ;;
+  (--) shift ; break;;
+ esac
+ shift
+done
+
+
+
+clear
+echo "BCM963xx Consumer Release Procedure"
+echo ""
+echo "This script builds BCM963xx DSL Router images based on Linux and then creates"
+echo "a consumer release archive.  The release archive contains GPL source code"
+echo "and Broadcom proprietary object code."
+echo ""
+echo "THIS SCRIPT DELETES SOURCE FILES.  IT SHOULD BE RUN FROM A COPY OF THE"
+echo "MASTER SOURCE TREE."
+echo ""
+echo "The tar output directory is $dr_output_dir"
+echo ""
+if [ "$yflag" = "" ]
+then
+  read -p "Press any key to continue: " -n 1 dr_continue
+fi
+echo ""
+echo "Before continuing, the following conditions must be true."
+echo ""
+echo "1. The latest kernel and application source files are in subdirectories below"
+echo "$dr_base_dir."
+echo ""
+echo "2. The Windows host USB driver archive is located at"
+echo "$dr_win_usb_file."
+echo ""
+echo "3. The installation script, $dr_bcminstall_name, that is run on the consumer's"
+echo "system is in $dr_bcminstall_dir."
+echo ""
+echo "4. You are NOT logged in with root privilages."
+echo ""
+
+if [ "$force" != "" ] 
+then
+   touch $dr_win_usb_file
+fi
+
+if [ "$yflag" = "" ]
+then
+read -p "Press 'y' to continue: " -n 1 dr_continue
+if [ "$dr_continue" != "y" ] ; then
+    echo ""
+    echo ""
+    echo "Exiting script."
+    echo ""
+    exit
+fi
+fi
+
+echo ""
+echo ""
+
+##
+## Verify that some of the release files exist.
+## 
+if ! [ -a $dr_bcminstall_dir/$dr_bcminstall_name ] ; then
+    echo ""
+    echo "Aborting because $dr_bcminstall_dir/$dr_bcminstall_name is not found."
+    echo ""
+    exit
+fi
+
+if ! [ -a $dr_win_usb_file ] ; then
+    echo ""
+    echo "Aborting because $dr_win_usb_file is not found."
+    echo ""
+    exit
+fi
+
+if [ "$force" = "" ]
+then
+  if [ "$dr_user" == "root" ] ; then
+    echo "Aborting script because user is root."
+    echo ""
+    exit
+  fi
+fi
+
+echo ""
+echo ""
+
+mkdir -p $dr_output_dir > /dev/null
+rm -f $dr_output_dir/* > /dev/null
+
+rm -f $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/savemods.tar >& /dev/null
+rm -f $dr_base_dir/userspace/private/apps/savepvtapps.tar >& /dev/null
+rm -f $dr_base_dir/userspace/private/apps/savepvtlibs.tar >& /dev/null
+rm -f $dr_base_dir/userspace/public/apps/savepubapps.tar >& /dev/null
+
+## remove all beep related directories
+rm -rf $dr_base_dir/userspace/private/apps/cwmpd 
+rm -rf $dr_base_dir/userspace/private/apps/cwmpctl
+rm -rf $dr_base_dir/userspace/private/apps/dad 
+rm -rf $dr_base_dir/userspace/private/apps/pmd 
+rm -rf $dr_base_dir/userspace/private/apps/spd 
+rm -rf $dr_base_dir/userspace/private/apps/spTestSuite
+rm -rf $dr_base_dir/userspace/private/apps/dmad
+rm -rf $dr_base_dir/userspace/private/apps/dmactl
+rm -rf $dr_base_dir/userspace/private/apps/uspd
+rm -rf $dr_base_dir/userspace/private/apps/uspc
+
+rm -rf $dr_base_dir/docs
+
+mkdir $dr_base/images >& /dev/null
+
+#############################################################################
+wireless_driver_makefile()
+{
+cat << '**********'    
+$(shell	if [ ! -d $(INSTALL_DIR)/etc/wlan ]; then \
+		rm -f $(INSTALL_DIR)/etc/wlan; \
+		install -d $(INSTALL_DIR)/etc/wlan; \
+	fi ;)
+**********
+}
+
+#############################################################################
+
+
+
+##
+## Build image(s).
+##
+for dr_profile in $dr_profiles_to_build
+do
+    echo "Building image for profile $dr_profile."
+
+    dr_is_hnd=`grep '^BUILD_BRCM_HNDROUTER=y' $dr_base_dir/targets/$dr_profile/$dr_profile`
+    dr_is_cpe=`grep '^BUILD_BRCM_CPEROUTER=y' $dr_base_dir/targets/$dr_profile/$dr_profile`
+    if [ "$dr_is_hnd" != "" ] ; then
+        VERSION_MAKE_FILE=version.hnd
+    else
+        VERSION_MAKE_FILE=version.make
+    fi
+    dr_version=`grep '^BRCM_VERSION=' ../${VERSION_MAKE_FILE}|cut -d'=' -f2`
+    dr_release=`grep '^BRCM_RELEASE=' ../${VERSION_MAKE_FILE}|cut -d'=' -f2`
+    dr_extraversion=`grep '^BRCM_EXTRAVERSION=' ../${VERSION_MAKE_FILE}|cut -d'=' -f2`
+    dr_rel_ver="$dr_version"."$dr_release"L."$dr_extraversion"
+    echo "The release version is $dr_rel_ver"
+
+    cd $dr_base_dir
+    make PROFILE=$dr_profile clean
+    rm -f images/* >& /dev/null
+    make PROFILE=$dr_profile
+
+    echo "======>Build of PROFILE $dr_profile complete.  Saving filesystem..."
+    cd  $dr_base_dir/targets/$dr_profile/fs
+    # remove envram utility
+    find . -name "envram*" -print -exec rm -rf "{}" ";"
+    tar czf ../filesystem.tgz . 
+    cd $dr_base_dir
+
+    echo "======>Build of PROFILE $dr_profile complete.  Saving images..."
+    cd images
+    dr_image=`ls *`
+
+    if [ "$dr_image" == "" ] ; then
+        echo "Aborting because a final image was not created."
+        exit
+    fi
+
+    rm *
+
+    #
+    # Save the kernel driver module object file for each proprietary module
+    # that was built.
+    #
+    cd $dr_base_dir/$dr_bcmdrivers_broadcom_subdir
+
+    
+    ### Move RDP dir into bcmdrivers so eliminate a major changes in script logic
+    rm -rf $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/rdp
+    cp -rv $dr_base_dir/rdp $dr_base_dir/$dr_bcmdrivers_broadcom_subdir
+    
+    
+    cd $dr_base_dir/$dr_bcmdrivers_broadcom_subdir
+    
+    if [[ "$dr_is_hnd" != "" || "$dr_is_cpe" != "" ]] ; then
+        chip_ver=`grep '^BRCM_CHIP=' $dr_base_dir/targets/$dr_profile/$dr_profile|cut -d'=' -f2`
+        impl_dir=net/wl/bcm9$chip_ver
+        impl_dir=net/wl/`readlink $impl_dir`
+        echo "HND profile:$impl_dir ---"
+        # save the dongle fw header and binary files
+        if [ -f $impl_dir/sys/src/shared/rtecdc_router.h ] ; then
+            tar frv ./hndfw.tar $impl_dir/sys/src/shared/rtecdc_router.h
+            if [ -d $impl_dir/sys/src/dongle/bin ] ; then
+                tar frv ./hndfw.tar $impl_dir/sys/src/dongle/bin
+            fi
+        elif [ -f $impl_dir/dhd/src/shared/rtecdc_router.h ] ; then
+            tar frv ./hndfw.tar $impl_dir/dhd/src/shared/rtecdc_router.h
+            if [ -d $impl_dir/dhd/src/dongle/bin ] ; then
+                tar frv ./hndfw.tar $impl_dir/dhd/src/dongle/bin
+            fi
+        fi
+
+        # Save the wlan shared directory
+        wlshared_dir=net/wl/shared/impl1
+        if [ -d $wlshared_dir ]; then
+            tar frv ./savemods.tar $wlshared_dir/*.c $wlshared_dir/*.h
+        fi
+
+    else
+        #########################################################################
+        # Save wireless driver objects.  This can not be done in the ... 
+        # ... for dr_modobjs ... loop below, because the searching in Makefiles
+        # yields wrong results for wireless, causing the loop to fail.
+
+        chip_ver=`grep '^BRCM_CHIP=' $dr_base_dir/targets/$dr_profile/$dr_profile|cut -d'=' -f2`
+        dr_dir=net/wl/bcm9$chip_ver
+        dr_dir=net/wl/`readlink $dr_dir`
+
+        wl_app_dir=$dr_base_dir/userspace/private/apps/wlan
+        cp `find ${dr_dir} -name "libwlbcmcrypto.so"` $wl_app_dir
+        cp `find ${dr_dir} -name "libwlbcmshared.so"` $wl_app_dir
+
+        wireless_driver_makefile > ${dr_dir}/Makefile_save
+
+        files_to_save=" \
+            ${dr_dir}/Makefile_save \
+            ${dr_dir}/main/src/include/linux_osl.h \
+            ${dr_dir}/main/src/include/bcmdefs.h \
+            ${dr_dir}/main/src/include/linuxver.h \
+            ${dr_dir}/main/src/include/osl_decl.h \
+            ${dr_dir}/main/src/include/osl.h \
+            ${dr_dir}/main/src/include/typedefs.h \
+            net/wl/shared/impl1/linux_osl_dslcpe.h \
+            net/wl/shared/impl1/wl_pktc.h \
+            net/wl/shared/impl1/dhd_nic_common.h \
+            net/wl/shared/impl1/fcache_wfd_inline.h \
+        "
+
+        for x in $files_to_save; do
+            tar frv ./savemods.tar $x
+        done
+        #########################################################################
+    fi
+
+    # Create a list of the possible modules.
+    dr_modobjs=`find */ -name "Makefile" -exec grep "^[[:space:]]*obj.*CONFIG_" "{}" ";" | sed 's/^[[:space:]]*//g' | cut -d' ' -f3 | uniq`
+
+    echo "===> $dr_modobjs"
+
+    # for each kernel driver module in a list of possible modules...
+    for dr_modobj in $dr_modobjs
+    do
+        echo "===> Now processing $dr_modobj"
+        dr_dir=`find . -name "$dr_modobj" -printf '%h\n'`
+        echo "===> dr_dir is $dr_dir"
+        
+        # workarround for RDP folder w/o impl inside
+        [[ "$dr_dir" == *./rdp/* ]] && pseudo_impl=Y || pseudo_impl=
+        
+        if [ "$dr_dir" != "" ] ; then
+            dr_bn=`basename $dr_dir`
+        else
+            dr_bn=
+        fi
+
+        echo "===> dr_bn is $dr_bn"
+
+        # Process modules that exist (the .o file exists) in a directory that
+        # begins with "impl".
+        if [ "${dr_bn:0:4}" == "impl" -o "$pseudo_impl" == "Y" ] ; then
+
+            # Copy the module to a different name.
+            dr_modname=${dr_modobj/.o/}
+            cp $dr_dir/$dr_modobj $dr_dir/${dr_modname}${dr_profile}.o_save
+
+            case $dr_modname in
+            adsldd)
+                # Create consumer makefile for adsl module obj.
+                grep "^[[:space:]]*obj.*CONFIG_" ${dr_dir}/Makefile > ${dr_dir}/Makefile_save
+                echo -e "\n${dr_modname}-objs += ${dr_modname}_dep.o\n\n\$(obj)/${dr_modname}_dep.o:\n\tcp \$(obj)/${dr_modname}\$(PROFILE).o_save \$(obj)/${dr_modname}_dep.o\n\tcp \$(obj)/adsl_phy\$(PROFILE).bin_save \$(obj)/adsl_phy.bin\n\n" >> ${dr_dir}/Makefile_save
+
+                # Save ADSL PHY bin file for this profile.
+                cp $dr_dir/adsl_phy.bin $dr_dir/adsl_phy${dr_profile}.bin_save
+
+                # Archive the "*_save" files and ADSL PHY bin file temporarily.
+                tar frv ./savemods.tar $dr_dir/${dr_modname}${dr_profile}.o_save ${dr_dir}/Makefile_save $dr_dir/adsl_phy${dr_profile}.bin_save >& /dev/null
+            ;;
+
+            *)
+                # Create consumer makefile for module obj.
+                if [  ! -e  "${dr_dir}/Makefile_save" ]; then
+                    # Create Makefile_save only if it is not already done. Otherwise, a folder with 2 or more object files
+                    # will cause Makefile_save created for one object file to be overriden by the Makefile_save created by 
+                    # the next object file.
+                    if [ "${dr_modname}" == "bcm3450" ] ; then
+                        # Special case for i2c, need to preserve ifdef
+                        echo -e "obj-\$(CONFIG_BCM_I2C_CHIP) += bcm3450.o" > ${dr_dir}/Makefile_save
+                        #echo -e "ifneq (\$(strip \$(BRCM_DRIVER_GPON)),)" >> ${dr_dir}/Makefile_save
+                        echo -e "obj-\$(CONFIG_BCM_I2C_CHIP) += pon_i2c.o" >> ${dr_dir}/Makefile_save
+                        #echo -e "endif" >> ${dr_dir}/Makefile_save
+                    else
+                        grep "^[[:space:]]*obj.*CONFIG_" ${dr_dir}/Makefile > ${dr_dir}/Makefile_save
+                    fi
+                fi
+                echo -e "\n${dr_modname}-objs += ${dr_modname}_dep.o\n" >> ${dr_dir}/Makefile_save
+                echo -e "\$(obj)/${dr_modname}_dep.o:" >> ${dr_dir}/Makefile_save
+                echo -e "\tcp \$(obj)/${dr_modname}\$(PROFILE).o_save \$(obj)/${dr_modname}_dep.o\n" >> ${dr_dir}/Makefile_save
+                echo -e "applinks:\n" >> ${dr_dir}/Makefile_save
+
+
+                # Archive the "*_save" files temporarily.  After all profiles
+                # have been built, proprietary module source files will be
+                # deleted and this archive will be restored.
+                tar frv ./savemods.tar $dr_dir/${dr_modname}${dr_profile}.o_save ${dr_dir}/Makefile_save >& /dev/null
+                tar frv ./savemods.tar ${dr_dir%/*}/Kconfig.autodetect ${dr_dir%/*}/autodetect >& /dev/null
+            ;;
+            esac
+        fi
+    done
+
+    #########################################################################
+    # Save bcmlog script files 
+
+    files_to_save=" bcmlog db dh dumpmem dw fb fh fw sb setmem sh spitr ssrw sw"
+
+    for x in $files_to_save; do
+        tar frv ./savemods.tar char/bcmlog/impl1/fs/scripts/$x
+    done
+
+    
+    # Create a minimal softdsl/AdslCoreDefs.h which is used by prom.c
+    cd $dr_base_dir/$dr_kernel_subdir/arch/mips/bcm963xx
+    mkdir -p softdsl
+
+    # read ADSL_PHY_SDRAM_BIAS and ADSL_PHY_SDRAM_PAGE_SIZE from appro locations
+    # 6368
+    echo "#if defined(CONFIG_BCM96368)" > softdsl/AdslCoreDefs.h
+    while read LINE
+    do
+        if [[ "$LINE" =~ " ADSL_PHY_SDRAM_BIAS " || "$LINE" =~ " ADSL_PHY_SDRAM_PAGE_SIZE " ]] 
+        then
+            echo $LINE >> softdsl/AdslCoreDefs.h
+        fi
+    done < $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/char/adsl/impl1/adslcore6368/adsl_defs.h
+
+    # 6362
+    echo "#elif defined(CONFIG_BCM96362)" >> softdsl/AdslCoreDefs.h
+    while read LINE
+    do
+        if [[ "$LINE" =~ " ADSL_PHY_SDRAM_BIAS " || "$LINE" =~ " ADSL_PHY_SDRAM_PAGE_SIZE " ]] 
+        then
+                echo $LINE >> softdsl/AdslCoreDefs.h
+        fi
+    done < $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/char/adsl/impl1/adslcore6362/adsl_defs.h
+
+    # 6328 (use the same file as for 6362
+    echo "#elif defined(CONFIG_BCM96328)" >> softdsl/AdslCoreDefs.h
+    while read LINE
+    do
+        if [[ "$LINE" =~ " ADSL_PHY_SDRAM_BIAS " || "$LINE" =~ " ADSL_PHY_SDRAM_PAGE_SIZE " ]] 
+        then
+                echo $LINE >> softdsl/AdslCoreDefs.h
+        fi
+    done < $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/char/adsl/impl1/adslcore6362/adsl_defs.h
+
+    # 63268
+    echo "#elif defined(CONFIG_BCM963268)" >> softdsl/AdslCoreDefs.h
+    echo "#if defined(SUPPORT_DSL_BONDING)" >> softdsl/AdslCoreDefs.h
+    while read LINE
+    do
+        if [[ "$LINE" =~ " ADSL_PHY_SDRAM_BIAS " || "$LINE" =~ " ADSL_PHY_SDRAM_PAGE_SIZE " ]]
+        then
+                echo $LINE >> softdsl/AdslCoreDefs.h
+        fi
+    done < $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/char/adsl/impl1/adslcore63268bnd5/adsl_defs.h
+
+    echo "#else" >> softdsl/AdslCoreDefs.h
+    while read LINE
+    do
+        if [[ "$LINE" =~ " ADSL_PHY_SDRAM_BIAS " || "$LINE" =~ " ADSL_PHY_SDRAM_PAGE_SIZE " ]]
+        then
+                echo $LINE >> softdsl/AdslCoreDefs.h
+        fi
+    done < $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/char/adsl/impl1/adslcore63268/adsl_defs.h
+    echo "#endif" >> softdsl/AdslCoreDefs.h
+
+    # 63381
+    echo "#elif defined(CONFIG_BCM963381)" >> softdsl/AdslCoreDefs.h
+    while read LINE
+    do
+        if [[ "$LINE" =~ " ADSL_PHY_SDRAM_BIAS " || "$LINE" =~ " ADSL_PHY_SDRAM_PAGE_SIZE " ]] 
+        then
+                echo $LINE >> softdsl/AdslCoreDefs.h
+        fi
+    done < $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/char/adsl/impl1/adslcore63381/adsl_defs.h
+
+    # 63138
+    echo "#elif defined(CONFIG_BCM963138)" >> softdsl/AdslCoreDefs.h
+    while read LINE
+    do
+        if [[ "$LINE" =~ " ADSL_PHY_SDRAM_BIAS " || "$LINE" =~ " ADSL_PHY_SDRAM_PAGE_SIZE " ]] 
+        then
+                echo $LINE >> softdsl/AdslCoreDefs.h
+        fi
+    done < $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/char/adsl/impl1/adslcore63138/adsl_defs.h
+
+    # 63148
+    echo "#elif defined(CONFIG_BCM963148)" >> softdsl/AdslCoreDefs.h
+    while read LINE
+    do
+        if [[ "$LINE" =~ " ADSL_PHY_SDRAM_BIAS " || "$LINE" =~ " ADSL_PHY_SDRAM_PAGE_SIZE " ]] 
+        then
+                echo $LINE >> softdsl/AdslCoreDefs.h
+        fi
+    done < $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/char/adsl/impl1/adslcore63148/adsl_defs.h
+
+    echo "#else" >> softdsl/AdslCoreDefs.h
+    echo "#define ADSL_PHY_SDRAM_BIAS 0x100000" >> softdsl/AdslCoreDefs.h
+    echo "#define ADSL_PHY_SDRAM_PAGE_SIZE 0x200000" >> softdsl/AdslCoreDefs.h
+    echo "#endif" >> softdsl/AdslCoreDefs.h
+
+    echo "#define ADSL_SDRAM_IMAGE_SIZE (ADSL_PHY_SDRAM_PAGE_SIZE - ADSL_PHY_SDRAM_BIAS)" >> softdsl/AdslCoreDefs.h
+
+    # Make a copy of to ARM directory as well
+    mkdir $dr_base_dir/$dr_kernel_subdir/arch/arm/mach-bcm963xx/softdsl
+    cp softdsl/AdslCoreDefs.h $dr_base_dir/$dr_kernel_subdir/arch/arm/mach-bcm963xx/softdsl/
+
+    #
+    # Save the user mode executable program for each proprietary program that
+    # was built.
+    #
+    echo "======> Do userspace files"
+
+    cd $dr_base_dir/userspace/private/apps
+
+    # for each private app...
+    for dr_dir in *
+    do
+        if [ -d $dr_dir ] ; then
+            cd $dr_dir
+            echo "===> now processing $dr_dir"
+
+            case $dr_dir in
+            wlan)
+                echo "===>wlan needs special processing"
+                # (1) Gather all wlan apps to this top level directory, tar
+                #     up, and create a special makefile for installing them
+                #     in consumer build.
+                #
+                # (2) New files can be added into "files_to_save", regardless
+                #     of which "wl/impl" they belong.
+                #
+                # (3) Wireless applications are built in directories under:
+                #     "$dr_base_dir/userspace/private/apps/wlan," and all of
+                #     them are symbolic links to the driver directory -- with
+                #     two exceptions: "libwlbcmcrypto" and "libwlbcmshared".
+                #
+                # (4) These two exceptions are corrected in this script's
+                #     driver section (by copying them here).  We should fix   
+                #     the exception!
+
+                files_to_save=" \
+                    libwlbcmcrypto.so \
+                    libwlbcmshared.so \
+	            libupnp/libwlupnp.so \
+                    bcmupnp/bcmupnp \
+                    eapd/linux/eapd \
+                    lltd/lld2d \
+                    lltd/src/bcm963xx.large.ico \
+                    lltd/src/bcm963xx.small.ico \
+                    lltd/src/lld2d_dslcpe.conf \
+                    nas/nas/nas \
+                    nvram/nvram \
+                    nvram/libnvram.so \
+                    util/nvram_params \
+                    util/nvramUpdate \
+                    wlctl/wlctl \
+                    wlctl/libwlctl.so \
+                    wlmngr/wlmngr \
+                    181wlmngr/wlmngr2 \
+                    wlmngr/wlevt \
+                    wlmngr/libwlmngr.so \
+                    wlcsm_dm/libwlcsm_dm.so \
+                    wlcsm_dm/dm_impls/tr181/libwlcsm_dm_tr181.so \
+                    wlcsm_dm/dm_impls/tr98/libwlcsm_dm_tr98.so \
+                    wlcsm_dm/dm_impls/nocms/libwlcsm_dm_nocms.so \
+                    src/router/httpd/libwifihttp.so \
+                    src/router/hspot_ap/libhspotap.so \
+                    wps/wps_monitor \
+                    wps/wps_ap \
+                    wps/wps_enr \
+                    wps/libwps.so \
+                    epittcp/epi_ttcp \
+                    dhdctl/dhdctl \
+                "
+
+                echo -e "dynamic: install\n\n"  >  Makefile_save
+                echo -e "all: install\n\n"   >> Makefile_save
+                echo -e "install:"          >> Makefile_save
+                cd ..
+
+                for f in $files_to_save; do
+                    if [ -e wlan/${f} ]; then
+                        x=${f##*/};
+                        mv wlan/${f} wlan/${x}_${dr_profile}.save
+                        tar frv ./savepvtapps.tar wlan/${x}_${dr_profile}.save
+
+                        if [ "${f##*.}" == 'so' ]; then
+                            echo -e "\tcp -f ${x}_${dr_profile}.save \$(INSTALL_DIR)/lib/${x}" >> wlan/Makefile_save
+                        else
+                            if [ "${f##*.}" == 'ico' ]; then
+                                echo -e "\tcp -f ${x}_${dr_profile}.save \$(INSTALL_DIR)/etc/wlan/${x}" >> wlan/Makefile_save
+                            else
+                                if [ "${f##*.}" == 'conf' ]; then
+                                    if [ "${x}" == "lld2d_dslcpe.conf" ]; then
+                                        echo -e "\tcp -f ${x}_${dr_profile}.save \$(INSTALL_DIR)/etc/lld2d.conf" >> wlan/Makefile_save
+                                    else
+                                        echo -e "\tcp -f ${x}_${dr_profile}.save \$(INSTALL_DIR)/etc/${x}" >> wlan/Makefile_save
+                                    fi
+                                else
+                                    if [ "${x}" == "nvram_params" ]; then
+                                        echo -e "\tcp -f ${x}_${dr_profile}.save \$(INSTALL_DIR)/etc/wlan/${x}" >> wlan/Makefile_save
+                                    else
+                                        echo -e "\tcp -f ${x}_${dr_profile}.save \$(INSTALL_DIR)/bin/${x}" >> wlan/Makefile_save
+                                    fi
+                                fi
+                            fi
+                        fi
+                    fi 
+                done
+
+                echo "CURR_DIR  := \$(shell pwd)" >> Makefile_save
+                echo "BUILD_DIR := \$(subst /userspace, /userspace,\$(CURR_DIR))" >> Makefile_save
+                echo "BUILD_DIR := \$(word 1, \$(BUILD_DIR))"   >> Makefile_save
+                echo "include \$(BUILD_DIR)/make.common"        >> Makefile_save
+                tar frv ./savepvtapps.tar wlan/Makefile_save
+                cd $dr_dir
+                ;;
+
+            httpd)
+                echo "===>httpd needs special makefile"
+                dr_pgm=$dr_dir
+                if [ -a $dr_pgm ] ; then
+                    dr_pgm=${dr_pgm// /}
+                    echo "===> dr_pgm is now $dr_pgm"
+
+                    # Copy the executable program to a save name and create a
+                    # Makefile that restores it to its original name.
+                    cp $dr_pgm ${dr_pgm}_${dr_profile}.save
+                    echo "EXE = $dr_pgm" > Makefile_save
+                    echo -e "dynamic: generic_exe_install\n\n" >> Makefile_save
+                    echo -e "$dr_pgm:\n\tcp ${dr_pgm}_\$(PROFILE).save $dr_pgm\n" >> Makefile_save
+                    echo -e "\tmkdir -p \$(INSTALL_DIR)/webs" >> Makefile_save
+                    echo -e "\t-cp -f html/*.html html/*.js html/*.png html/*.gif html/*.css \$(INSTALL_DIR)/webs\n\n" >> Makefile_save
+                    echo -e "clean:\n\trm -f $dr_pgm\n\n" >> Makefile_save
+                    echo "CURR_DIR := \$(shell pwd)" >> Makefile_save
+                    echo "BUILD_DIR := \$(subst /userspace, /userspace,\$(CURR_DIR))" >> Makefile_save
+                    echo "BUILD_DIR := \$(word 1, \$(BUILD_DIR))" >> Makefile_save
+                    echo "include \$(BUILD_DIR)/make.common" >> Makefile_save
+
+
+                    # Add the Makefile and executable program to the temporary
+                    # archive that is restored after the source files are deleted.
+                    cd ..
+                    tar frv ./savepvtapps.tar $dr_dir/${dr_pgm}_${dr_profile}.save $dr_dir/Makefile_save $dr_dir/html
+                    cd $dr_dir
+                else
+                    echo "$dr_dir was not built, create no-op Makefile"
+                    if ! [ -a Makefile_save ] ; then
+                        # The executable program was not built.  Create and
+                        # archive a Makefile that does nothing.
+                        echo -e "all:\n\ninstall:\n\ndynamic:\n\nclean:\n\n" > Makefile_save
+                        cd ..
+                        tar frv ./savepvtapps.tar $dr_dir/Makefile_save >& /dev/null
+                        cd $dr_dir
+                    fi
+                fi
+                ;;
+
+            x_dms)
+                echo "$dr_dir can be left alone"
+                ;;
+            *)
+
+                case $dr_dir in
+                atmctl)
+                    dr_pgm="xtmctl"
+                    ;;
+                tr64)
+                    dr_pgm="tr64c"
+                    ;;
+                *)    
+                    dr_pgm=$dr_dir
+                    ;;
+                esac
+
+                if [ -a $dr_pgm ] ; then
+                    dr_pgm=${dr_pgm// /}
+
+                    grep GLOBAL_RELEASE_SCRIPT_NOTOUCH Makefile > /dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        # This is a new style Makefile, which has all the
+                        # knowledge of how to do binary only releases.
+                        # (For now, this script still saves EXE, but the
+                        # local makefile should do that via make binaryonly_dist).
+                        echo GLOBAL_RELEASE_SCRIPT_NOTOUCH detected in ${dr_pgm}
+                        cp $dr_pgm ${dr_pgm}_${dr_profile}.save
+                        make binaryonly_dist_clean
+                        cd ..
+                        tar frv ./savepvtapps.tar $dr_dir
+                    else
+                    # Copy the executable program to a save name and create a
+                    # Makefile that restores it to its original name.
+                    cp $dr_pgm ${dr_pgm}_${dr_profile}.save
+                    echo "EXE = $dr_pgm" > Makefile_save
+                    echo -e "dynamic: generic_exe_install\n\nclean:\n\trm -f $dr_pgm\n\n" >> Makefile_save
+                    echo -e "$dr_pgm:\n\tcp ${dr_pgm}_\$(PROFILE).save $dr_pgm\n" >> Makefile_save
+                    echo "CURR_DIR := \$(shell pwd)" >> Makefile_save
+                    echo "BUILD_DIR := \$(subst /userspace, /userspace,\$(CURR_DIR))" >> Makefile_save
+                    echo "BUILD_DIR := \$(word 1, \$(BUILD_DIR))" >> Makefile_save
+                    echo "include \$(BUILD_DIR)/make.common" >> Makefile_save
+
+
+                    # Add the Makefile, executable, and .autodetect (if present) to
+                    # savepvtapps.tar which will be restored after the source files are deleted.
+                    cd ..
+                    tar frv ./savepvtapps.tar $dr_dir/${dr_pgm}_${dr_profile}.save $dr_dir/Makefile_save >& /dev/null
+                    if [ -a $dr_dir/.autodetect ] ; then
+                        tar frv ./savepvtapps.tar $dr_dir/.autodetect >& /dev/null
+                    fi
+
+                    fi
+
+                    cd $dr_dir
+                else
+                    echo "$dr_dir was not built, create no-op Makefile"
+                    if ! [ -a Makefile_save ] ; then
+                        # The executable program was not built.  Create and
+                        # archive a Makefile that does nothing.
+                        echo -e "all:\n\ninstall:\n\ndynamic:\n\nclean:\n\n" > Makefile_save
+                        cd ..
+                        tar frv ./savepvtapps.tar $dr_dir/Makefile_save >& /dev/null
+                        cd $dr_dir
+                    fi
+                fi
+                ;;
+            esac
+
+            cd ..
+        fi
+    done
+
+    echo ""
+    echo "======> Do the private lib files"
+    cd $dr_base_dir/userspace/private/libs
+
+    # for each private libs...
+    for dr_dir in *
+    do
+        if [ -d $dr_dir ] ; then
+            cd $dr_dir
+            echo "===> now processing $dr_dir"
+
+            case $dr_dir in
+            wlcsm)
+                dr_pgm=lib${dr_dir}.so
+                echo "===> after filename conversion $dr_pgm"
+                if [ -a $dr_pgm ] ; then
+                    dr_pgm=${dr_pgm// /}
+                    # Copy the executable program to a save name and create a
+                    # Makefile that restores it to its original name.
+                    cp $dr_pgm ${dr_pgm}_${dr_profile}.save
+                    cp libwlcsm.a libwlcsm.a_${dr_profile}.save 2>/dev/null
+                    echo "LIB = $dr_pgm" > Makefile_save
+                    echo -e "all: dynamic" >> Makefile_save
+                    echo "CURR_DIR := \$(shell pwd)" >> Makefile_save
+                    echo "BUILD_DIR := \$(subst /userspace, /userspace,\$(CURR_DIR))" >> Makefile_save
+                    echo "BUILD_DIR := \$(word 1, \$(BUILD_DIR))" >> Makefile_save
+                    echo "include \$(BUILD_DIR)/make.common" >> Makefile_save
+                    echo -e "\ndynamic: generic_private_lib_install\n\nclean:\n\trm -f $dr_pgm\n" >> Makefile_save
+		    echo -e "$dr_pgm:\n\tcp ${dr_pgm}_\$(PROFILE).save $dr_pgm" >> Makefile_save
+                    echo -e "\t-cp libwlcsm.a_\$(PROFILE).save libwlcsm.a" >> Makefile_save
+                    echo -e "dynamic: generic_private_lib_install\n\nclean:" >>Makefile_save
+                    echo -e "\t-rm -f *.a *.so" >> Makefile_save
+
+                    # Add the Makefile, lib, and .autodetect (if present) to
+                    # savepvtlibs.tar which will be restored after the source files are deleted.
+                    cd ..
+                    tar frv ./savepvtlibs.tar $dr_dir/${dr_pgm}_${dr_profile}.save $dr_dir/Makefile_save >& /dev/null
+                    tar frv ./savepvtlibs.tar $dr_dir/libwlcsm.a_${dr_profile}.save >& /dev/null
+                    if [ -a $dr_dir/.autodetect ] ; then
+                        tar frv ./savepvtlibs.tar $dr_dir/.autodetect >& /dev/null
+                    fi
+                    
+                    cd $dr_dir
+                else
+                    echo "$dr_pgm was not built, create no-op Makefile"
+                    if ! [ -a Makefile_save ] ; then
+                        # The executable program was not built.  Create and
+                        # archive a Makefile that does nothing.
+                        echo -e "all:\n\ninstall:\n\ndynamic:\n\nclean:\n\n" > Makefile_save
+                        cd ..
+                        tar frv ./savepvtlibs.tar $dr_dir/Makefile_save >& /dev/null
+                        cd $dr_dir
+                    fi
+                fi
+                ;;
+            bcmssl)
+                echo "===> special bcmssl processing"
+                if [ -a src/libbcmssl.so ] ; then
+                    cp src/libbcmssl.so src/libbcmssl_${dr_profile}.so
+                    cp ctaocrypt/libbcmcrypto.so ctaocrypt/libbcmcrypto_${dr_profile}.so
+                    echo -e "\nall: lib install\n\nlib:\n\tcp src/libbcmssl_\$(PROFILE).so src/libbcmssl.so\n\tcp ctaocrypt/libbcmcrypto_\$(PROFILE).so ctaocrypt/libbcmcrypto.so\n\ninstall: lib\n\tinstall -m 755 src/libbcmssl.so \$(INSTALL_DIR)/lib/private\n\tinstall -m 755 ctaocrypt/libbcmcrypto.so \$(INSTALL_DIR)/lib/private\n\t\$(STRIP) \$(INSTALL_DIR)/lib/private/libbcmssl.so\n\t\$(STRIP) \$(INSTALL_DIR)/lib/private/libbcmcrypto.so\n\nclean:\n\t-rm src/libbcmssl.so ctaocrypt/libbcmcrypto.so \$(INSTALL_DIR)/lib/private/libbcmssl.so \$(INSTALL_DIR)/lib/private/libbcmcrypto.so\n\n" > Makefile_save
+                    cd ..
+                    tar frv ./savepvtlibs.tar $dr_dir/src/libbcmssl_${dr_profile}.so $dr_dir/ctaocrypt/libbcmcrypto_${dr_profile}.so $dr_dir/Makefile_save
+                    cd $dr_dir
+                fi
+                ;;
+            mdk212)
+                    mdklibs=`find . -name '*.so' -print`
+                    savenames=""
+                    orignames=""
+                    for i in $mdklibs
+                    do
+                        nname=${i/%.so/_${dr_profile}.so}
+                        cp $i $nname
+                        savenames="$savenames $dr_dir/$nname "
+                        orignames="$orignames $i "
+                    done
+                    echo -e "\nall: lib install\n\n" > Makefile_save
+                    echo -e "lib:" >> Makefile_save
+                    for i in $mdklibs
+                    do
+                       nname=${i/%.so/_\$(PROFILE).so}
+                       echo -e "\tcp $nname $i " >> Makefile_save
+                    done
+                    echo -e "\n\n" >> Makefile_save
+                    echo -e "install:" >> Makefile_save
+                    installed=""
+                    for i in $mdklibs
+                    do
+                       bn=`basename  $i `
+                       echo -e "\tinstall -m 755 $i \$(INSTALL_DIR)/lib/private" >> Makefile_save
+                       echo -e "\t\$(STRIP) \$(INSTALL_DIR)/lib/private/$bn" >> Makefile_save
+                       installed="$installed  \$(INSTALL_DIR)/lib/private/$bn"
+                    done
+                    echo -e "\n\n" >> Makefile_save
+                    echo -e "clean:" >> Makefile_save
+                    echo -e "\t-rm $orignames $installed " >> Makefile_save
+                    cd ..
+                    tar frv ./savepvtlibs.tar $savenames $dr_dir/Makefile_save
+                    cd $dr_dir
+                ;;
+            *)
+                grep GLOBAL_RELEASE_SCRIPT_NOTOUCH Makefile > /dev/null 2>&1
+                if [ $? -eq 0 ]; then
+                  # This is a new style Makefile, which has all the
+                  # knowledge of how to do binary only releases.
+                  echo "GLOBAL_RELEASE_SCRIPT_NOTOUCH detected in $dr_dir"
+                  if [ -a $dr_base_dir/make.common ] ; then
+                    make binaryonly_dist_clean
+                    echo "===> after filename conversion"
+                    cd ..
+                    tar frv ./savepvtlibs.tar $dr_dir >& /dev/null
+                    cd $dr_dir
+                  else
+                    # Temp workaround when make.common is missing, it should never happen.
+                    echo "$dr_base_dir/make.common does not exist"
+                    if [ -a $dr_dir/core/libomci_core.so ] ; then
+                      echo "$dr_dir/core/libomci_core.so exists"
+                    else
+                      echo "$dr_dir/core/libomci_core.so not exist"
+                    fi
+                    echo "$dr_dir was not built or make.common does not exist, create no-op Makefile"
+                    # The executable program was not built.  Create and
+                    # archive a Makefile that does nothing.
+                    echo -e "all:\n\ninstall:\n\ndynamic:\n\nclean:\n\n" > Makefile_save
+                    cd ..
+                    tar frv ./savepvtlibs.tar $dr_dir/Makefile_save >& /dev/null
+                    cd $dr_dir
+                  fi
+                else
+                    # All other libs follow the same convention:
+                    # the Makefile and library are in the base directory.
+                    dr_pgm=lib${dr_dir}.so
+                    pref=
+                    if [ -a objs/*/$dr_pgm ] ; then
+                        pref=`echo objs/*`/
+                    fi
+                    echo "===> after filename conversion $dr_pgm"
+                    if [ -a $pref$dr_pgm ] ; then
+                        dr_pgm=${dr_pgm// /}
+
+                        # Copy the executable program to a save name and create a
+                        # Makefile that restores it to its original name.
+                        cp $pref$dr_pgm ${dr_pgm}_${dr_profile}.save
+                        echo "LIB = $dr_pgm" > Makefile_save
+                        echo -e "default: dynamic\n\n" >> Makefile_save
+                        echo -e "$dr_pgm:\n\tcp ${dr_pgm}_\$(PROFILE).save $dr_pgm\n" >> Makefile_save
+                        echo -e "dynamic: generic_private_lib_install\n\nclean:\n\trm -f $dr_pgm\n" >> Makefile_save
+                        echo "CURR_DIR := \$(shell pwd)" >> Makefile_save
+                        echo "BUILD_DIR := \$(subst /userspace, /userspace,\$(CURR_DIR))" >> Makefile_save
+                        echo "BUILD_DIR := \$(word 1, \$(BUILD_DIR))" >> Makefile_save
+                        echo "include \$(BUILD_DIR)/make.common" >> Makefile_save
+
+
+                        # Add the Makefile, lib, and .autodetect (if present) to
+                        # savepvtlibs.tar which will be restored after the source files are deleted.
+                        cd ..
+                        tar frv ./savepvtlibs.tar $dr_dir/${dr_pgm}_${dr_profile}.save $dr_dir/Makefile_save >& /dev/null
+                        if [ -a $dr_dir/.autodetect ] ; then
+                            tar frv ./savepvtlibs.tar $dr_dir/.autodetect >& /dev/null
+                        fi
+
+                        cd $dr_dir
+                    else
+                        echo "$dr_pgm was not built, create no-op Makefile"
+                        if ! [ -a Makefile_save ] ; then
+                            # The executable program was not built.  Create and
+                            # archive a Makefile that does nothing.
+                            echo -e "all:\n\ninstall:\n\ndynamic:\n\nclean:\n\n" > Makefile_save
+                            cd ..
+                            tar frv ./savepvtlibs.tar $dr_dir/Makefile_save >& /dev/null
+                            cd $dr_dir
+                        fi
+                    fi
+                fi
+                ;;
+            esac
+
+            cd ..
+        fi
+    done
+
+
+    # for each public app
+    # For now, only do sshd.  May want to also do pppoe and dhcpv6
+    cd $dr_base_dir/userspace/public/apps/sshd
+    echo "===> special sshd processing"
+    dr_dir="sshd"
+    dr_pgm=$dr_dir
+    cp $dr_pgm ${dr_pgm}_${dr_profile}.save
+    echo "EXE = $dr_pgm" > Makefile_save
+    echo -e "dynamic: generic_exe_install\n\nclean:\n\trm -f $dr_pgm\n\n" >> Makefile_save
+    echo -e "$dr_pgm:\n\tcp ${dr_pgm}_\$(PROFILE).save $dr_pgm\n" >> Makefile_save
+    echo "CURR_DIR := \$(shell pwd)" >> Makefile_save
+    echo "BUILD_DIR := \$(subst /userspace, /userspace,\$(CURR_DIR))" >> Makefile_save
+    echo "BUILD_DIR := \$(word 1, \$(BUILD_DIR))" >> Makefile_save
+    echo "include \$(BUILD_DIR)/make.common" >> Makefile_save
+
+    cd ..
+    tar frv ./savepubapps.tar $dr_dir/${dr_pgm}_${dr_profile}.save $dr_dir/Makefile_save >& /dev/null
+
+
+    # Save hostTools executable files and scripts.  Do this only once.
+    echo ""
+    echo "======> tar up hostTools (only once)"
+    cd $dr_base_dir
+    if ! [ -a ./savehosttools.tar ] ; then
+        tar cfv ./savehosttools.tar hostTools/{addvtoken,bcmImageBuilder,BcmFsTag,cmplzma,create_autogen.pl,createimg.pl,lzmacmd,mkfs.jffs2,mksquashfs,make_links.sh,lz4cmp.out,nvram.h,nvram_defaults.h,create_emmc_rawimg.py,gencrc32} hostTools/scripts/{bcmImageMaker,newgendefconfig,gendefconfig,defconfig-bcm.template} hostTools/scripts/gendefconfig.d/ hostTools/squashfs/* hostTools/lzma hostTools/libcreduction hostTools/fakeroot hostTools/jffs2 hostTools/mtd-utils-* hostTools/squashfs_4.0 hostTools/lzma457 hostTools/lz4-r127 hostTools/PerlLib/ hostTools/CPAN/ hostTools/CBC/ hostTools/scripts/checkver.pl hostTools/local_install/ hostTools/cms2bbf/build/dist/ hostTools/SecureBootUtils/{Makefile,makeGen3UnsecureBootCfe,mod2bin.c,secutil.pl}
+    fi
+
+    # save files generated from data model.
+    # A make clean now deletes all of those files, but we need to preserve them
+    # for the consumer
+    cd $dr_base_dir
+    if ! [ -a ./savemdmheaderfiles.tar ] ; then
+        tar cfv ./savemdmheaderfiles.tar userspace/public/include/{mdm_object.h,mdm_objectid.h,mdm_params.h,mdm_validstrings.h}
+    fi
+
+    echo ""
+    echo "======> do clean"
+    make PROFILE=$dr_profile clean
+
+done
+
+echo ""
+echo "======> Done with building and saving... start final set of operations"
+
+##
+## Delete proprietary source files and restore the proprietary object files.
+##
+cd $dr_base_dir/$dr_bcmdrivers_broadcom_subdir
+
+# Save include files that are needed by open source (GPL'd) programs and
+# delete the rest.
+echo "===> save kernel header files"
+tar cvf ./saveinc.tar include/bcm963xx/{adsldrv.h,atmapidrv.h,bcmatmapi.h,DiagDef.h,AdslMibDef.h,bcmadsl.h,portMirror.h,bcmxdsl.h,VdslInfoDef.h,bcm_OS_Deps.h,bcm_log_mod.h,bcm_log.h,fap.h,bpm.h,ingqos.h,wan_drv.h}
+tar frv ./saveinc.tar include/bcm963xx/{pktHdr.h,bcmsw_api.h,bcmmii_exports.h,bcm_nvram.h}
+tar frv ./saveinc.tar char/fap/impl1/{fap_hw.h,fap_hw_63268.h,fap_task.h,fap_dqm.h,fap_dqmHost.h,fap_dll.h,fap_packet.h,fap_slob.h,fap_dynmem.h,fap_tm.h,fap_wfd_inline.h,fap_swq_common.h}
+tar frv ./saveinc.tar char/fap/impl1/4ke/{fap4ke_init.h,fap4ke_local.h,fap4ke_packet.h,fap4ke_task.h,fap4ke_msg.h,fap4ke_iopDma.h,fap4ke_dpe.h,fap4ke_timers.h,fap4ke_mailBox.h,fap4ke_printer.h,fap4ke_memory.h,fap4ke_xtmrt.h,fap4ke_dqm.h,fap4ke_irq.h,fap4keLib_types.h,fap4keLib_string.h,fap4keLib_snprintf.h,fap4ke_gso.h,fap4ke_tm.h,fap4ke_swq.h,fap4ke_perf.h,fap4ke_colors.h}
+tar frv ./saveinc.tar char/dpiengine/impl1/include
+
+# RDP headers to save
+for dr_profile in $dr_profiles_to_build; do make -C $dr_base_dir -s PROFILE=$dr_profile rdp_link; done
+grep -rlh "proprietary:standard" rdp/* | xargs rm -f
+rm -rf rdp/drivers/bdmf/system/linux/cm rdp/drivers/rdp_subsystem/Makefile
+find rdp -type f -name "*.c" -o -name "*.list" -o -name ".readme" -delete
+find rdp/projects -type d -name "ut"  | xargs rm -rf
+find rdp/projects -maxdepth 2 -name Makefile -delete
+find -L rdp -type l -delete
+find rdp -type d -empty -delete
+tar hrf ./saveinc.tar rdp/drivers/rdpa_gpl rdp/projects rdp/firmware
+# create RDP Makefile with rdp_link target
+cat > rdp/Makefile << EOL
+.PHONY: rdp_link
+rdp_link: 
+	echo "DONE $@"
+
+EOL
+
+tar frv ./saveinc.tar rdp/Makefile
+rm -f include/bcm963xx/*
+
+#save HND GPL source
+if [[ "$dr_is_hnd" != "" || "$dr_is_cpe" != "" ]] ; then
+    echo "HND preserving GPL source"
+    tar -C $impl_dir -czf ./hnd-gpl.tar.gz --ignore-failed-read -T $impl_dir/main/src/tools/release/linux-2.6.36-dhdap-gpl-filelist.txt
+    cp $impl_dir/Makefile Makefile_hnd
+    cp $impl_dir/main/src/tools/release/validate_gpl.sh .
+    cp $impl_dir/main/src/tools/build/mogrify.pl .
+fi
+
+
+# Delete proprietary kernel driver module source files.
+for dr_dir in *
+do
+    echo "===>deleting proprietary kernel driver module $dr_dir"
+    if [ -d $dr_dir ] ; then
+        rm -rf $dr_dir
+    fi
+done
+
+cd $dr_base_dir
+rm -fr cfe/
+cd $dr_base_dir/$dr_bcmdrivers_broadcom_subdir
+
+# Restore proprietary kernel driver module object files.
+echo "===> restore saveinc.tar"
+tar xvf ./saveinc.tar
+rm ./saveinc.tar
+
+echo "===> restore savemods.tar"
+tar xfv ./savemods.tar
+rm -f ./savemods.tar
+
+# currently, the Makefile always tries to build gpon
+mkdir -p char/gpon/impl2
+
+find . -type d -name "impl*" -exec mv "{}"/Makefile_save "{}"/Makefile ";"
+# for rdp do the same as above but in diff way
+find rdp -type f -name "Makefile_save" -exec bash -c 'mv $0 ${0/_save/}' {} \;
+# finaly move back rdp to root
+rm -rf $dr_base_dir/rdp
+mv -fv $dr_base_dir/$dr_bcmdrivers_broadcom_subdir/rdp $dr_base_dir
+# additional cleanups in rdp
+find -L $dr_base_dir/rdp -type l -delete
+find $dr_base_dir/rdp -type d -empty -delete
+
+export mogrify_types='[^\/]*\.c|[^\/]*\.h|[^\/]*\.mk|[^\/]*\.inc|[^\/]*\.s|[^\/]*\.tcl|[^\/]*\.cpp|\
+	[^\/]*\.h\.in|sources[^\/]*|[^\/]*filelist\.txt|[^\/]*readme.*txt|[^\/]*wl\.wlex|[^\/]*akefile.*|\
+	[^\/]*akerule.*|[^\/]*\.sh|\/config\/wlconfig.*|\/config\/wl_.*|\/config\/Config.*|\/config\/defconfig.*|[^\/]*\.asp'
+# Restore HND GPL source
+if [[ "$dr_is_hnd" != "" || "$dr_is_cpe" != "" ]] ; then
+    # restore orig impl dir
+    mkdir -p $impl_dir
+    tar -xzf ./hnd-gpl.tar.gz -C $impl_dir
+    mv -f Makefile_hnd $impl_dir/Makefile
+    rm -rf ./hnd-gpl.tar.gz
+
+    # restore dongle fw
+    tar xfv ./hndfw.tar
+    rm -f ./hndfw.tar
+
+    #mogrify and validate gpl
+    for dr_dir in $impl_dir/*
+    do
+        echo "HND $dr_dir"
+	if [ -d $dr_dir ] ; then
+	    rm -rf mog_misc
+	    mkdir -pv mog_misc/mogrify_chunks
+	    find $dr_dir/* -type f | perl -ne 'print if /($ENV{mogrify_types})$/i' > mog_misc/.mogrified
+	    split -a 3 -d -l 1000 --verbose mog_misc/.mogrified mog_misc/mogrify_chunks/mogrify_chunk_
+	    for chunk in `ls -1 mog_misc/mogrify_chunks/mogrify_chunk_*`;
+	    do
+	        xargs perl mogrify.pl -UBCMDBG -UBCMDBG_ERR -UBCMDBG_ASSERT \
+		    -UBCMDBG_DUMP -UBCMDBG_MEM -UBCMDBG_PCI -UBCMDBG_PKT \
+		    -UBCMHSPOTAP -U__CONFIG_SES__ -U__CONFIG_SES_CL__ \
+		    -U__CONFIG_TREND_IQOS__ < $chunk
+	    done
+	    echo "GPL validating $dr_dir"
+	    source ./validate_gpl.sh $dr_dir
+        fi
+    done
+    rm -f validate_gpl.sh
+    rm -f mogrify.pl
+    rm -rf mog_misc
+
+    echo "# CONFIG_ENVRAM_UTILITY is not set" >> $impl_dir/main/src/router/config/defconfig-4.1-vista-dhdap-router
+
+    # remove envram utility
+    cd $dr_base_dir
+    find . -name "envram*" -print -exec rm -rf "{}" ";"
+fi
+
+# Delete proprietary user mode program source files.
+echo "===> start delete of user stuff"
+cd $dr_base_dir/userspace/private/apps
+for dr_dir in *
+do
+    echo "delete $dr_dir"
+    if [ -d $dr_dir ] ; then
+        rm -rf $dr_dir
+    fi
+done
+
+cd $dr_base_dir/userspace/private/libs
+for dr_dir in *
+do
+    echo "delete $dr_dir"
+    if [ -d $dr_dir ] ; then
+        rm -rf $dr_dir
+    fi
+done
+
+rm -rf $dr_base_dir/userspace/private/include
+
+# we should probably also delete pppoe and dhcpv6
+# only delete sshd for now because it depends on private header files which we
+# do not want to ship
+rm -rf $dr_base_dir/userspace/public/apps/dropbear
+
+# Delete proprietary archives in userspace/private/libs
+rm bcmssl.tar.bz2
+
+# Clean out data-model directory and create simple Makefile
+cd $dr_base_dir
+rm -f data-model/*
+echo -e "all:\n\nclean:\n\n" > data-model/Makefile
+
+
+# Restore proprietary user mode program executable files.
+cd $dr_base_dir/userspace/private/apps
+echo "===> restore private apps"
+tar xfv ./savepvtapps.tar
+rm -f ./savepvtapps.tar
+find . -type d -name "[a-z]*" -exec mv "{}"/Makefile_save "{}"/Makefile >& /dev/null ";"
+
+cd $dr_base_dir/userspace/private/libs
+echo "===> restore private libs"
+tar xfv ./savepvtlibs.tar
+rm -f ./savepvtlibs.tar
+find . -type d -name "[a-z]*" -exec mv "{}"/Makefile_save "{}"/Makefile >& /dev/null ";"
+
+# Restore public apps
+cd $dr_base_dir/userspace/public/apps
+echo "===> restore public apps"
+tar xfv ./savepubapps.tar
+rm -f ./savepubapps.tar
+find . -type d -name "[a-z]*" -exec mv "{}"/Makefile_save "{}"/Makefile >& /dev/null ";"
+
+# Run distclean on the apps and libs that support the distclean target.
+# distclean is useful when we already give out the source tarball so we 
+# can delete any file which we have not modified.
+# Currently only openssl and classpath support distclean
+# In the future, look for the GLOBAL_RELEASE_SCRIPT_CALL_DISTCLEAN hint in
+# the Makefile
+echo "Doing distclean in openssl"
+cd $dr_base_dir/userspace/public/libs/openssl
+make distclean
+
+if [ -e $dr_base_dir/userspace/gpl/libs/classpath/Makefile ]; then
+    echo "Doing distclean in classpath"
+    cd $dr_base_dir/userspace/gpl/libs/classpath
+    make distclean
+fi
+
+if [ -e $dr_base_dir/userspace/gpl/apps/jamvm/Makefile ]; then
+    echo "Doing distclean in jamvm"
+    cd $dr_base_dir/userspace/gpl/apps/jamvm
+    make distclean
+fi
+
+##
+## Deal with hostTool files
+##
+echo "======> start delete of hosttools"
+cd $dr_base_dir
+rm -rf hostTools/*
+
+# Restore hostTools executable and script files.
+echo "===> restore hosttools"
+tar xfv ./savehosttools.tar
+echo -e "\nall:\n\nclean:\n\n" > hostTools/Makefile
+rm -f ./savehosttools.tar
+
+# Restore saved mdm header files
+echo "===> restore mdm header files"
+tar xfv ./savemdmheaderfiles.tar
+rm -f ./savemdmheaderfiles.tar
+
+# Remove symbolic links to driver directories.
+echo "Remove bcmdriver symlinks..."
+cd $dr_base_dir
+find bcmdrivers -lname "*" -print -exec rm -f "{}" ";"
+
+# Remove config.in in the targets directory in order to prevent
+# "make menuconfig" from working.
+rm -f "$dr_base_dir/targets/config.in"
+
+
+##
+## We don't need to give ikos to consumers, do we?
+##
+rm -rf "dr_base_dir/targets/ikos"
+
+
+## 
+## Deal with the PROFILE files.
+##
+echo "===> save profiles"
+# Save target profiles that are in the list of profiles to build
+for profile_to_save in $dr_profiles_to_build
+do
+  echo "profile_to_save = $profile_to_save"
+  mv $dr_base_dir/targets/$profile_to_save $dr_base_dir/targets/saved_$profile_to_save
+done
+
+# Remove all profiles
+dr_available_profiles=`find $dr_base_dir/targets/ -maxdepth 1 -type d -name '9[0-9][0-9]*'`
+for profile_to_remove in $dr_available_profiles
+do
+  echo "profile_to_remove = $profile_to_remove"
+  rm -rf $profile_to_remove
+done
+
+# Restore saved target profiles
+for profile_to_restore in $dr_profiles_to_build
+do
+  echo "profile_to_restore = $profile_to_restore"
+  mv $dr_base_dir/targets/saved_$profile_to_restore $dr_base_dir/targets/$profile_to_restore
+done
+
+
+
+# Copy the Windows USB host driver ZIP file to the base directory.
+cp -v $dr_win_usb_file $dr_base_dir/.
+
+
+
+# Create a README file.
+echo -e "BCM963xx Consumer Release Notes\n\nThis release contains all of the files needed to build a BCM963xx DSL Router\nimage.  To build an image, enter:\n\n# make PROFILE=<profile_name>\n\nFor example,\n\n# make PROFILE=96368GW\n\nThe final image is located in the images subdirectory.  This image can be\nspecified in the BCM963xx Web interface image upgrade item in order to\nupgrade the DSL router image.\n" > $dr_base_dir/README
+
+
+
+##
+## Archive source and object files.
+## The tar operation will show us all the files that are given to the consumer
+##
+cd $dr_base_dir
+dr_src="Makefile make.common make.modsw make.beep make.deprules \
+        ${VERSION_MAKE_FILE} \
+        make.fap make.voice README \
+        $dr_bcmdrivers_subdir $dr_kernel_subdir/* \
+        kernel/dts/* \
+        data-model userspace/* targets/* \
+        hostTools/* shared/opensource/* cfe/* rdp/* \
+        release/credits.txt release/adv-credits.txt"
+
+# Release only the Astra header files needed for Astra Linux drivers
+if [ -d $dr_base_dir/secureos ] ; then
+    find $dr_base_dir/secureos/astra/user/cryptoflow_app ! -name "*.h" | xargs rm -f
+    dr_src="$dr_src secureos/astra/common secureos/astra/user/cryptoflow_app"
+fi
+
+if [ "$dr_user" = "root" ] ; then
+  chown -R root:root .
+fi
+chmod -R a+w  .
+if perl $dr_base_dir/release/update_licenses.pl --stage=2 --checkonly $dr_src
+then
+echo "create tarball bcm963xx_${dr_rel_ver}_consumer.tar.gz"
+tar cvfz $dr_output_dir/bcm963xx_${dr_rel_ver}_consumer.tar.gz --owner=root --group=root $dr_src --exclude=.svn
+echo ""
+echo "The BCM963xx consumer tar release archive has been created."
+echo ""
+else
+  echo "License Leak .. please fix"
+  exit 1
+fi
+
+
+##
+## Copy the installation script to the output directory.
+##
+echo ""
+cp -v $dr_bcminstall_dir/$dr_bcminstall_name $dr_output_dir/.
+echo ""
+
+##
+## Create the consumer BCM963xx DSL Router archive.
+##
+cd $dr_output_dir
+chmod a+rw *
+if [ "$dr_user" = "root" ] ; then
+  chown root:root *
+fi
+echo ""
+echo "tar bcm963xx_${dr_rel_ver}_consumer_release.tar.gz"
+tar cvfz ../bcm963xx_${dr_rel_ver}_consumer_release.tar.gz --owner=root --group=root *
+chmod a+rw ../bcm963xx_${dr_rel_ver}_consumer_release.tar.gz
+echo ""
+echo "The release is complete."
+ls -l ../bcm963xx_${dr_rel_ver}_consumer_release.tar.gz
+echo ""
+
