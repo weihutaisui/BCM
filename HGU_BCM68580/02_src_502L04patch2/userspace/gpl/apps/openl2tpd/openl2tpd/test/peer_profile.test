@@ -1,0 +1,1361 @@
+# -*- tcl -*-
+
+source test_procs.tcl
+
+############################################################################
+# Tests 1.* - basic list/create/modify/show/delete/unset operations
+############################################################################
+
+test peer_profile-1.1 { List peer profiles } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-1.1
+	l2tpConfig peer profile list
+    } \
+    {
+
+	default
+}
+
+test peer_profile-1.2 { Create a peer profile 'one' } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-1.2
+	l2tpConfig peer profile create profile_name=one
+	l2tpConfig peer profile list
+    } \
+    {
+
+Created peer profile one
+	default
+	one
+}
+
+test peer_profile-1.3 { Show peer profile 'default' } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-1.3
+	l2tpConfig peer profile show profile_name=default
+    } \
+    {
+
+Peer profile default:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+}
+
+test peer_profile-1.4 { Show peer profile 'one' } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-1.4
+	l2tpConfig peer profile show profile_name=one
+    } \
+    {
+
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+}
+
+test peer_profile-1.5 { Modify peer profile 'one' } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-1.5
+	l2tpConfig peer profile modify profile_name=one lac_lns=lac
+	l2tpConfig peer profile show profile_name=one
+    } \
+    {
+
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/-
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+}
+
+test peer_profile-1.6 { Unset peer profile 'one' } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-1.5
+	l2tpConfig peer profile unset profile_name=one lac_lns
+	l2tpConfig peer profile show profile_name=one
+    } \
+    {
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+}
+
+test peer_profile-1.7 { Delete a peer profile 'one' } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-1.6
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile list
+    } \
+    {
+
+Deleted peer profile one
+	default
+}
+
+test peer_profile-1.8 { Create peer profile that already exists } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-1.7
+	l2tpConfig peer profile create profile_name=one
+	l2tpConfig peer profile list
+	l2tpConfig peer profile create profile_name=one
+	l2tpConfig peer profile list
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+	default
+	one
+Error at or near 'create'
+Operation failed: Profile already exists
+	default
+	one
+Deleted peer profile one
+}
+
+############################################################################
+# Tests 2.* - optional create parameters
+############################################################################
+
+test peer_profile-2.1 { Create peer profile peer_port= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-2.1
+	l2tpConfig peer profile create profile_name=one peer_port=42
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Peer profile one:-
+  address: ANY, port 42
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-2.2 { Create peer profile peer_ipaddr= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-2.2
+	l2tpConfig peer profile create profile_name=one peer_ipaddr=10.1.2.3
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Peer profile one:-
+  address: 10.1.2.3, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-2.3 { Create peer profile lac_lns= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-2.3
+	l2tpConfig peer profile create profile_name=one lac_lns=lac
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile create profile_name=one lac_lns=lns
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile create profile_name=one lac_lns=laclns
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/-
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+Created peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode -/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+Created peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-2.4 { Create peer profile tunnel_profile_name= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-2.4
+	l2tpConfig peer profile create profile_name=one tunnel_profile_name=wibble
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: wibble
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-2.5 { Create peer profile session_profile_name= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-2.5
+	l2tpConfig peer profile create profile_name=one session_profile_name=wibble
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: wibble
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-2.6 { Create peer profile ppp_profile_name= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-2.6
+	l2tpConfig peer profile create profile_name=one ppp_profile_name=wibble
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: wibble
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-2.7 { Create peer profile netmask= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-2.7
+	l2tpConfig peer profile create profile_name=one netmask=255.255.0.0
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Peer profile one:-
+  address: ANY, port default
+  netmask: 255.255.0.0
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-2.8 { Complex create peer profile with args } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-2.8
+	l2tpConfig peer profile create profile_name=one \
+	  peer_port=42 \
+	  peer_ipaddr=10.1.2.3 \
+	  netmask=255.255.0.0 \
+	  lac_lns=LAC \
+	  tunnel_profile_name=one \
+	  session_profile_name=two \
+	  ppp_profile_name=three
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Peer profile one:-
+  address: 10.1.2.3, port 42
+  netmask: 255.255.0.0
+  mode LAC/-
+  default tunnel profile: one
+  default session profile: two
+  default ppp profile: three
+  use count: 0
+
+Deleted peer profile one
+}
+
+############################################################################
+# Tests 3.* - modify parameters
+############################################################################
+
+test peer_profile-3.1 { Modify peer profile peer_port= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-3.1
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one peer_port=42
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port 42
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-3.2 { Modify peer profile peer_ipaddr= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-3.2
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one peer_ipaddr=10.1.2.3
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: 10.1.2.3, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-3.3 { Modify peer profile lac_lns= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-3.3
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one lac_lns=lac
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one lac_lns=lns
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one lac_lns=laclns
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/-
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode -/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-3.4 { Modify peer profile tunnel_profile_name= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-3.4
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one tunnel_profile_name=wibble
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: wibble
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-3.5 { Modify peer profile session_profile_name= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-3.5
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one session_profile_name=wibble
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: wibble
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-3.6 { Modify peer profile ppp_profile_name= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-3.6
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one ppp_profile_name=wibble
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: wibble
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-3.7 { Modify peer profile netmask= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-3.7
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one netmask=255.0.0.0
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  netmask: 255.0.0.0
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-3.8 { Complex modify peer profile with several args } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-3.8
+        l2tpConfig peer profile create profile_name=one
+	l2tpConfig peer profile modify profile_name=one \
+	  peer_port=42 \
+	  peer_ipaddr=10.1.2.3 \
+	  lac_lns=LNS \
+	  netmask=255.255.0.0 \
+	  tunnel_profile_name=one \
+	  session_profile_name=two \
+	  ppp_profile_name=three
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: 10.1.2.3, port 42
+  netmask: 255.255.0.0
+  mode -/LNS
+  default tunnel profile: one
+  default session profile: two
+  default ppp profile: three
+  use count: 0
+
+Deleted peer profile one
+}
+
+############################################################################
+# Tests 4.* - unset parameters
+############################################################################
+
+test peer_profile-4.1 { Unset peer profile peer_port= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-4.1
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one peer_port=42
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile unset profile_name=one peer_port
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port 42
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-4.2 { Unset peer profile peer_ipaddr= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-4.2
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one peer_ipaddr=10.1.2.3
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile unset profile_name=one peer_ipaddr
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: 10.1.2.3, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-4.3 { Unset peer profile lac_lns= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-4.3
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one lac_lns=lac
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile unset profile_name=one lac_lns
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one lac_lns=lns
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile unset profile_name=one lac_lns
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one lac_lns=laclns
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile unset profile_name=one lac_lns
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/-
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode -/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-4.4 { Unset peer profile tunnel_profile_name= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-4.4
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one tunnel_profile_name=wibble
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile unset profile_name=one tunnel_profile_name
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: wibble
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-4.5 { Unset peer profile session_profile_name= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-4.5
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one session_profile_name=wibble
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile unset profile_name=one session_profile_name
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: wibble
+  default ppp profile: default
+  use count: 0
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-4.6 { Unset peer profile ppp_profile_name= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-4.6
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one ppp_profile_name=wibble
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile unset profile_name=one ppp_profile_name
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: wibble
+  use count: 0
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-4.7 { Unset peer profile netmask= } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-4.7
+	l2tpConfig peer profile create profile_name=one 
+	l2tpConfig peer profile modify profile_name=one netmask=255.0.0.0
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile unset profile_name=one netmask
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: ANY, port default
+  netmask: 255.0.0.0
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-4.8 { Complex unset peer profile with several args } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-4.8
+        l2tpConfig peer profile create profile_name=one
+	l2tpConfig peer profile modify profile_name=one \
+	  peer_port=42 \
+	  peer_ipaddr=10.1.2.3 \
+	  lac_lns=LNS \
+	  netmask=255.255.0.0 \
+	  tunnel_profile_name=one \
+	  session_profile_name=two \
+	  ppp_profile_name=three
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile unset profile_name=one \
+	  peer_port \
+	  peer_ipaddr \
+	  lac_lns \
+	  netmask \
+	  tunnel_profile_name \
+	  session_profile_name \
+	  ppp_profile_name
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: 10.1.2.3, port 42
+  netmask: 255.255.0.0
+  mode -/LNS
+  default tunnel profile: one
+  default session profile: two
+  default ppp profile: three
+  use count: 0
+
+Unset parameters of peer profile one
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+}
+
+
+############################################################################
+# Tests 5.* - config save/restore
+############################################################################
+
+test peer_profile-5.1 { Save a created peer profile } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-5.1
+	l2tpConfig test modify default_config
+        l2tpConfig peer profile create profile_name=one
+	l2tpConfig config save file=results/peer_profile-5.1.cfg
+	catFile results/peer_profile-5.1.cfg
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created peer profile one
+
+$
+# system$
+$
+# peer profiles$
+peer profile create profile_name=one$
+$
+# tunnel profiles$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted peer profile one
+}
+
+test peer_profile-5.2 { Save all set parameters of a peer profile } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-5.2
+	l2tpConfig test modify default_config
+        l2tpConfig peer profile create profile_name=one \
+	  peer_port=42 \
+	  peer_ipaddr=10.1.2.3 \
+	  lac_lns=LNS \
+	  netmask=255.255.0.0 \
+	  tunnel_profile_name=one \
+	  session_profile_name=two \
+	  ppp_profile_name=three
+	l2tpConfig config save file=results/peer_profile-5.2.cfg
+	catFile results/peer_profile-5.2.cfg
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created peer profile one
+
+$
+# system$
+$
+# peer profiles$
+peer profile create profile_name=one$
+peer profile modify profile_name=one \$
+	lac_lns=lns \$
+	tunnel_profile_name=one \$
+	session_profile_name=two \$
+	ppp_profile_name=three \$
+	peer_ipaddr=10.1.2.3 \$
+	peer_port=42 \$
+	netmask=255.255.0.0 \$
+$
+$
+# tunnel profiles$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted peer profile one
+}
+
+test peer_profile-5.3 { Save only non-default parameters of a created peer profile } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-5.3
+	l2tpConfig test modify default_config
+        l2tpConfig peer profile create profile_name=one \
+	  peer_port=42 \
+	  peer_ipaddr=10.1.2.3 \
+	  ppp_profile_name=three
+	l2tpConfig config save file=results/peer_profile-5.3.cfg
+	catFile results/peer_profile-5.3.cfg
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created peer profile one
+
+$
+# system$
+$
+# peer profiles$
+peer profile create profile_name=one$
+peer profile modify profile_name=one \$
+	ppp_profile_name=three \$
+	peer_ipaddr=10.1.2.3 \$
+	peer_port=42 \$
+$
+$
+# tunnel profiles$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted peer profile one
+}
+
+test peer_profile-5.4 { Save all modified values of a peer profile } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-5.4
+	l2tpConfig test modify default_config
+        l2tpConfig peer profile create profile_name=one
+        l2tpConfig peer profile modify profile_name=one \
+	  peer_port=42 \
+	  peer_ipaddr=10.1.2.3 \
+	  lac_lns=LNS \
+	  netmask=255.255.0.0 \
+	  tunnel_profile_name=one \
+	  session_profile_name=two \
+	  ppp_profile_name=three
+	l2tpConfig config save file=results/peer_profile-5.5.cfg
+	catFile results/peer_profile-5.5.cfg
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created peer profile one
+Modified peer profile one
+
+$
+# system$
+$
+# peer profiles$
+peer profile create profile_name=one$
+peer profile modify profile_name=one \$
+	lac_lns=lns \$
+	tunnel_profile_name=one \$
+	session_profile_name=two \$
+	ppp_profile_name=three \$
+	peer_ipaddr=10.1.2.3 \$
+	peer_port=42 \$
+	netmask=255.255.0.0 \$
+$
+$
+# tunnel profiles$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted peer profile one
+}
+
+test peer_profile-5.5 { Save only non-default modified values of a peer profile } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-5.5
+	l2tpConfig test modify default_config
+        l2tpConfig peer profile create profile_name=one
+        l2tpConfig peer profile modify profile_name=one \
+	  lac_lns=LNS
+	l2tpConfig config save file=results/peer_profile-5.5.cfg
+	catFile results/peer_profile-5.5.cfg
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created peer profile one
+Modified peer profile one
+
+$
+# system$
+$
+# peer profiles$
+peer profile create profile_name=one$
+peer profile modify profile_name=one \$
+	lac_lns=lns \$
+$
+$
+# tunnel profiles$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted peer profile one
+}
+
+test peer_profile-5.6 { Save all created peer profiles } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-5.6
+	l2tpConfig test modify default_config
+        l2tpConfig peer profile create profile_name=one
+        l2tpConfig peer profile create profile_name=two
+        l2tpConfig peer profile create profile_name=three
+	l2tpConfig config save file=results/peer_profile-5.6.cfg
+	catFile results/peer_profile-5.6.cfg
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile delete profile_name=two
+	l2tpConfig peer profile delete profile_name=three
+    } \
+    {
+
+Modified test config
+Created peer profile one
+Created peer profile two
+Created peer profile three
+
+$
+# system$
+$
+# peer profiles$
+peer profile create profile_name=three$
+peer profile create profile_name=two$
+peer profile create profile_name=one$
+$
+# tunnel profiles$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted peer profile one
+Deleted peer profile two
+Deleted peer profile three
+}
+
+test peer_profile-5.7 { Restore all parameters from a saved file } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-5.7
+	l2tpConfig test modify default_config
+        l2tpConfig peer profile create profile_name=one \
+	  peer_port=42 \
+	  peer_ipaddr=10.1.2.3 \
+	  lac_lns=LNS \
+	  netmask=255.255.0.0 \
+	  tunnel_profile_name=one \
+	  session_profile_name=two \
+	  ppp_profile_name=three
+	l2tpConfig config save file=results/peer_profile-5.7.cfg
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig config restore file=results/peer_profile-5.7.cfg
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created peer profile one
+
+Deleted peer profile one
+Created peer profile one
+Modified peer profile one
+Peer profile one:-
+  address: 10.1.2.3, port 42
+  netmask: 255.255.0.0
+  mode -/LNS
+  default tunnel profile: one
+  default session profile: two
+  default ppp profile: three
+  use count: 0
+
+Deleted peer profile one
+}
+
+test peer_profile-5.8 { Restore multiple peer profiles } \
+    { l2tpdRunning && peerProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=peer_profile-5.8
+	l2tpConfig test modify default_config
+        l2tpConfig peer profile create profile_name=one \
+	  peer_port=42 \
+	  peer_ipaddr=10.1.2.3 \
+	  lac_lns=LNS \
+	  netmask=255.255.0.0 \
+	  tunnel_profile_name=one \
+	  session_profile_name=two \
+	  ppp_profile_name=three
+        l2tpConfig peer profile create profile_name=two \
+	  lac_lns=LNS \
+	  netmask=255.255.0.0 \
+	  ppp_profile_name=three
+        l2tpConfig peer profile create profile_name=three \
+	  lac_lns=LAC \
+	  netmask=255.255.0.0 \
+	  tunnel_profile_name=one
+	l2tpConfig config save file=results/peer_profile-5.8.cfg
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile delete profile_name=two
+	l2tpConfig peer profile delete profile_name=three
+	l2tpConfig config restore file=results/peer_profile-5.8.cfg
+	l2tpConfig peer profile list
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile show profile_name=two
+	l2tpConfig peer profile show profile_name=three
+
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile delete profile_name=two
+	l2tpConfig peer profile delete profile_name=three
+    } \
+    {
+
+Modified test config
+Created peer profile one
+Created peer profile two
+Created peer profile three
+
+Deleted peer profile one
+Deleted peer profile two
+Deleted peer profile three
+Created peer profile three
+Modified peer profile three
+Created peer profile two
+Modified peer profile two
+Created peer profile one
+Modified peer profile one
+	default
+	one
+	three
+	two
+Peer profile one:-
+  address: 10.1.2.3, port 42
+  netmask: 255.255.0.0
+  mode -/LNS
+  default tunnel profile: one
+  default session profile: two
+  default ppp profile: three
+  use count: 0
+
+Peer profile two:-
+  address: ANY, port default
+  netmask: 255.255.0.0
+  mode -/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: three
+  use count: 0
+
+Peer profile three:-
+  address: ANY, port default
+  netmask: 255.255.0.0
+  mode LAC/-
+  default tunnel profile: one
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Deleted peer profile one
+Deleted peer profile two
+Deleted peer profile three
+}
+

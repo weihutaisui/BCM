@@ -1,0 +1,9 @@
+api cfg traffic trafficFlagsB0 6
+api cfg extra Ginp.ETRmax 200000 200000
+api cfg extra Ginp.ETRmin 10000 10000
+api cfg extra Ginp.NDRmax 200000 200000
+api cfg extra Ginp.maxDelay 16 16
+api cfg extra Ginp.INPmin 4 4
+api cfg extra Ginp.rtxMode 1 1
+api cfg apply all
+api startline all

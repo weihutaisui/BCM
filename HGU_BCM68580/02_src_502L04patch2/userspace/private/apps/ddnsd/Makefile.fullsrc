@@ -1,0 +1,86 @@
+EXE = ddnsd
+OBJS =  ddnsd-daemon.o ddnsd-conf.o ddnsd-update.o
+LIBS   += -lcms_msg $(CMS_COMMON_LIBS)
+
+#
+# Set our CommEngine directory (by splitting the pwd into two words
+# at /userspace and taking the first word only).
+# Then include the common defines under CommEngine.
+# You do not need to modify this part.
+#
+CURR_DIR := $(shell pwd)
+BUILD_DIR:=$(subst /userspace, ,$(CURR_DIR))
+BUILD_DIR:=$(word 1, $(BUILD_DIR))
+
+include $(BUILD_DIR)/make.common
+
+ifeq ($(strip $(BRCM_USER_SSP)),y)
+LIBS   += -L$(INSTALL_DIR)/lib $(SSP_LIBS) 
+CFLAGS += $(SSP_TYP_COMPILER_OPTS)
+endif
+
+
+#
+# Private apps and libs are allowed to include from private and public.
+#
+# WARNING: Do not modify this section unless you understand the
+# license implications of what you are doing.
+#
+ALLOWED_INCLUDE_PATHS := -I. -I..\
+                         -I$(BUILD_DIR)/userspace/public/include  \
+                         -I$(BUILD_DIR)/userspace/public/include/$(OALDIR) \
+                         -I$(BUILD_DIR)/userspace/private/include  \
+                         -I$(BUILD_DIR)/userspace/private/include/$(OALDIR) \
+                         -I$(BCM_FSBUILD_DIR)/public/include \
+                         -I$(BCM_FSBUILD_DIR)/private/include
+
+
+#
+# Private apps and libs are allowed to link with libraries from the
+# private and public directories.
+#
+# WARNING: Do not modify this section unless you understand the
+# license implications of what you are doing.
+#
+ALLOWED_LIB_DIRS := /lib:/lib/private:/lib/public
+
+
+# treat all warnings as errors
+CUSTOM_CFLAGS += -Werror -Wfatal-errors
+
+
+ifeq ($(strip $(BUILD_DDNSD)), static)
+CFLAGS += -DBUILD_STATIC 
+endif
+
+
+all: $(EXE)
+
+dynamic: $(EXE) install
+
+static: $(EXE).a
+
+clean:
+	-test -z "$(EXE)" || rm -f $(EXE)
+	-test -z "$(OBJS)" || rm -f $(OBJS)
+
+binaryonly_dist_clean: clean
+	rm -f Makefile.fullsrc
+	rm -rf *.c *.h linux
+
+install: $(EXE)
+	mkdir -p $(INSTALL_DIR)/usr/bin
+	install -m 755 ddnsd $(INSTALL_DIR)/bin
+	$(STRIP) $(INSTALL_DIR)/bin/ddnsd
+
+ddnsd: $(OBJS) 
+	@rm -f ddnsd
+	$(CC) $(BCM_LD_FLAGS) -o ddnsd $(OBJS) -Wl,-rpath,$(CMS_LIB_RPATH) $(CMS_LIB_PATH) $(LIBS)
+
+ddnsd.a: $(OBJS) 
+	@rm -f ddnsd.a
+	$(AR) rcs $@ $(OBJS)	
+
+ddnsd-conf.o: ddnsd-conf.c ddnsd-conf.h
+ddnsd-update.o: ddnsd-update.c ddnsd-update.h
+ddnsd-daemon.o: ddnsd-daemon.c ddnsd-conf.h

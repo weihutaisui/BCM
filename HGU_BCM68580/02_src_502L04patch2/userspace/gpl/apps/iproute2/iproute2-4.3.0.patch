@@ -1,0 +1,355 @@
+diff -rupN orig_iproute2-4.3.0/configure iproute2-4.3.0/configure
+--- orig_iproute2-4.3.0/configure	2016-12-02 18:36:04.903772263 -0800
++++ iproute2-4.3.0/configure	2016-12-02 18:36:41.071770995 -0800
+@@ -341,17 +341,21 @@ check_ipt_lib_dir
+ echo -n "libc has setns: "
+ check_setns
+ 
+-echo -n "SELinux support: "
+-check_selinux
++# brcm: no SELINUX
++#echo -n "SELinux support: "
++#check_selinux
+ 
+-echo -n "ELF support: "
+-check_elf
++# brcm: no ELF
++#echo -n "ELF support: "
++#check_elf
+ 
+-echo -n "libmnl support: "
+-check_mnl
++# brcm: no libmnl
++#echo -n "libmnl support: "
++#check_mnl
+ 
+-echo -n "Berkeley DB: "
+-check_berkeley_db
++# brcm: no berkeleyDB
++#echo -n "Berkeley DB: "
++#check_berkeley_db
+ 
+ echo
+ echo -n "docs:"
+diff -rupN orig_iproute2-4.3.0/include/linux/if.h iproute2-4.3.0/include/linux/if.h
+--- orig_iproute2-4.3.0/include/linux/if.h	2016-12-02 18:36:04.907772262 -0800
++++ iproute2-4.3.0/include/linux/if.h	2016-12-02 18:36:41.071770995 -0800
+@@ -109,6 +109,11 @@ enum net_device_flags {
+ #define IFF_DORMANT			IFF_DORMANT
+ #define IFF_ECHO			IFF_ECHO
+ 
++#ifdef BCM_HAVE_MPTCP
++#define IFF_NOMULTIPATH	0x80000		/* Disable for MPTCP 		*/
++#define IFF_MPBACKUP	0x100000	/* Use as backup path for MPTCP */
++#endif
++
+ #define IFF_VOLATILE	(IFF_LOOPBACK|IFF_POINTOPOINT|IFF_BROADCAST|IFF_ECHO|\
+ 		IFF_MASTER|IFF_SLAVE|IFF_RUNNING|IFF_LOWER_UP|IFF_DORMANT)
+ 
+diff -rupN orig_iproute2-4.3.0/include/linux/if_tunnel.h iproute2-4.3.0/include/linux/if_tunnel.h
+--- orig_iproute2-4.3.0/include/linux/if_tunnel.h	2016-12-02 18:36:04.907772262 -0800
++++ iproute2-4.3.0/include/linux/if_tunnel.h	2016-12-02 18:36:41.071770995 -0800
+@@ -91,6 +91,7 @@ struct ip_tunnel_6rd {
+ 	__be32			relay_prefix;
+ 	__u16			prefixlen;
+ 	__u16			relay_prefixlen;
++	__be32			br_addr; // brcm
+ };
+ 
+ enum {
+diff -rupN orig_iproute2-4.3.0/ip/ipaddress.c iproute2-4.3.0/ip/ipaddress.c
+--- orig_iproute2-4.3.0/ip/ipaddress.c	2016-12-02 18:36:04.911772262 -0800
++++ iproute2-4.3.0/ip/ipaddress.c	2016-12-02 18:36:41.071770995 -0800
+@@ -106,6 +106,10 @@ static void print_link_flags(FILE *fp, u
+ 	_PF(BROADCAST);
+ 	_PF(POINTOPOINT);
+ 	_PF(MULTICAST);
++#ifdef BCM_HAVE_MPTCP
++	_PF(NOMULTIPATH);
++	_PF(MPBACKUP);
++#endif
+ 	_PF(NOARP);
+ 	_PF(ALLMULTI);
+ 	_PF(PROMISC);
+diff -rupN orig_iproute2-4.3.0/ip/iplink.c iproute2-4.3.0/ip/iplink.c
+--- orig_iproute2-4.3.0/ip/iplink.c	2016-12-02 18:36:04.911772262 -0800
++++ iproute2-4.3.0/ip/iplink.c	2016-12-02 18:36:41.071770995 -0800
+@@ -63,6 +63,9 @@ void iplink_usage(void)
+ 	fprintf(stderr, "	                  [ dynamic { on | off } ]\n");
+ 	fprintf(stderr, "	                  [ multicast { on | off } ]\n");
+ 	fprintf(stderr, "	                  [ allmulticast { on | off } ]\n");
++#ifdef BCM_HAVE_MPTCP
++	fprintf(stderr, "	                  [ multipath { on | off | backup } ]\n");
++#endif
+ 	fprintf(stderr, "	                  [ promisc { on | off } ]\n");
+ 	fprintf(stderr, "	                  [ trailers { on | off } ]\n");
+ 	fprintf(stderr, "	                  [ txqueuelen PACKETS ]\n");
+@@ -493,6 +496,20 @@ int iplink_parse(int argc, char **argv,
+ 				req->i.ifi_flags &= ~IFF_ALLMULTI;
+ 			else
+ 				return on_off("allmulticast", *argv);
++#ifdef BCM_HAVE_MPTCP
++		} else if (strcmp(*argv, "multipath") == 0) {
++			NEXT_ARG();
++			req->i.ifi_change |= IFF_NOMULTIPATH;
++			req->i.ifi_change |= IFF_MPBACKUP;
++			if (strcmp(*argv, "on") == 0) {
++				req->i.ifi_flags &= ~IFF_NOMULTIPATH;
++			} else if (strcmp(*argv, "off") == 0) {
++				req->i.ifi_flags |= IFF_NOMULTIPATH;
++			} else if (strcmp(*argv, "backup") == 0) {
++				req->i.ifi_flags |= IFF_MPBACKUP;
++			} else
++				return on_off("multipath", *argv);
++#endif
+ 		} else if (strcmp(*argv, "promisc") == 0) {
+ 			NEXT_ARG();
+ 			req->i.ifi_change |= IFF_PROMISC;
+@@ -1105,6 +1122,12 @@ static int do_set(int argc, char **argv)
+ 				flags &= ~IFF_ALLMULTI;
+ 			else
+ 				return on_off("allmulticast", *argv);
++#ifdef BCM_HAVE_MPTCP
++		} else if (strcmp(*argv, "multipath") == 0) {
++			fprintf(stderr, "Can't set multipath flags in IOCTL_COMPAT mode.");
++
++			return -1;
++#endif
+ 		} else if (strcmp(*argv, "promisc") == 0) {
+ 			NEXT_ARG();
+ 			mask |= IFF_PROMISC;
+diff -rupN orig_iproute2-4.3.0/ip/iplink_can.c iproute2-4.3.0/ip/iplink_can.c
+--- orig_iproute2-4.3.0/ip/iplink_can.c	2016-12-02 18:36:04.911772262 -0800
++++ iproute2-4.3.0/ip/iplink_can.c	2016-12-02 18:36:41.071770995 -0800
+@@ -123,7 +123,7 @@ static int can_parse_opt(struct link_uti
+ 			if (get_u32(&bt.bitrate, *argv, 0))
+ 				invarg("invalid \"bitrate\" value\n", *argv);
+ 		} else if (matches(*argv, "sample-point") == 0) {
+-			float sp;
++			float sp=0.0f; // brcm
+ 
+ 			NEXT_ARG();
+ 			if (get_float(&sp, *argv))
+diff -rupN orig_iproute2-4.3.0/ip/iptunnel.c iproute2-4.3.0/ip/iptunnel.c
+--- orig_iproute2-4.3.0/ip/iptunnel.c	2016-12-02 18:36:04.915772262 -0800
++++ iproute2-4.3.0/ip/iptunnel.c	2016-12-02 18:36:41.071770995 -0800
+@@ -609,6 +609,14 @@ static int do_6rd(int argc, char **argv)
+ 			cmd = SIOCADD6RD;
+ 			memcpy(&ip6rd.relay_prefix, prefix.data, 4);
+ 			ip6rd.relay_prefixlen = prefix.bitlen;
++// brcm: start
++		} else if (strcmp(*argv, "6rd-br_addr") == 0) {
++			NEXT_ARG();
++			if (get_prefix(&prefix, *argv, AF_INET))
++				invarg("invalid 6rd-br_addr\n", *argv);
++			cmd = SIOCADD6RD;
++			memcpy(&ip6rd.br_addr, prefix.data, 4);
++// brcm: end
+ 		} else if (strcmp(*argv, "6rd-reset") == 0) {
+ 			cmd = SIOCDEL6RD;
+ 		} else if (strcmp(*argv, "dev") == 0) {
+diff -rupN orig_iproute2-4.3.0/lib/Makefile iproute2-4.3.0/lib/Makefile
+--- orig_iproute2-4.3.0/lib/Makefile	2016-12-02 18:36:04.907772262 -0800
++++ iproute2-4.3.0/lib/Makefile	2016-12-02 18:36:41.071770995 -0800
+@@ -4,7 +4,8 @@ ifeq ($(IP_CONFIG_SETNS),y)
+ 	CFLAGS += -DHAVE_SETNS
+ endif
+ 
+-CFLAGS += -fPIC
++# brcm: comment out.
++# CFLAGS += -fPIC
+ 
+ UTILOBJ = utils.o rt_names.o ll_types.o ll_proto.o ll_addr.o \
+ 	inet_proto.o namespace.o json_writer.o \
+@@ -12,16 +13,17 @@ UTILOBJ = utils.o rt_names.o ll_types.o
+ 
+ NLOBJ=libgenl.o ll_map.o libnetlink.o
+ 
+-all: libnetlink.a libutil.a
++# brcm: rename libutil.a to libipr2util.a
++all: libnetlink.a libipr2util.a
+ 
+ libnetlink.a: $(NLOBJ)
+ 	$(AR) rcs $@ $(NLOBJ)
+ 
+-libutil.a: $(UTILOBJ) $(ADDLIB)
++libipr2util.a: $(UTILOBJ) $(ADDLIB)
+ 	$(AR) rcs $@ $(UTILOBJ) $(ADDLIB)
+ 
+ install:
+ 
+ clean:
+-	rm -f $(NLOBJ) $(UTILOBJ) $(ADDLIB) libnetlink.a libutil.a
++	rm -f $(NLOBJ) $(UTILOBJ) $(ADDLIB) libnetlink.a libipr2util.a
+ 
+diff -rupN orig_iproute2-4.3.0/lib/utils.c iproute2-4.3.0/lib/utils.c
+--- orig_iproute2-4.3.0/lib/utils.c	2016-12-02 18:36:04.907772262 -0800
++++ iproute2-4.3.0/lib/utils.c	2016-12-02 18:36:41.071770995 -0800
+@@ -422,6 +422,7 @@ int get_addr_1(inet_prefix *addr, const
+ 		return 0;
+ 	}
+ 
++#if 0 // brcm: not support
+ 	if (family == AF_DECnet) {
+ 		struct dn_naddr dna;
+ 		addr->family = AF_DECnet;
+@@ -449,6 +450,7 @@ int get_addr_1(inet_prefix *addr, const
+ 		}
+ 		return 0;
+ 	}
++#endif
+ 
+ 	addr->family = AF_INET;
+ 	if (family != AF_UNSPEC && family != AF_INET)
+@@ -469,12 +471,14 @@ int af_bit_len(int af)
+ 		return 128;
+ 	case AF_INET:
+ 		return 32;
++#if 0 // brcm: not support
+ 	case AF_DECnet:
+ 		return 16;
+ 	case AF_IPX:
+ 		return 80;
+ 	case AF_MPLS:
+ 		return 20;
++#endif
+ 	}
+ 
+ 	return 0;
+@@ -673,6 +677,7 @@ const char *rt_addr_n2a(int af, int len,
+ 	case AF_INET:
+ 	case AF_INET6:
+ 		return inet_ntop(af, addr, buf, buflen);
++#if 0 // brcm: not support
+ 	case AF_MPLS:
+ 		return mpls_ntop(af, addr, buf, buflen);
+ 	case AF_IPX:
+@@ -685,6 +690,7 @@ const char *rt_addr_n2a(int af, int len,
+ 	}
+ 	case AF_PACKET:
+ 		return ll_addr_n2a(addr, len, ARPHRD_VOID, buf, buflen);
++#endif
+ 	default:
+ 		return "???";
+ 	}
+@@ -697,6 +703,7 @@ int read_family(const char *name)
+ 		family = AF_INET;
+ 	else if (strcmp(name, "inet6") == 0)
+ 		family = AF_INET6;
++#if 0 // brcm: not support
+ 	else if (strcmp(name, "dnet") == 0)
+ 		family = AF_DECnet;
+ 	else if (strcmp(name, "link") == 0)
+@@ -705,6 +712,7 @@ int read_family(const char *name)
+ 		family = AF_IPX;
+ 	else if (strcmp(name, "mpls") == 0)
+ 		family = AF_MPLS;
++#endif
+ 	else if (strcmp(name, "bridge") == 0)
+ 		family = AF_BRIDGE;
+ 	return family;
+@@ -716,6 +724,7 @@ const char *family_name(int family)
+ 		return "inet";
+ 	if (family == AF_INET6)
+ 		return "inet6";
++#if 0 // brcm: not support
+ 	if (family == AF_DECnet)
+ 		return "dnet";
+ 	if (family == AF_PACKET)
+@@ -724,6 +733,7 @@ const char *family_name(int family)
+ 		return "ipx";
+ 	if (family == AF_MPLS)
+ 		return "mpls";
++#endif
+ 	if (family == AF_BRIDGE)
+ 		return "bridge";
+ 	return "???";
+diff -rupN orig_iproute2-4.3.0/Makefile iproute2-4.3.0/Makefile
+--- orig_iproute2-4.3.0/Makefile	2016-12-02 18:36:04.907772262 -0800
++++ iproute2-4.3.0/Makefile	2016-12-07 12:03:02.345460643 -0800
+@@ -1,12 +1,15 @@
+ PREFIX?=/usr
++# brcm: modify the LIBDIR, SBINDIR
+ LIBDIR?=$(PREFIX)/lib
+-SBINDIR?=/sbin
+-CONFDIR?=/etc/iproute2
++SBINDIR=$(INSTALL_DIR)/bin
++CONFDIR=$(INSTALL_DIR)/etc/iproute2
+ DATADIR?=$(PREFIX)/share
+ DOCDIR?=$(DATADIR)/doc/iproute2
+ MANDIR?=$(DATADIR)/man
+ ARPDDIR?=/var/lib/arpd
+-KERNEL_INCLUDE?=/usr/include
++# brcm: modify the KERNEL_INCLUDES and add LIBC_INCLUDE
++KERNEL_INCLUDES:=$(KERNEL_DIR)/include $(KERNEL_DIR)/arch/$(ARCH)/include
++LIBC_INCLUDE=$(KERNEL_DIR)/include/linux
+ 
+ # Path to db_185.h include
+ DBM_INCLUDE:=$(DESTDIR)/usr/include
+@@ -21,13 +24,16 @@ endif
+ DEFINES+=-DCONFDIR=\"$(CONFDIR)\"
+ 
+ #options for decnet
+-ADDLIB+=dnet_ntop.o dnet_pton.o
++# brcm: not support decnet
++#ADDLIB+=dnet_ntop.o dnet_pton.o
+ 
+ #options for ipx
+-ADDLIB+=ipx_ntop.o ipx_pton.o
++# brcm: not support ipx 
++#ADDLIB+=ipx_ntop.o ipx_pton.o
+ 
+ #options for mpls
+-ADDLIB+=mpls_ntop.o mpls_pton.o
++# brcm: not support mpls
++#ADDLIB+=mpls_ntop.o mpls_pton.o
+ 
+ CC = gcc
+ HOSTCC = gcc
+@@ -41,9 +47,14 @@ WFLAGS += -Wmissing-declarations -Wold-s
+ CFLAGS := $(WFLAGS) $(CCOPTS) -I../include $(DEFINES) $(CFLAGS)
+ YACCFLAGS = -d -t -v
+ 
++#brcm extra cflags
++CFLAGS += $(APPCFLAGS)
++
++# brcm: only build lib ip tc misc
+ SUBDIRS=lib ip tc bridge misc netem genl tipc man
+ 
+-LIBNETLINK=../lib/libnetlink.a ../lib/libutil.a
++# brcm: modify the libutil.a to libipr2util.a
++LIBNETLINK=../lib/libnetlink.a ../lib/libipr2util.a
+ LDLIBS += $(LIBNETLINK)
+ 
+ all: Config
+diff -rupN orig_iproute2-4.3.0/man/man8/ip-link.8.in iproute2-4.3.0/man/man8/ip-link.8.in
+--- orig_iproute2-4.3.0/man/man8/ip-link.8.in	2016-12-02 18:36:04.911772262 -0800
++++ iproute2-4.3.0/man/man8/ip-link.8.in	2016-12-02 18:36:41.071770995 -0800
+@@ -102,6 +102,10 @@ ip-link \- network device configuration
+ .br
+ .BR multicast " { " on " | " off " } |"
+ .br
++#ifdef BCM_HAVE_MPTCP
++.BR multipath " { " on " | " off " | " backup " } |"
++.br
++#endif
+ .BR protodown " { " on " | " off " } |"
+ .br
+ .B  txqueuelen
+@@ -869,6 +873,16 @@ change the
+ flag on the device.
+ 
+ .TP
++#ifdef BCM_HAVE_MPTCP
++.BR "multipath on ", " multipath off" or " multipath backup"
++change the
++.B MULTIPATH
++flag on the device, to enable/disable MPTCP for this interface. The backup-flag 
++will allow a subflow to be established across this interface, but only be used
++as backup.
++
++.TP
++#endif
+ .BR "protodown on " or " protodown off"
+ change the
+ .B PROTODOWN

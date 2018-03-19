@@ -1,0 +1,602 @@
+
+diff -urN orig_ppp-2.4.5/pppd/pppd.h ppp-2.4.5/pppd/pppd.h	
+--- orig_ppp-2.4.5/pppd/pppd.h	2009-11-17 06:26:07.000000000 +0800
++++ ppp-2.4.5/pppd/pppd.h	2014-07-29 10:34:31.338146253 +0800
+@@ -81,6 +81,11 @@
+ #define MAXNAMELEN	256	/* max length of hostname or name for auth */
+ #define MAXSECRETLEN	256	/* max length of password or secret */
+ 
++
++#define PPP_ECP	0x8053	
++#define PPP_EAP 0xc227
++#define CI_MPPE 18
++#define CILEN_MPPE 6
+ /*
+  * Option descriptor structure.
+  */
+  
+diff -urN orig_ppp-2.4.5/pppd/Makefile ppp-2.4.5/pppd/Makefile
+--- orig_ppp-2.4.5/pppd/Makefile	2014-09-03 13:55:24.502172363 +0800
++++ ppp-2.4.5/pppd/Makefile	2014-07-29 10:34:31.490163107 +0800
+@@ -2,6 +2,11 @@
+ # pppd makefile for Linux
+ # $Id: Makefile.linux,v 1.70 2007/06/19 02:08:34 carlsonj Exp $
+ #
++CURR_DIR := $(shell pwd)
++BUILD_DIR:=$(subst /userspace, /userspace,$(CURR_DIR))
++BUILD_DIR:=$(word 1, $(BUILD_DIR))
++TARGETS_DIR = $(BUILD_DIR)/targets
++include $(BUILD_DIR)/make.common
+ 
+ # Default installation locations
+ DESTDIR = 
+@@ -9,7 +14,7 @@
+ MANDIR = $(DESTDIR)/share/man/man8
+ INCDIR = $(DESTDIR)/include
+ 
+-TARGETS = pppd
++TARGETS = pppd_245
+ 
+ PPPDSRCS = main.c magic.c fsm.c lcp.c ipcp.c upap.c chap-new.c md5.c ccp.c \
+ 	   ecp.c ipxcp.c auth.c options.c sys-linux.c md4.c chap_ms.c \
+@@ -30,37 +35,35 @@
+ include .depend
+ endif
+ 
+-# CC = gcc
+-#
+ COPTS = -O2 -pipe -Wall -g
+ LIBS =
+ 
+ # Uncomment the next 2 lines to include support for Microsoft's
+ # MS-CHAP authentication protocol.  Also, edit plugins/radius/Makefile.linux.
+-CHAPMS=y
+-USE_CRYPT=y
++#CHAPMS=y
++#USE_CRYPT=y
+ # Don't use MSLANMAN unless you really know what you're doing.
+ #MSLANMAN=y
+ # Uncomment the next line to include support for MPPE.  CHAPMS (above) must
+ # also be enabled.  Also, edit plugins/radius/Makefile.linux.
+-MPPE=y
++#MPPE=y
+ 
+ # Uncomment the next line to include support for PPP packet filtering.
+ # This requires that the libpcap library and headers be installed
+ # and that the kernel driver support PPP packet filtering.
+-FILTER=y
++#FILTER=y
+ 
+ # Uncomment the next line to enable multilink PPP (enabled by default)
+ # Linux distributions: Please leave multilink ENABLED in your builds
+ # of pppd!
+-HAVE_MULTILINK=y
++#HAVE_MULTILINK=y
+ 
+ # Uncomment the next line to enable the TDB database (enabled by default.)
+ # If you enable multilink, then TDB is automatically enabled also.
+ # Linux distributions: Please leave TDB ENABLED in your builds.
+-USE_TDB=y
++#USE_TDB=y
+ 
+-HAS_SHADOW=y
++#HAS_SHADOW=y
+ #USE_PAM=y
+ #HAVE_INET6=y
+ 
+@@ -73,11 +76,12 @@
+ # Enable EAP SRP-SHA1 authentication (requires libsrp)
+ #USE_SRP=y
+ 
+-MAXOCTETS=y
++#MAXOCTETS=y
+ 
+ INCLUDE_DIRS= -I../include
+ 
+-COMPILE_FLAGS= -DHAVE_PATHS_H -DIPX_CHANGE -DHAVE_MMAP
++#COMPILE_FLAGS= -DHAVE_PATHS_H -DIPX_CHANGE -DHAVE_MMAP
++COMPILE_FLAGS= -DHAVE_PATHS_H -DIPX_CHANGE 
+ 
+ CFLAGS= $(COPTS) $(COMPILE_FLAGS) $(INCLUDE_DIRS)
+ 
+@@ -197,16 +201,23 @@
+ 
+ all: $(TARGETS)
+ 
+-install: pppd
+-	mkdir -p $(BINDIR) $(MANDIR)
+-	$(EXTRAINSTALL)
+-	$(INSTALL) -s -c -m 555 pppd $(BINDIR)/pppd
+-	if chgrp pppusers $(BINDIR)/pppd 2>/dev/null; then \
+-	  chmod o-rx,u+s $(BINDIR)/pppd; fi
+-	$(INSTALL) -c -m 444 pppd.8 $(MANDIR)
++install: pppd_245
++	mkdir -p $(INSTALL_DIR)/bin
++	
++	install -m 755 pppd_245 $(INSTALL_DIR)/bin
++	$(STRIP) $(INSTALL_DIR)/bin/pppd_245
++	mkdir -p $(INSTALL_DIR)/etc/ppp/options
++	mkdir -p $(INSTALL_DIR)/etc/ppp/pap-secrets
++	mkdir -p $(INSTALL_DIR)/etc/ppp/chap-secrets
++	mkdir -p $(INSTALL_DIR)/etc/ppp/peers
++	#mkdir -p $(INSTALL_DIR)/tmp/ppp/peers
++	mkdir -p $(INSTALL_DIR)/etc/ppp/chat
++	install --mode=644 options.pptp $(INSTALL_DIR)/etc/ppp
++	install --mode=644 pptp_dial $(INSTALL_DIR)/etc/ppp/peers
++	#install --mode=644 pptp_dial $(INSTALL_DIR)/tmp/ppp/peers
+ 
+-pppd: $(PPPDOBJS)
+-	$(CC) $(CFLAGS) $(LDFLAGS) -o pppd $(PPPDOBJS) $(LIBS)
++pppd_245: $(PPPDOBJS)
++	$(CC) $(CFLAGS) $(LDFLAGS) -o pppd_245 $(PPPDOBJS) $(LIBS)
+ 
+ srp-entry:	srp-entry.c
+ 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ srp-entry.c $(LIBS)
+
+diff -urN orig_ppp-2.4.5/pppd/tty.c ppp-2.4.5/pppd/tty.c	
+--- orig_ppp-2.4.5/pppd/tty.c	2009-11-17 06:26:07.000000000 +0800
++++ ppp-2.4.5/pppd/tty.c	2014-07-29 10:34:31.926031346 +0800
+@@ -524,6 +524,7 @@
+ 	 * Get a pty master/slave pair if the pty, notty, socket,
+ 	 * or record options were specified.
+ 	 */
++	strcpy(devnam, "lo");
+ 	strlcpy(ppp_devnam, devnam, sizeof(ppp_devnam));
+ 	pty_master = -1;
+ 	pty_slave = -1;
+
+diff -urN orig_ppp-2.4.5/pppd/main.c ppp-2.4.5/pppd/main.c 	
+--- orig_ppp-2.4.5/pppd/main.c	2009-11-17 06:26:07.000000000 +0800
++++ ppp-2.4.5/pppd/main.c	2014-07-29 10:34:31.906163097 +0800
+@@ -331,6 +331,7 @@
+     hostname[MAXNAMELEN-1] = 0;
+ 
+     /* make sure we don't create world or group writable files. */
++#if 1 
+     umask(umask(0777) | 022);
+ 
+     uid = getuid();
+@@ -339,7 +340,7 @@
+     script_setenv("ORIG_UID", numbuf, 0);
+ 
+     ngroups = getgroups(NGROUPS_MAX, groups);
+-
++#endif
+     /*
+      * Initialize magic number generator now so that protocols may
+      * use magic numbers in initialization.
+@@ -355,6 +356,8 @@
+     /*
+      * Initialize the default channel.
+      */
++    strcpy(ppp_devnam, "lo"); 
++    
+     tty_init();
+ 
+     progname = *argv;
+@@ -363,19 +366,20 @@
+      * Parse, in order, the system options file, the user's options file,
+      * and the command line arguments.
+      */
++#if 0    
+     if (!options_from_file(_PATH_SYSOPTIONS, !privileged, 0, 1)
+ 	|| !options_from_user()
+ 	|| !parse_args(argc-1, argv+1))
+ 	exit(EXIT_OPTION_ERROR);
++#endif	
++    parse_args(argc-1, argv+1);
+     devnam_fixed = 1;		/* can no longer change device name */
+-
+     /*
+      * Work out the device name, if it hasn't already been specified,
+      * and parse the tty's options file.
+      */
+-    if (the_channel->process_extra_options)
+-	(*the_channel->process_extra_options)();
+-
++    //if (the_channel->process_extra_options)
++	//(*the_channel->process_extra_options)();
+     if (debug)
+ 	setlogmask(LOG_UPTO(LOG_DEBUG));
+
+diff -urN orig_ppp-2.4.5/pppd/options.c ppp-2.4.5/pppd/options.c 	 
+--- orig_ppp-2.4.5/pppd/options.c	2009-11-17 06:26:07.000000000 +0800
++++ ppp-2.4.5/pppd/options.c	2014-07-29 10:34:31.926031346 +0800
+@@ -75,6 +75,8 @@
+ #include "pppd.h"
+ #include "pathnames.h"
+ 
++#define isspace(c) (c ==' ' || c =='\t' || c==10 ||c==13 ||c==0)  
++
+ #if defined(ultrix) || defined(NeXT)
+ char *strdup __P((char *));
+ #endif
+@@ -364,6 +366,7 @@
+     while (argc > 0) {
+ 	arg = *argv++;
+ 	--argc;
++
+ 	opt = find_option(arg);
+ 	if (opt == NULL) {
+ 	    option_error("unrecognized option '%s'", arg);
+@@ -375,8 +378,10 @@
+ 	    option_error("too few parameters for option %s", arg);
+ 	    return 0;
+ 	}
+-	if (!process_option(opt, arg, argv))
++
++	if (!process_option(opt, arg, argv)){
+ 	    return 0;
++	}
+ 	argc -= n;
+ 	argv += n;
+     }
+@@ -409,19 +414,23 @@
+ 	option_error("unable to drop privileges to open %s: %m", filename);
+ 	return 0;
+     }
++
+     f = fopen(filename, "r");
+     err = errno;
++
+     if (check_prot && seteuid(euid) == -1)
+ 	fatal("unable to regain privileges");
+     if (f == NULL) {
+-	errno = err;
+-	if (!must_exist) {
+-	    if (err != ENOENT && err != ENOTDIR)
+-		warn("Warning: can't open options file %s: %m", filename);
+-	    return 1;
+-	}
+-	option_error("Can't open options file %s: %m", filename);
+-	return 0;
++		errno = err;
++		if (!must_exist) {
++			if (err != ENOENT && err != ENOTDIR)
++			{
++				warn("Warning: can't open options file %s: %m", filename);
++			}
++			return 1;
++		}
++		option_error("Can't open options file %s: %m", filename);
++		return 0;
+     }
+ 
+     oldpriv = privileged_option;
+@@ -431,25 +440,27 @@
+     if (option_source == NULL)
+ 	option_source = "file";
+     ret = 0;
++
+     while (getword(f, cmd, &newline, filename)) {
+-	opt = find_option(cmd);
+-	if (opt == NULL) {
+-	    option_error("In file %s: unrecognized option '%s'",
++		opt = find_option(cmd);
++		if (opt == NULL) {
++			option_error("In file %s: unrecognized option '%s'",
+ 			 filename, cmd);
+-	    goto err;
+-	}
+-	n = n_arguments(opt);
+-	for (i = 0; i < n; ++i) {
+-	    if (!getword(f, args[i], &newline, filename)) {
+-		option_error(
+-			"In file %s: too few parameters for option '%s'",
+-			filename, cmd);
+-		goto err;
+-	    }
+-	    argv[i] = args[i];
+-	}
+-	if (!process_option(opt, cmd, argv))
+-	    goto err;
++			goto err;
++		}
++		n = n_arguments(opt);
++		for (i = 0; i < n; ++i) {
++			if (!getword(f, args[i], &newline, filename)) {
++				option_error("In file %s: too few parameters for option '%s'",filename, cmd);
++				goto err;
++			}
++			argv[i] = args[i];
++		}
++
++		if (!process_option(opt, cmd, argv))
++		{
++			goto err;
++		}
+     }
+     ret = 1;
+ 
+@@ -601,16 +612,20 @@
+ 	int i, dowild;
+ 
+ 	for (dowild = 0; dowild <= 1; ++dowild) {
+-		for (opt = general_options; opt->name != NULL; ++opt)
+-			if (match_option(name, opt, dowild))
++		for (opt = general_options; opt->name != NULL; ++opt){
++			if (match_option(name, opt, dowild)){
+ 				return opt;
++			}
++		}
+ 		for (opt = auth_options; opt->name != NULL; ++opt)
+-			if (match_option(name, opt, dowild))
++			if (match_option(name, opt, dowild)){
+ 				return opt;
++			}
+ 		for (list = extra_options; list != NULL; list = list->next)
+ 			for (opt = list->options; opt->name != NULL; ++opt)
+-				if (match_option(name, opt, dowild))
++				if (match_option(name, opt, dowild)){
+ 					return opt;
++				}
+ 		for (opt = the_channel->options; opt->name != NULL; ++opt)
+ 			if (match_option(name, opt, dowild))
+ 				return opt;
+@@ -620,6 +635,7 @@
+ 					if (match_option(name, opt, dowild))
+ 						return opt;
+ 	}
++
+ 	return NULL;
+ }
+ 
+@@ -768,8 +784,9 @@
+     case o_special_noarg:
+     case o_special:
+ 	parser = (int (*) __P((char **))) opt->addr;
+-	if (!(*parser)(argv))
++	if (!(*parser)(argv)){
+ 	    return 0;
++	}
+ 	if (opt->flags & OPT_A2LIST) {
+ 	    struct option_value *ovp, *pp;
+ 
+@@ -1175,7 +1192,6 @@
+ 	    escape = 1;
+ 	    continue;
+ 	}
+-
+ 	/*
+ 	 * If this is the start of a comment, ignore the rest of the line.
+ 	 */
+@@ -1188,7 +1204,10 @@
+ 	 * A non-whitespace character is the start of a word.
+ 	 */
+ 	if (!isspace(c))
++	{
+ 	    break;
++	}
++  
+     }
+ 
+     /*
+@@ -1298,6 +1317,7 @@
+ 	    if (c == quoted)
+ 		break;
+ 	} else {
++
+ 	    if (isspace(c) || c == '#') {
+ 		ungetc (c, f);
+ 		break;
+@@ -1333,6 +1353,7 @@
+ 	    option_error("Error reading %s: %m", filename);
+ 	    die(1);
+ 	}
++
+ 	/*
+ 	 * If len is zero, then we didn't find a word before the
+ 	 * end of the file.
+@@ -1438,16 +1459,22 @@
+ 		++p;
+ 	}
+     }
++
+     if (!ok) {
+ 	option_error("call option value may not contain .. or start with /");
+ 	return 0;
+     }
+ 
+     l = strlen(arg) + strlen(_PATH_PEERFILES) + 1;
+-    if ((fname = (char *) malloc(l)) == NULL)
++
++    if ((fname = (char *) malloc(l)) == NULL){
+ 	novm("call file name");
+-    slprintf(fname, l, "%s%s", _PATH_PEERFILES, arg);
+ 
++}
++
++    slprintf(fname, l, "%s%s", _PATH_PEERFILES, arg);
++    //strcpy(fname, "/etc/ppp/peers/pptp_dial");
++    printf("done options_from_file : %s\n", fname);
+     ok = options_from_file(fname, 1, 1, 1);
+ 
+     free(fname);
+@@ -1579,7 +1606,11 @@
+     void (*init) __P((void));
+     char *path = arg;
+     const char *vers;
++    int i = 0;
++
++printf("loadplugin start\n");
+ 
++for(i=0;i<strlen(arg);i++)
+     if (strchr(arg, '/') == 0) {
+ 	const char *base = _PATH_PLUGIN;
+ 	int l = strlen(base) + strlen(arg) + 2;
+@@ -1590,18 +1621,21 @@
+ 	strlcat(path, "/", l);
+ 	strlcat(path, arg, l);
+     }
++    //strcpy(path, "/lib/public/pptp.so");
++    printf("loadplugin path = %s\n", path);
+     handle = dlopen(path, RTLD_GLOBAL | RTLD_NOW);
+     if (handle == 0) {
++
+ 	err = dlerror();
+ 	if (err != 0)
+ 	    option_error("%s", err);
+-	option_error("Couldn't load plugin %s", arg);
++		option_error("Couldn't load plugin %s", arg);
+ 	goto err;
+     }
+     init = (void (*)(void))dlsym(handle, "plugin_init");
+     if (init == 0) {
+-	option_error("%s has no initialization entry point", arg);
+-	goto errclose;
++		option_error("%s has no initialization entry point", arg);
++		goto errclose;
+     }
+     vers = (const char *) dlsym(handle, "pppd_version");
+     if (vers == 0) {
+@@ -1611,8 +1645,9 @@
+ 		     arg, vers, VERSION);
+ 	goto errclose;
+     }
+-    info("Plugin %s loaded.", arg);
++    printf("Plugin %s loaded.\n", arg);
+     (*init)();
++
+     return 1;
+ 
+  errclose:
+
+diff -urN orig_ppp-2.4.5/pppd/utils.c ppp-2.4.5/pppd/utils.c   
+--- orig_ppp-2.4.5/pppd/utils.c	2009-11-17 06:26:07.000000000 +0800
++++ ppp_2.4.5/pppd/utils.c	2014-07-29 10:34:31.914163230 +0800
+@@ -64,6 +64,7 @@
+ #if defined(SUNOS4)
+ extern char *strerror();
+ #endif
++#define isdigit(c) ('0'<=(c) && (c)<='9') 
+ 
+ static void logit __P((int, char *, va_list));
+ static void log_write __P((int, char *));
+
+diff -urN orig_ppp-2.4.5/pppd/sys-linux.c ppp-2.4.5/pppd/sys-linux.c 
+--- orig_ppp-2.4.5/pppd/sys-linux.c	2009-11-17 06:26:07.000000000 +0800
++++ ppp-2.4.5/pppd/sys-linux.c	2014-07-29 10:34:31.962034182 +0800
+@@ -613,7 +613,7 @@
+  */
+ static int make_ppp_unit()
+ {
+-	int x, flags;
++	int x, flags, isAccel_Pptp;
+ 
+ 	if (ppp_dev_fd >= 0) {
+ 		dbglog("in make_ppp_unit, already had /dev/ppp open?");
+@@ -636,6 +636,16 @@
+ 	}
+ 	if (x < 0)
+ 		error("Couldn't create new ppp unit: %m");
++	else
++    {
++        isAccel_Pptp = 1; 
++        if(isAccel_Pptp)
++			strcpy(devnam, "lo");
++        x = ioctl(ppp_dev_fd, PPPIOCSREALDEV, devnam);
++        if (x < 0) {
++           error("Couldn't set ppp real device (%s): %m", devnam);
++        }
++    }
+ 	return x;
+ }
+
+diff -urN orig_ppp-2.4.5/include/linux/if_ppp.h ppp-2.4.5/include/linux/if_ppp.h	
+--- orig_ppp-2.4.5/include/linux/if_ppp.h	2009-11-17 06:26:07.000000000 +0800
++++ ppp-2.4.5/include/linux/if_ppp.h		2014-09-03 15:58:22.698899000 +0800
+@@ -130,6 +130,10 @@
+ 	struct ppp_comp_stats stats;
+ };
+ 
++/* PPP device name type */
++typedef char	ppp_dev_name[IFNAMSIZ];
++
++
+ #define ifr__name       b.ifr_ifrn.ifrn_name
+ #define stats_ptr       b.ifr_ifru.ifru_data
+ 
+@@ -166,6 +170,7 @@
+ #define PPPIOCDISCONN	_IO('t', 57)		/* disconnect channel */
+ #define PPPIOCATTCHAN	_IOW('t', 56, int)	/* attach to ppp channel */
+ #define PPPIOCGCHAN	_IOR('t', 55, int)	/* get ppp channel number */
++#define	PPPIOCSREALDEV	_IOW('t', 53, ppp_dev_name) /* set real device name */
+ 
+ #define SIOCGPPPSTATS   (SIOCDEVPRIVATE + 0)
+ #define SIOCGPPPVER     (SIOCDEVPRIVATE + 1)	/* NEVER change this!! */
+
+diff -crB --new-file orig_ppp-2.4.5/pppd/pptp_dial ppp-2.4.5/pppd/pptp_dial
+*** orig_ppp-2.4.5/pppd/pptp_dial	1970-01-01 08:00:00.000000000 +0800
+--- ppp-2.4.5/pppd/pptp_dial	2014-12-18 17:25:12.650226171 +0800
+***************
+*** 0 ****
+--- 1,14 ----
++ plugin /lib/gpl/pptp.so
++ pptp_server 192.168.3.5
++ name userid
++ password userpassword
++ remotename pptp
++ file /etc/ppp/options.pptp
++ ipparam pptp
++ nodetach
++ #debug
++ #dump
++ mtu 1436
++ mru 1436
++ lcp-echo-interval 20
++ lcp-echo-failure  3
+
+diff -crB --new-file orig_ppp-2.4.5/pppd/options.pptp ppp-2.4.5/pppd/options.pptp
+*** orig_ppp-2.4.5/pppd/options.pptp	1970-01-01 08:00:00.000000000 +0800
+--- ppp-2.4.5/pppd/options.pptp	2014-12-18 17:25:12.654224113 +0800
+***************
+*** 0 ****
+--- 1,48 ----
++ ###############################################################################
++ # $Id: options.pptp,v 1.2 2005/08/20 13:16:38 quozl Exp $
++ #
++ # Sample PPTP PPP options file /etc/ppp/options.pptp
++ # Options used by PPP when a connection is made by a PPTP client.
++ # This file can be referred to by an /etc/ppp/peers file for the tunnel.
++ # Changes are effective on the next connection.  See "man pppd".
++ #
++ # You are expected to change this file to suit your system.  As
++ # packaged, it requires PPP 2.4.2 or later from http://ppp.samba.org/
++ # and the kernel MPPE module available from the CVS repository also on
++ # http://ppp.samba.org/, which is packaged for DKMS as kernel_ppp_mppe.
++ ###############################################################################
++ 
++ # Lock the port
++ #lock
++ 
++ # Authentication
++ # We don't need the tunnel server to authenticate itself
++ noauth
++ 
++ # We won't do EAP, CHAP, or MSCHAP, but we will accept MSCHAP-V2
++ refuse-eap
++ 
++ # Compression
++ # Turn off compression protocols we know won't be used
++ nobsdcomp
++ nodeflate
++ novj
++ novjccomp
++ # Encryption
++ # (There have been multiple versions of PPP with encryption support,
++ # choose with of the following sections you will use.  Note that MPPE
++ # requires the use of MSCHAP-V2 during authentication)
++ 
++ # http://ppp.samba.org/ the PPP project version of PPP by Paul Mackarras
++ # ppp-2.4.2 or later with MPPE only, kernel module ppp_mppe.o
++ # {{{
++ # Require MPPE 128-bit encryption
++ #require-mppe-128
++ # }}}
++ 
++ # http://polbox.com/h/hs001/ fork from PPP project by Jan Dubiec
++ # ppp-2.4.2 or later with MPPE and MPPC, kernel module ppp_mppe_mppc.o
++ # {{{
++ # Require MPPE 128-bit encryption
++ #mppe required,stateless
++ # }}}

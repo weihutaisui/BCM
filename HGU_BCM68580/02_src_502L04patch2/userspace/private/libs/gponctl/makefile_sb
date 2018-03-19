@@ -1,0 +1,38 @@
+#
+# In most cases, you only need to modify this first section.
+#
+LIB = gponctllib.O
+
+OBJS = gponctl_api.o
+
+all : $(LIB)
+
+clean:
+	rm -f *.so *.o *.a *.s .*.cmd *.O
+
+INCLUDES := -I.\
+            -I../../include  \
+            -I../../../../bcmdrivers/opensource/include/bcm963xx \
+            -I../../../../bcmdrivers/broadcom/include/bcm963xx
+
+CFLAGS += -DNON_LINUX_BUILD
+CFLAGS += -DCONFIG_BCM96816
+CFLAGS += $(INCLUDES)
+CFLAGS += -Werror -Wall
+
+LFLAGS = -nostartfiles
+LFLAGS += -nodefaultlibs
+LFLAGS += -Wl
+LFLAGS += -r
+
+CC = gcc
+
+%.o : %.c *.h
+	$(CC) $(CFLAGS) -c $<
+
+$(LIB): $(OBJS)
+	$(CC) $(LFLAGS) -o $@ $^
+
+.PHONY: all clean
+
+

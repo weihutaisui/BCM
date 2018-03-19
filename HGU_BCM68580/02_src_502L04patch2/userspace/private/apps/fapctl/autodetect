@@ -1,0 +1,3 @@
+dependson: private/libs/fapctl
+condition: ifneq ($(strip $(BUILD_FAPCTL)),)
+

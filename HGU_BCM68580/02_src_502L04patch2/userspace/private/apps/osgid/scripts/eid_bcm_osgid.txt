@@ -1,0 +1,5 @@
+BEGIN
+  eid         = EID_OSGID
+  name        = osgid
+  flags       = EIF_MDM|EIF_MESSAGING_CAPABLE|EIF_DESKTOP_LINUX_CAPABLE
+END

@@ -1,0 +1,169 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript">
+<!-- hide
+
+var cellularIntfEnable = '<%ejGet(cellularIntfEnable)%>';
+var cellularSupportedAccTech = '<%ejGet(cellularSupportedAccTech)%>';
+var cellularPrefdAccTech = '<%ejGet(cellularPrefdAccTech)%>';
+var cellularNtwkReq = '<%ejGet(cellularNtwkReq)%>';      
+var cellularNtwkReq_MCCMNC = '<%ejGet(cellularNtwkReq_MCCMNC)%>';      
+var cellularPinChk = '<%ejGet(cellularPinChk)%>';  
+var cellularPin = '<%ejGet(cellularPin)%>';
+var sessionKey='<%ejGetOther(sessionKey)%>';
+
+var accessTechnologies = cellularSupportedAccTech.split(',');
+
+function frmLoad() {
+   with ( document.forms[0] ) {
+      if (cellularIntfEnable == '1') {
+         intfEnable.checked = true;
+      } else {
+         intfEnable.checked = false;
+      }
+
+      if ( cellularNtwkReq == '' )
+         networkReqSel[0].checked = true;
+      else
+      {
+         networkReqSel[1].checked = true;
+         networkReq.value = cellularNtwkReq;
+         networkReq_MCCMNC.value = cellularNtwkReq_MCCMNC;
+      }
+
+      setSelect (pinChk, cellularPinChk);
+	  
+      pin.value = cellularPin;
+   }
+}
+
+function btnApply() {
+   var loc = 'cellularinterface.cgi?';
+
+   with ( document.forms[0] ) {
+      if (intfEnable.checked == true) {
+         loc += 'cellularIntfEnable=1';
+      } else {
+         loc += 'cellularIntfEnable=0';
+      }
+
+      var idx = preferredAccessTechnology.selectedIndex;
+      loc += '&cellularPrefdAccTech=' + preferredAccessTechnology.options[idx].value;
+
+      if ( networkReqSel[0].checked == true ) {
+         loc += '&cellularNtwkReq=';
+         loc += '&cellularNtwkReq_MCCMNC=';
+      }
+	  else {
+         loc += '&cellularNtwkReq=' + encodeUrl(networkReq.value);
+         loc += '&cellularNtwkReq_MCCMNC=' + networkReq_MCCMNC.value;
+      }
+
+      loc += '&cellularPinChk='+encodeUrl(pinChk[pinChk.selectedIndex].value);
+	  
+      loc += '&cellularPin=' + encodeUrl(pin.value);
+
+   }
+   
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+function btnSearch() {
+   window.showModalDialog('cellularAvailNtwkSel.html', '','dialogWidth:400px; dialogHeight:500px; center:yes;');
+}
+
+// done hiding -->
+</script>
+   </head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form>
+            <b>Cellular interface & SIM - Configuration<br>
+            </b>
+            <br>
+            Select the desired values and click "Apply/Save" to configure the Cellular options.<br>
+            <br>
+            <br>            
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="180">Interface Enable:</td>
+                  <td><input type='checkbox' name='intfEnable' ></td>
+               </tr>
+            </table>
+            <br>
+            
+            <table border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="180">Preferred Access Technology:</td>
+	            <td>
+	            <select name='preferredAccessTechnology'>
+                  <option value="Auto"> Auto </option>
+<script language="javascript">
+<!-- hide
+{
+   for (var i = 0; i < accessTechnologies.length; i++ ) {
+      if ( accessTechnologies[i] == cellularPrefdAccTech )
+         document.write("  <option value='" + accessTechnologies[i] + "' selected>");
+      else
+         document.write("  <option value='" + accessTechnologies[i] + "'>");
+	  
+      document.writeln(accessTechnologies[i] + "</option>");
+   }
+}
+// done hiding -->
+</script>
+	            </select></td>
+	          </tr>
+            </table>
+            <br>
+            
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="180">Network Requested:</td>
+                  <td><input name='networkReqSel' type='radio'>Auto</td>
+               </tr>
+                <tr>
+                  <td width="180"></td>
+                  <td><input name='networkReqSel' type='radio'><input type='text' name='networkReq' size="20" maxlength="64"><input type='button' onClick='btnSearch()' value='Search...'>
+                      <input type='hidden' name='networkReq_MCCMNC'></td>
+               </tr>
+           </table>
+            <br>
+            <br>
+            
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="180">PIN Check:</td>
+	            <td>
+                <td><select name='pinChk' size=1>
+<!-- hide                
+                                <option value='OnNetworkAccess'>On Network Access</option>
+// done hiding -->                  
+                  <option value='Reboot'>Reboot</option>
+                  <option value='Off'>Off(Disable PIN Check)</option>
+                </select></td>
+              </tr>
+            </table>
+            <br>
+
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="180">PIN:</td>
+                  <td><input type='text' name='pin' size="6" maxlength="4"></td>
+               </tr>
+            </table>
+            <br>
+            
+            <p align="center">
+               <input type='button' onClick='btnApply()' value='Apply/Save'>
+            </P>
+         </form>
+      </blockquote>
+   </body>
+</html>

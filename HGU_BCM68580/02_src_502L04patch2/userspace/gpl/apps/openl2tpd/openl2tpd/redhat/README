@@ -1,0 +1,48 @@
+This directory contains a template RPM spec file with a makefile to
+help build RPMs for an OpenL2TP release. It is included with OpenL2TP
+source releases in order that other developers can more easily build
+RPMs for their own environments.
+
+You are encouraged to build RPMs if one doesn't already exist for your
+setup on the OpenL2TP download site and contribute it. Here's how to do so.
+
+1. Find out which kernel version and which CPU architecture you have.
+
+   uname -r
+   uname -p
+
+2. Login as root and cd into this directory. Then type "make", with
+   arguments specifying parameters of your system. e.g. to build RPMs
+   for OpenL2TP 1.0 on an i586 CPU, do the following:
+
+   make ARCH=i586 VER=1.0 \
+	AUTHOR='My Name <my-email-address>' \
+	TARGZ=/tmp/openl2tp-1.0.tar.gz
+
+   Binary and source RPMs are copied back into this directory if they
+   are built successfully.
+
+   If the above command fails due to unresolved RPM dependencies,
+   suitable versions must first be installed to resolve the dependency
+   conflicts.
+
+   To build an SMP version, use SMP=y:
+
+   make ARCH=i586 VER=1.0 \
+	AUTHOR='My Name <my-email-address>' \
+	TARGZ=/tmp/openl2tp-1.0.tar.gz \
+	SMP=y
+
+   It shouldn't be necessary to edit the template RPM spec file,
+   openl2tp.spec. The makefile substitutes parameters into the
+   template. If changes are needed to the template, please do them
+   such that configuration parameters are passed through the makefile
+   and contribute a patch since it is likely that others may also
+   benefit from your work.
+
+4. Install and test your new RPMs.
+
+   rpm -ivh <RPM-FILE>
+
+5. Please contribute your RPMs to the OpenL2TP SourceForge site so
+   that they can be added to the OpenL2TP download page.

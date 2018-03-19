@@ -1,0 +1,8 @@
+ipsec-tools-0.8.0.patch
+- disable code related to blowfish and cast
+- disable yywrap
+- disable openssl engine support
+- disable openssl sha2 support
+- disable rpm build
+- fix couple compile warnings
+- fix the error, "Invalid configuration `aarch64-buildroot-linux-gnu': machine `aarch64-buildroot' not recognized"

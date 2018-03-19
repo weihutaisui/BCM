@@ -1,0 +1,694 @@
+<html>
+<head>
+<meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+<link rel=stylesheet href='stylemain.css' type='text/css'>
+<link rel=stylesheet href='colors.css' type='text/css'>
+
+<script language="javascript" src="util.js"></script>
+<script language="javascript">
+<!-- hide
+
+var enblIP6 = '<%ejGetOther(sysInfo, enblIPv6)%>'
+var genericSessionKey = '<%ejGetOther(sessionKey)%>'
+
+function frmLoad() {
+   with ( document.forms[0] ) {
+      var multicast = '<%ejGetOther(multicast)%>';
+      var mcastPrec = '<%ejGet(mcastPrecedence)%>';
+      var mcastStrict = '<%ejGet(mcastStrictWan)%>';
+      var igmpFastLeaveEnable = '<%ejGet(igmpFastLeaveEnable)%>';
+      var mldFastLeaveEnable = '<%ejGet(mldFastLeaveEnable)%>';
+
+      setSelect(mcastPrecedence, mcastPrec);
+      setSelect(mcastStrictWan, mcastStrict);
+
+      if(igmpFastLeaveEnable == '1') {
+         igmpFastLeave.checked = true;
+      } else {
+         igmpFastLeave.checked = false;
+      }
+
+      if ( enblIP6 == '1' ) {
+         hideMldInfo(0);
+      }
+      else
+         hideMldInfo(1);
+
+      if(mldFastLeaveEnable == '1') {
+         mldFastLeave.checked = true;
+      } else {
+         mldFastLeave.checked = false;
+      }
+      
+      var enabled = 1<%ejGet(mcastDscpRemarkEnable)%>;
+      hideEle('tabledscpremark', (enabled == 11 || enabled == 10));
+      dscpEnable.checked = (enabled == 11);
+      hideEle('trdscpremarkval', dscpEnable.checked);
+   }
+}
+
+function hideMldInfo(hide) {
+   var status = 'visible';
+
+   if ( hide == 1 )
+      status = 'hidden';
+   if (document.getElementById)  // DOM3 = IE5, NS6
+      document.getElementById('mldInfo').style.visibility = status;
+   else if (document.layers == false) // IE4
+      document.all.mldInfo.style.visibility = status;
+}
+
+function addClick() {
+   var loc = 'mcastexception.cmd?action=add';
+   with ( document.forms[0] ) {
+
+      if (isValidIpAddress(nextExceptGroupAddress.value) == false) {
+          alert( 'Address "' + nextExceptGroupAddress.value + '" is an invalid IP address.');
+          return;
+      }
+
+      if (isValidIpAddress(nextExceptMask.value) == true || (nextExceptMask.value == "255.255.255.255") ) {
+          var ipExceptParts = nextExceptMask.value.split('.');
+          num = parseInt (ipExceptParts[0]);
+          if (num < 240) {
+              alert( '"' + nextExceptMask.value + '" is an invalid mask.  First byte must be at least 240.');
+              return;            
+          }
+      }
+      else if ( (nextExceptMask.value < 4) || (nextExceptMask.value > 32) || (nextExceptMask.value != Math.floor(nextExceptMask.value) ) ) {
+          alert( '"' + nextExceptMask.value + '" is an invalid number of mask bits.');
+          return;
+      }
+      else 
+      {
+          var bits = nextExceptMask.value;
+          var text = '';
+          var byteIndex = 0;
+          nextExceptMask.value = '';
+          for ( ; byteIndex < 4 ; byteIndex ++)
+          {
+              var bitIndex = 0;
+              var byte = 0;
+              for ( ; bitIndex < 8 ; bitIndex ++)
+              {
+                 byte = byte << 1;
+                 if (bits) { byte += 1; bits --;}
+              }
+              text = byte.toString();
+              nextExceptMask.value += text;
+              if (byteIndex < 3) { nextExceptMask.value += '.'; }
+          }
+              
+      }
+      
+      var ipParts = nextExceptGroupAddress.value.split('.');
+      num = parseInt(ipParts[0]);
+      
+      if ( (num < 224) || (num > 239) )
+      {
+          alert( nextExceptGroupAddress.value + ' is not in the range 224.x.x.x to 239.x.x.x');
+          return;          
+      }
+      else 
+      {
+          loc += '&ip=' + nextExceptGroupAddress.value;
+          loc += '&mask=' + nextExceptMask.value;
+          loc += '&sessionKey=' + genericSessionKey;
+          var code = 'location="' + loc + '"';
+          eval(code);
+      }
+
+   }   
+}
+
+function addClickMld() {
+   var loc = 'mcastexception.cmd?action=addMld';
+   with ( document.forms[0] ) {
+
+      if (isValidIpAddress6(nextMldExceptGroupAddress.value) == false) {
+          alert( 'Address "' + nextMldExceptGroupAddress.value + '" is an invalid IPV6 address.');
+          return;
+      }
+
+      if (isValidIpAddress6(nextMldExceptMask.value) == true ) {
+          var ipv6ExceptParts = nextExceptMask.value.split(':');
+          num = parseInt (ipv6ExceptParts[0]);
+          if (num < 0xff00) {
+              alert( '"' + nextExceptMask.value + '" is an invalid mask.  First byte must be 0xff00.');
+              return;            
+          }
+      }
+      else if ( (nextMldExceptMask.value < 8) || (nextMldExceptMask.value > 128) || (nextMldExceptMask.value != Math.floor(nextMldExceptMask.value) ) ){
+          alert( '"' + nextMldExceptMask.value + '" is an invalid number of mask bits.');
+          return;
+      }
+      else 
+      {
+          var bits = nextMldExceptMask.value;
+          var text = '';
+          var wordIndex = 0;
+          nextMldExceptMask.value = '';
+          for ( ; wordIndex < 8 ; wordIndex ++)
+          {
+              var bitIndex = 0;
+              var word = 0;
+              for ( ; bitIndex < 16 ; bitIndex ++)
+              {
+                 word = word << 1;
+                 if (bits) { word += 1; bits --;}
+              }
+              text = word.toString(16);
+              nextMldExceptMask.value += text;
+              if (wordIndex < 7) { nextMldExceptMask.value += ':'; }
+          }
+      }
+
+      loc += '&ipv6=' + nextMldExceptGroupAddress.value;
+      loc += '&mask=' + nextMldExceptMask.value;
+      loc += '&sessionKey=' + genericSessionKey;
+      var code = 'location="' + loc + '"';
+      eval(code);
+   }   
+}
+
+function removeClick(rml) {
+   var lst = '';
+   if (rml.length > 0)
+      for (i = 0; i < rml.length; i++) {
+         if ( rml[i].checked == true )
+            lst += rml[i].value + ', ';
+      }
+   else if ( rml.checked == true )
+      lst = rml.value;
+
+   var loc = 'mcastexception.cmd?action=remove&rmLst=' + lst;
+   loc += '&sessionKey=' + genericSessionKey;
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+function removeClickMld(rml) {
+   var lst = '';
+   if (rml.length > 0)
+      for (i = 0; i < rml.length; i++) {
+         if ( rml[i].checked == true )
+            lst += rml[i].value + ', ';
+      }
+   else if ( rml.checked == true )
+      lst = rml.value;
+
+   var loc = 'mcastexception.cmd?action=removeMld&rmLst=' + lst;
+   loc += '&sessionKey=' + genericSessionKey;
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+
+function btnApply() {
+   var loc = 'multicast.cmd?';
+
+   with ( document.forms[0] ) {
+      loc += submitSelect(mcastPrecedence);
+      loc += submitSelect(mcastStrictWan);
+      
+      if (dscpEnable.checked == true) {
+         var val = parseInt(dscpVal.value);
+         if ( isNaN(val) == true ) {
+            alert('DSCP value "' + val + '" is invalid.');
+            return;
+         }
+         if ( val < 0 || val > 63 ) {
+            alert('DSCP value "' + val + '" is out of range (0-63).');
+            return;
+         }
+         loc += "&mcastDscpRemarkVal=" + dscpVal.value;
+         loc += "&mcastDscpRemarkEnable=1";
+      }
+      else
+         loc += "&mcastDscpRemarkEnable=0";
+
+      if ( isNaN(parseInt(igmpVer.value)) == true ) {
+         alert('IGMP Version"' + igmpVer.value + '" is invalid.');
+         return;
+      }
+      iVer = parseInt(igmpVer.value);
+      if ( iVer < 1 || iVer > 3 ) {
+         alert('IGMP Version"' + igmpVer.value + '" is out of range [1-3].');
+         return;
+      }
+      loc += '&igmpVer=' + igmpVer.value;
+
+      if ( isNaN(parseInt(igmpQI.value)) == true ) {
+         alert('IGMP Query Interval "' + igmpQI.value + '" is invalid.');
+         return;
+      }
+      iQI = parseInt(igmpQI.value);
+      if ( iQI < 1 ) {
+         alert('IGMP Query Interval"' + igmpQI.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&igmpQI=' + igmpQI.value;
+
+      if ( isNaN(parseInt(igmpQRI.value)) == true ) {
+         alert('IGMP Query Response Interval"' + igmpQRI.value + '" is invalid.');
+         return;
+      }
+      iQRI = parseInt(igmpQRI.value);
+      if ( iQRI < 1 ) {
+         alert('IGMP Query Response Interval"' + igmpQRI.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&igmpQRI=' + igmpQRI.value;
+
+      if ( isNaN(parseInt(igmpLMQI.value)) == true ) {
+         alert('IGMP Last Member Query Interval"' + igmpLMQI.value + '" is invalid.');
+         return;
+      }
+      iLMQI = parseInt(igmpLMQI.value);
+      if ( iLMQI < 1 ) {
+         alert('IGMP Last Member Query Interval"' + igmpLMQI.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&igmpLMQI=' + igmpLMQI.value;
+
+      if ( isNaN(parseInt(igmpRV.value)) == true ) {
+         alert('IGMP Robustness Value"' + igmpRV.value + '" is invalid.');
+         return;
+      }
+      iRV = parseInt(igmpRV.value);
+      if ( iRV < 1 ) {
+         alert('IGMP Robustness Value"' + igmpRV.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&igmpRV=' + igmpRV.value;
+
+      if ( isNaN(parseInt(igmpMaxGroups.value)) == true ) {
+         alert('IGMP Maximum Groups"' + igmpMaxGroups.value + '" is invalid.');
+         return;
+      }
+      iMaxGroups = parseInt(igmpMaxGroups.value);
+      if ( iMaxGroups < 1 ) {
+         alert('IGMP Maximum Groups"' + igmpMaxGroups.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&igmpMaxGroups=' + igmpMaxGroups.value;
+
+      if ( isNaN(parseInt(igmpMaxSources.value)) == true ) {
+         alert('IGMP Maximum Sources"' + igmpMaxSources.value + '" is invalid.');
+         return;
+      }
+      iMaxSources = parseInt(igmpMaxSources.value);
+      if ( iMaxSources < 1 ) {
+         alert('IGMP maximum Sources"' + igmpMaxSources.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&igmpMaxSources=' + igmpMaxSources.value;
+
+      if ( isNaN(parseInt(igmpMaxMembers.value)) == true ) {
+         alert('IGMP Maximum Members"' + igmpMaxMembers.value + '" is invalid.');
+         return;
+      }
+      iMaxMembers = parseInt(igmpMaxMembers.value);
+      if ( iMaxMembers < 1 ) {
+         alert('IGMP Maximum Members"' + igmpMaxMembers.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&igmpMaxMembers=' + igmpMaxMembers.value;
+
+      if ( igmpFastLeave.checked == true )
+        loc += '&igmpFastLeaveEnable=1';
+      else
+        loc += '&igmpFastLeaveEnable=0';
+
+      if ( enblIP6 == '1' ) {
+      if ( isNaN(parseInt(mldVer.value)) == true ) {
+         alert('MLD Version "' + mldVer.value + '" is invalid.');
+         return;
+      }
+      mVer = parseInt(mldVer.value);
+      if ( mVer < 1 || mVer > 2 ) {
+         alert('MLD Version"' + mldVer.value + '" is out of range [1-2].');
+         return;
+      }
+      loc += '&mldVer=' + mldVer.value;
+
+      if ( isNaN(parseInt(mldQI.value)) == true ) {
+         alert('MLD Query Interval "' + mldQI.value + '" is invalid.');
+         return;
+      }
+      mQI = parseInt(mldQI.value);
+      if ( mldQI < 1 ) {
+         alert('MLD Query Interval"' + mldQI.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&mldQI=' + mldQI.value;
+
+      if ( isNaN(parseInt(mldQRI.value)) == true ) {
+         alert('MLD Query Response Interval"' + mldQRI.value + '" is invalid.');
+         return;
+      }
+      mQRI = parseInt(mldQRI.value);
+      if ( mQRI < 1 ) {
+         alert('MLD Query Response Interval"' + mldQRI.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&mldQRI=' + mldQRI.value;
+
+      if ( isNaN(parseInt(mldLMQI.value)) == true ) {
+         alert('MLD Last Member Query Interval"' + mldLMQI.value + '" is invalid.');
+         return;
+      }
+      mLMQI = parseInt(mldLMQI.value);
+      if ( mLMQI < 1 ) {
+         alert('MLD Last Member Query Interval"' + mldLMQI.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&mldLMQI=' + mldLMQI.value;
+
+      if ( isNaN(parseInt(mldRV.value)) == true ) {
+         alert('MLD Robustness Value"' + mldRV.value + '" is invalid.');
+         return;
+      }
+      mRV = parseInt(mldRV.value);
+      if ( mRV < 1 ) {
+         alert('MLD Robustness Value"' + mldRV.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&mldRV=' + mldRV.value;
+
+      if ( isNaN(parseInt(mldMaxGroups.value)) == true ) {
+         alert('MLD Maximum Groups"' + mldMaxGroups.value + '" is invalid.');
+         return;
+      }
+      mMaxGroups = parseInt(mldMaxGroups.value);
+      if ( mMaxGroups < 1 ) {
+         alert('MLD Maximum Groups"' + mldMaxGroups.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&mldMaxGroups=' + mldMaxGroups.value;
+
+      if ( isNaN(parseInt(mldMaxSources.value)) == true ) {
+         alert('MLD Maximum Sources"' + mldMaxSources.value + '" is invalid.');
+         return;
+      }
+      mMaxSources = parseInt(mldMaxSources.value);
+      if ( mMaxSources < 1 ) {
+         alert('MLD maximum Sources"' + mldMaxSources.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&mldMaxSources=' + mldMaxSources.value;
+
+      if ( isNaN(parseInt(mldMaxMembers.value)) == true ) {
+         alert('MLD Maximum Members"' + mldMaxMembers.value + '" is invalid.');
+         return;
+      }
+      mMaxMembers = parseInt(mldMaxMembers.value);
+      if ( mMaxMembers < 1 ) {
+         alert('MLD Maximum Members"' + mldMaxMembers.value + '" is out of range [1-].');
+         return;
+      }
+      loc += '&mldMaxMembers=' + mldMaxMembers.value;
+
+      if ( mldFastLeave.checked == true )
+        loc += '&mldFastLeaveEnable=1';
+      else
+        loc += '&mldFastLeaveEnable=0';
+
+      }
+   }
+
+   loc += '&sessionKey=' + genericSessionKey;
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+// done hiding -->
+</script>
+</head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form>
+            <br>
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+               <tr>
+                  <td width="30%"><b>Multicast Precedence:</b></td>
+                  <td><select name='mcastPrecedence' size="1">
+                      <option value='-1'>Disable
+                      <script language="javascript">
+                         <!-- hide
+                         {
+                            queueId = '<%ejGetOther(qosPrecedence, eth)%>';
+                            intf = queueId.split('|');
+
+                            for (i = 0; i < intf.length; i++) {
+                               document.write("  <option value='" + intf[i] + "'>");
+                               document.writeln(intf[i]);
+                            }
+                         }
+                         // done hiding -->
+                      </script>
+                  </select> lower value, higher priority</td>
+               </tr>
+               <tr>
+                  <td width="30%"><b>Multicast Strict Grouping Enforcement:</b></td>
+                  <td><select name='mcastStrictWan' size="1">
+                      <option value='0'>Disable</option>
+                      <option value='1'>Enable</option>
+                  </select></td>
+               </tr>
+            </table>
+            <br>
+            <table id="tabledscpremark" border="0" cellpadding="0" cellspacing="0" width="100%">
+               <tr>
+                   <script language="javascript">
+                      <!-- hide
+                      {
+                          hideEle = function(id, show) {
+                              document.getElementById(id).style.display = show == true ? '' : 'none';
+                          };
+                          dscpremarkclick = function(cb) { hideEle('trdscpremarkval', cb.checked); };
+                      }
+                      // done hiding -->
+                   </script>
+                   <td><input type='checkbox' name='dscpEnable' onClick='dscpremarkclick(this)'><b>&nbsp;&nbsp;Enable Multicast DSCP Remarking</b></td>
+               </tr>
+               <tr id="trdscpremarkval">
+                   <td width="30%">Multicast DSCP Remarking:</td>
+                   <td><input type='text' name='dscpVal' value='<%ejGet(mcastDscpRemarkVal)%>'></td>
+               </tr>
+            </table>
+            <br> <br>
+            <strong><b>IGMP Configuration</b></strong><br>
+            <br>
+            Enter IGMP protocol configuration fields if you want modify default values shown below.<br><br>
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+               <tr>
+                  <td width="30%">Default Version:</td>
+                  <td><input type='text' name='igmpVer' value='<%ejGet(igmpVer)%>'></td>
+               </tr>
+               <tr>
+                  <td>Query Interval:</td>
+                  <td><input type='text' name='igmpQI' value='<%ejGet(igmpQI)%>'></td>
+               </tr>
+               <tr>
+                  <td>Query Response Interval:</td>
+                  <td><input type='text' name='igmpQRI' value='<%ejGet(igmpQRI)%>'></td>
+               </tr>
+               <tr>
+                  <td>Last Member Query Interval:</td>
+                  <td><input type='text' name='igmpLMQI' value='<%ejGet(igmpLMQI)%>'></td>
+               </tr>
+               <tr>
+                  <td>Robustness Value:</td>
+                  <td><input type='text' name='igmpRV' value='<%ejGet(igmpRV)%>'></td>
+               </tr>
+               <tr>
+                  <td>Maximum Multicast Groups:</td>
+                  <td><input type='text' name='igmpMaxGroups' value='<%ejGet(igmpMaxGroups)%>'></td>
+               </tr>
+               <tr>
+                  <td>Maximum Multicast Data Sources (for IGMPv3):</td>
+                  <td><input type='text' name='igmpMaxSources' value='<%ejGet(igmpMaxSources)%>'></td>
+               </tr>
+               <tr>
+                  <td>Maximum Multicast Group Members:</td>
+                  <td><input type='text' name='igmpMaxMembers' value='<%ejGet(igmpMaxMembers)%>'></td>
+               </tr>
+               <tr>
+                  <td>Fast Leave Enable:</td>
+                  <td><input type='checkbox' name='igmpFastLeave'>&nbsp;&nbsp;</td>
+               </tr>
+               <tr>
+            </table><br>
+
+            <strong><b>IGMP Group Exception List</b></strong><br>
+            <table border='1' cellpadding='3' cellspacing='0'>
+                 <tr align='center'>
+                    <td class='hd'>Group Address</td>
+                    <td class='hd'>Mask/Mask bits</td>
+                    <td class='hd'>Remove</td>
+                 </tr>
+
+                 <tr align='center'>
+                    <td>224.0.0.0</td>
+                    <td>255.255.255.0</td>
+                    <td></td>
+                 </tr>
+
+                 <script language="javascript">
+                 <!-- hide
+                 {
+                    var i = 0;
+                    var exceptionList = '<%ejGet(igmpExceptAddressList)%>';
+                    var info = exceptionList.split(' ');
+
+                    exceptionCount = 0;
+
+                    if (info != '') 
+                    {
+                       for ( i = 0; i < info.length; i++ ) 
+                       {
+                          var names = info[i].split('/');
+                          if ((names[0] != '') && (names[1] != ''))
+                          {
+                            document.writeln("<tr align='center'>");
+                            document.writeln("<td>" + names[0] + "</td>");
+                            document.writeln("<td>" + names[1] + "</td>");
+                            document.writeln("<td> <input type='checkbox' name='rml' value='" + names[0]  + "/" + names[1] + "'></td>");
+                            document.writeln("</tr>");      
+                            exceptionCount ++;
+                          }
+                       }
+                    }
+                    if (exceptionCount < 10) 
+                    {
+                       document.writeln("<tr align='center'>");
+                       document.writeln("<td> <input type='text' name='nextExceptGroupAddress' value=''></td>");
+                       document.writeln("<td> <input type='text' name='nextExceptMask' value=''></td>");
+                       document.writeln("<td> <input type='button' onClick='addClick()' value='Add'> </td>");
+                       document.writeln("</tr>");
+                    }
+
+                 }
+                 // done hiding -->
+                 </script>
+
+            </table>
+  
+            <input type='button' onClick='removeClick(this.form.rml)' value='Remove Checked Entries'>
+            
+            <br> <br>
+            <div id='mldInfo'>
+
+            <strong><b>MLD Configuration</b></strong><br>
+            <br>
+            Enter MLD protocol (IPv6 Multicast) configuration fields if you want modify default values shown below.<br><br>
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+               <tr>
+                  <td width="30%">Default Version:</td>
+                  <td><input type='text' name='mldVer' value='<%ejGet(mldVer)%>'></td>
+               </tr>
+               <tr>
+                  <td>Query Interval:</td>
+                  <td><input type='text' name='mldQI' value='<%ejGet(mldQI)%>'></td>
+               </tr>
+               <tr>
+                  <td>Query Response Interval:</td>
+                  <td><input type='text' name='mldQRI' value='<%ejGet(mldQRI)%>'></td>
+               </tr>
+               <tr>
+                  <td>Last Member Query Interval:</td>
+                  <td><input type='text' name='mldLMQI' value='<%ejGet(mldLMQI)%>'></td>
+               </tr>
+               <tr>
+                  <td>Robustness Value:</td>
+                  <td><input type='text' name='mldRV' value='<%ejGet(mldRV)%>'></td>
+               </tr>
+               <tr>
+                  <td>Maximum Multicast Groups:</td>
+                  <td><input type='text' name='mldMaxGroups' value='<%ejGet(mldMaxGroups)%>'></td>
+               </tr>
+               <tr>
+                  <td>Maximum Multicast Data Sources (for mldv2):</td>
+                  <td><input type='text' name='mldMaxSources' value='<%ejGet(mldMaxSources)%>'></td>
+               </tr>
+               <tr>
+                  <td>Maximum Multicast Group Members:</td>
+                  <td><input type='text' name='mldMaxMembers' value='<%ejGet(mldMaxMembers)%>'></td>
+               </tr>
+               <tr>
+                  <td>Fast Leave Enable:</td>
+                  <td><input type='checkbox' name='mldFastLeave'>&nbsp;&nbsp;</td>
+               </tr>
+            </table><br>
+
+            <strong><b>MLD Group Exception List</b></strong><br>
+            <table border='1' cellpadding='3' cellspacing='0'>
+                 <tr align='center'>
+                    <td class='hd'>Group Address</td>
+                    <td class='hd'>Mask/Mask bits</td>
+                    <td class='hd'>Remove</td>
+                 </tr>
+
+                 <tr align='center'>
+                    <td>ff01::0000</td>
+                    <td>ffff::0000</td>
+                    <td></td>
+                 </tr>
+                 <tr align='center'>
+                    <td>ff02::0000</td>
+                    <td>ffff::0000</td>
+                    <td></td>
+                 </tr>
+
+                 <script language="javascript">
+                 <!-- hide
+                 {
+                    var i = 0;
+                    var exceptionList = '<%ejGet(mldExceptAddressList)%>';
+                    var info = exceptionList.split(' ');
+
+                    exceptionCount = 0;
+
+                    if (info != '') 
+                    {
+                       for ( i = 0; i < info.length; i++ ) 
+                       {
+                          var names = info[i].split('/');
+                          if ((names[0] != '') && (names[1] != ''))
+                          {
+                            document.writeln("<tr align='center'>");
+                            document.writeln("<td>" + names[0] + "</td>");
+                            document.writeln("<td>" + names[1] + "</td>");
+                            document.writeln("<td> <input type='checkbox' name='rmlMld' value='" + names[0]  + "/" + names[1] + "'></td>");
+                            document.writeln("</tr>");      
+                            exceptionCount ++;
+                          }
+                       }
+                    }
+                    if (exceptionCount < 10) 
+                    {
+                       document.writeln("<tr align='center'>");
+                       document.writeln("<td> <input type='text' name='nextMldExceptGroupAddress' value=''></td>");
+                       document.writeln("<td> <input type='text' name='nextMldExceptMask' value=''></td>");
+                       document.writeln("<td> <input type='button' onClick='addClickMld()' value='Add'> </td>");
+                       document.writeln("</tr>");
+                    }
+
+                 }
+                 // done hiding -->
+                 </script>
+
+            </table>
+  
+            <input type='button' onClick='removeClickMld(this.form.rmlMld)' value='Remove Checked Entries'>
+            
+            <br> <br>
+            </div>
+            <center>
+               <input type='button' onClick='btnApply()' value='Apply/Save'> 
+            </center>
+         </form>
+      </blockquote>
+   </body>
+</html>

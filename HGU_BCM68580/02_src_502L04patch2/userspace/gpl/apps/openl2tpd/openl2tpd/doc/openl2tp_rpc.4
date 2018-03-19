@@ -1,0 +1,1580 @@
+.ig \"-*- nroff -*-
+Copyright (c) 2004,2005,2006,2007,2008 Katalix Systems Ltd.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this
+manual into another language, under the above conditions for modified
+versions, except that this permission notice may be included in
+translations approved by Katalix Systems Ltd instead of in
+the original English.
+..
+.\"
+.\" MAN PAGE COMMENTS to openl2tp-docs@lists.sourceforge.net
+.\"
+.TH openl2tp_rpc 4 "13 August 2007" "OpenL2TP" "OpenL2TP Manual"
+.PD
+.SH NAME
+openl2tp_rpc \- L2TP RPC Interface
+.PD
+.SH SYNOPSIS
+This document describes the 
+.B RPC
+management interface of
+.B OpenL2TP.
+.PP
+The general user of
+.B OpenL2TP
+should find this document useful as it lists all parameters accessible
+over the interface.
+.PP
+.PD
+.SH DESCRIPTION
+An application wishing to control and/or obtain status information from
+.B OpenL2TP
+must implement all or part of this interface as an RPC client. The 
+.B OpenL2TP
+RPC interface definition is defined in 
+.I l2tp_rpc.x
+which is available in the application source distribution. This file
+may be processed by RPC tools such as
+.BR rpcgen ( 1 ) 
+to generate C, C++ or even Java source code that implements the
+interface.
+.PP
+The
+.B OpenL2TP
+application interface defines at least one structure per object type. For
+.B CREATE
+and
+.B MODIFY
+operations, the whole structure is filled in and passed to the application.
+In order to tell the application which fields have valid values, a
+.I flags
+field is present, which is a bitmask representing
+each valid field. For each request, the application checks that all
+mandatory parameters are set. This document does not list the bit 
+definitions of the 
+.I flags
+field since they are of no interest to the general user. Their definitions
+are available in the master 
+.I l2tp_rpc.x
+interface definition.
+.PP
+.BR CREATE ,
+.BR MODIFY ,
+.BR UNSET ,
+and
+.B SHOW
+operations pass a structure that contains all managable parameters and
+status attributes of the object. For
+.B SHOW
+operations, the
+.I flags
+field tells which fields have non-default values, i.e. which fields
+have been explicitely set in CREATE or subsequent MODIFY commands for
+the lifetime of the object. For profiles, these flags may be unset
+using the UNSET command, which also returns the specified parameters
+to default values. Note that
+.B DELETE
+operations do not pass this structure: instead, parameters identify the
+object instance being deleted.
+.B LIST
+operations use another different structure suitable for returning a list of
+object-specific values which describe each instance of an object type.
+The 
+.B LIST
+operation is used to obtain a list of instances of an object type,
+e.g. a list of tunnel profile names. The application may then walk the
+list and issue more command on specific instances.
+.BR l2tpconfig ( 1 )
+implements all of the interface described in this document.
+.PD
+.SH BUILDING CLIENT APPLICATIONS
+You can safely skip this section if you are already familiar with Sun RPC.
+.PP
+There are several tools to help build Sun RPC client applications, some of which
+are proprietary and cost money. To build Java client applications, tools such as 
+.nf
+http://netbula.com/
+http://www.onc-rpc-xdr.com/
+.fi
+may be used. To build C applications,
+.BR rpcgen ( 3 )
+is available.
+.BR l2tpconfig
+is an RPC client application implementing the interfaces of 
+.I l2tp_rpc.x
+and is a good place to look for example code.
+.PP
+.BR rpcgen
+generates C code from the interface definition file, 
+.I l2tp_rpc.x. When building client applications, 
+.BR rpcgen
+should generate client stubs and XDR (architecture independant
+structure serialization) which are simply linked with the client
+application code.
+.nf
+rpcgen -N -M -C -L -h -o l2tp_rpc.h l2tp_rpc.x
+rpcgen -N -M -C -L -c -o l2tp_rpc_xdr.c l2tp_rpc.x
+rpcgen -N -M -C -L -l -o l2tp_rpc_client.c l2tp_rpc.x
+cc -o myapp myapp.o l2tp_rpc_xdr.o l2tp_rpc_client.o
+.fi
+.PP
+The generated file
+.I l2tp_rpc.h
+defines C structures and function prototypes for all interfaces. The
+client application simply calls the functions as if they were linked
+directly with the application. Under the hood, RPC serializes the data
+and passes it (usually) over a network to the application server. When
+the response comes back, the client's RPC function call returns as if
+all the work were done locally.
+.PP
+Refer to
+.BR rpc ( 3 )
+for more details about RPC.
+.PD
+.SH INTERFACES
+.PP
+This section covers the details of the
+.B OpenL2TP
+interfaces.
+.LP
+.SS SYSTEM
+.nf
+Operations:-
+struct app      APP_INFO_GET(void)
+STATUS          SYSTEM_MODIFY(struct system params)
+struct system   SYSTEM_GET(void)
+.fi
+.LP
+.IP "\fIModifiable parameters:-\fP"
+.LP
+.TP 24
+.B config.trace_flags
+System-wide trace flags. This controls the generation of log messages
+that are not associated with specific tunnel, session or PPP
+instances.
+.TP
+.B config.trace_flags_mask
+This is a bitmask of trace flags being set using values in
+\fItrace_flags\fP. When a bit is 1, the corresponding bit in the
+\fItrace_flags\fP parameter is applied. As a special case, a value 0
+in this field indicates that the entire \fItrace_flags\fP value is
+applied. This field is meaningless on a read.
+.TP
+.B config.max_tunnels
+Maximum number of tunnels permitted. Default=0 (no limit).
+.TP
+.B config.max_sessions
+Maximum number of sessions permitted. Default=0 (no limit).
+.TP
+.B config.drain_tunnels
+Enable the draining of existing tunnels. This prevents new tunnels
+from being created but does not delete those already present. This can 
+be used to perform a 
+.I soft shutdown
+of a system.
+.TP
+.B config.tunnel_establish_timeout
+Timeout for tunnel establishment. Default=120 seconds..
+.TP
+.B config.session_establish_timeout
+Timeout for session establishment. Default=120 seconds..
+.TP
+.B config.tunnel_persist_pend_timeout
+The time (in seconds) to hold a downed persistent tunnel before
+attempting to automatically reestablish. Default=300 seconds
+.TP
+.B config.session_persist_pend_timeout
+The time (in seconds) to hold a downed persistent session before
+attempting to automatically reestablish. Default=60 seconds
+.TP
+.B config.deny_local_tunnel_creates
+Deny the creation of new tunnels by local request.
+.TP
+.B config.deny_remote_tunnel_creates
+Deny the creation of new tunnels by remote peers.
+.TP
+.B reset_statistics
+Reset system-wide statistics.
+.LP
+.IP "\fIRead-only parameters:-\fP"
+.LP
+.TP 24
+.B status.stats.short_frames
+Total number of short frames received (no valid L2TP header).
+.TP
+.B status.stats.wrong_version_frames
+Total number of L2TP frames received with an unsupported protocol version.
+.TP
+.B status.stats.unexpected_data_frames
+All data frames are handled in the Linux kernel. If such frames are received 
+by the userspace daemon, something has gone wrong in the kernel.
+.TP
+.B status.stats.bad_rcvd_frames
+Total number of bad (illegal) L2TP control frames received.
+.TP
+.B status.stats.total_rcvd_control_frames
+Total number of L2TP control frames received.
+.TP
+.B status.stats.total_sent_control_frames
+Total number of L2TP control frames transmitted.
+.TP
+.B status.stats.total_control_frame_send_fails
+The number of times we failed to transmit a control frame. This failure might
+occur if the local socket buffer overflows, probably because something has
+gone wrong in the kernel.
+.TP
+.B status.stats.total_retransmitted_control_frames
+Total number of times a frame was retransmitted. L2TP runs a reliable transport
+protocol to deliver control frames to peers. Occasional retransmits are normal
+but excessive retransmits are indictors of low level link problems. 
+.TP
+.B status.stats.no_control_frame_resources
+The number of times we tried to allocate internal state to send a control frame
+but ran out of system resources. Should never happen unless the system is
+severely overloaded.
+.TP
+.B status.stats.no_peer_resources
+The number of times we tried to allocate internal state to handle a new peer
+but ran out of system resources. Should never happen unless the system is
+severely overloaded.
+.TP
+.B status.stats.no_tunnel_resources
+The number of times we tried to allocate internal state to handle a new tunnel
+but ran out of system resources. Should never happen unless the system is
+severely overloaded.
+.TP
+.B status.stats.no_session_resources
+The number of times we tried to allocate internal state to handle a new session
+but ran out of system resources. Should never happen unless the system is
+severely overloaded.
+.TP
+.B status.stats.no_ppp_resources
+The number of times we tried to allocate internal state to handle a PPP connection
+but ran out of system resources. Should never happen unless the system is
+severely overloaded.
+.TP
+.B status.stats.too_many_tunnels
+The number of times a tunnel setup request was denied because the configured limit
+was reached.
+.TP
+.B status.stats.too_many_sessions
+The number of times a session setup request was denied because the configured limit
+was reached.
+.TP
+.B status.stats.auth_fails
+The number of times a tunnel setup request was denied because authentication failed.
+.TP
+.B status.stats.no_matching_tunnel_id_discards
+The total number of received control frames that were discarded
+because they were directed at a tunnel_id that does not exist. This
+counter might increase when tunnels are torn down in the network
+because certain L2TP implementations might send frames to us after we
+have shut the tunnel down.
+.TP
+.B status.stats.no_matching_session_id_discards
+The total number of received control frames that were discarded
+because they were directed at a session_id that does not exist. This
+counter might increase when sessions are torn down in the network
+because certain L2TP implementations might send frames to us after we
+have shut the session down.
+.TP
+.B status.stats.mismatched_tunnel_ids
+Data in the received control message does not match local tunnel
+state. This will either be caused by a protocol error (bug) at the remote peer
+or a bug in
+.B OpenL2TP.
+.TP
+.B status.stats.mismatched_session_ids
+Data in the received control message does not match local session
+state. This will either be caused by a protocol error (bug) at the remote peer
+or a bug in
+.B OpenL2TP.
+.TP
+.B status.stats.encode_message_fails
+The number of times we failed to build an L2TP control message. Indicates a bug.
+.TP
+.B status.stats.tunnel_setup_failures
+The total number of times a tunnel setup failed.
+.TP
+.B status.stats.session_setup_failures
+The total number of times a session setup failed.
+.TP
+.B status.stats.event_queue_full_errors
+.B OpenL2TP
+uses an internal event queue. If the queue overflows, internal events are lost 
+and unexpected behavior may occur. Should always be 0.
+.TP
+.B status.stats.ignored_avps
+The total number of Attribute Value Pairs (AVPs) received that have been ignored.
+.B OpenL2TP
+recognizes all standard AVPs so if this counter is non-zero, it indicates 
+that the remote peer is non-standard or is buggy.
+.TP
+.B status.stats.vendor_avps
+The total number of AVPs received that are marked as vendor-specific. These are
+ignored by
+.B OpenL2TP
+but do no harm; vendor AVPs allow vendors to exchange private information across 
+L2TP between their own implementations.
+.TP
+.B status.stats.illegal_messages
+The total number of illegal L2TP control messages received. Such messages are illegal
+either because a mandatory AVP is not present in a message or an AVP is flagged as
+mandatory that we don't recognize. Illegal messages cause
+.B OpenL2TP
+to tear down the tunnel.
+.TP
+.B status.stats.unsupported_messages
+The total number of unsupported L2TP control messages received. These messages have
+legal message types but they are deprecated in the L2TP protocol specification. 
+This counter might increase if the peer is an old L2TP implementation or is buggy.
+.TP
+.B status.stats.messages[]
+Number of messages received and transmitted of each type. Unrecognized messages
+are counted in status.stats.unsupported_messages.
+.TP
+.B status.num_tunnels
+Current number of active tunnels.
+.TP
+.B status.num_sessions
+Current number of active sessions.
+.SS PEER PROFILE
+.nf
+Operations:-
+STATUS                   PEER_PROFILE_CREATE(struct peer_profile params)
+STATUS                   PEER_PROFILE_DELETE(string profile_name)
+STATUS                   PEER_PROFILE_MODIFY(struct peer_profile params)
+struct peer_profile      PEER_PROFILE_GET(string profile_name)
+struct peer_profile_list PEER_PROFILE_LIST(void)
+STATUS                   PEER_PROFILE_UNSET(struct peer_profile_unset params)
+.fi
+.PP
+Referenced by: profile_name
+.LP
+.IP "\fICreate-only parameters:-\fP"
+.LP
+.TP 24
+.B profile_name
+The name of the profile which must be unique in the system.
+.LP
+.IP "\fIModifiable parameters:-\fP"
+.LP
+.TP 24
+.B peer_ipaddr
+IP address of peer
+.TP
+.B peer_port
+UDP port with which to connect to peer. Default=1701.
+.TP
+.B netmask
+IP netmask to be used when matching for peer_ipaddr. Default=255.255.255.255.
+.TP
+.B lac_lns
+We can operate as a LAC or LNS or both.
+.TP
+.B tunnel_profile_name
+Name of default Tunnel Profile. Default="default"
+.TP
+.B session_profile_name
+Name of default Session Profile. Default="default"
+.TP
+.B ppp_profile_name
+Name of default ppp Profile. Default="default"
+.LP
+.IP "\fIRead-only parameters:-\fP"
+.LP
+.SS TUNNEL PROFILE
+.nf
+Operations:-
+STATUS                     TUNNEL_PROFILE_CREATE(struct tunnel_profile params)
+STATUS                     TUNNEL_PROFILE_DELETE(string profile_name)
+STATUS                     TUNNEL_PROFILE_MODIFY(struct tunnel_profile params)
+struct tunnel_profile      TUNNEL_PROFILE_GET(string profile_name)
+struct tunnel_profile_list TUNNEL_PROFILE_LIST(void)
+STATUS                     TUNNEL_PROFILE_UNSET(struct tunnel_profile_unset params)
+.fi
+.PP
+Referenced by: profile_name
+.LP
+.IP "\fICreate-only parameters:-\fP"
+.LP
+.TP 24
+.B profile_name
+The name of the profile which must be unique in the system.
+.LP
+.IP "\fIModifiable parameters:-\fP"
+.LP
+.TP 24
+.B dest_ipaddr
+Destination IP address.
+.TP
+.B src_ipaddr
+Source IP address. May be used to force a tunnel to use a specific
+local interface. By default, the system chooses how to reach the
+destination by IP route table lookup.
+.TP
+.B udp_port
+UDP port number with which to contact peer L2TP server. Default=1701
+.TP
+.B use_tiebreaker
+Enable use of a tiebreaker when setting up the tunnel. Default=ON
+.TP
+.B allow_ppp_proxy
+Allow PPP proxy. Not currently implemented.
+.TP
+.B framing_caps
+Framing capabilities: sync, async, any. These are passed to the peer when
+the tunnel is set up to tell the capabilities of the network beyond the
+L2TP tunnel.
+.TP
+.B bearer_caps
+Bearer capabilities: digital, analog, any. These are passed to the peer when
+the tunnel is set up to tell the capabilities of the network beyond the
+L2TP tunnel.
+.TP
+.B host_name
+Name to advertise to the peer when setting up the tunnel. This name is passed
+in the HOST_NAME AVP and may be used by the peer to invoke local policies.
+Default=local system hostname.
+.TP
+.B secret
+Optional secret which is shared with tunnel peer. Must be specified when hide_avps is enabled.
+.TP
+.B auth_mode
+Tunnel authentication mode:-
+.br
+none - no authentication, unless secret is given
+.br
+simple    - check peer hostname
+.br
+challenge - require tunnel secret
+.TP
+.B hide_avps
+Hide AVPs. Default OFF
+.TP
+.B pmtu_discovery
+Do Path MTU Discovery. Default=OFF. Not yet implemented.
+.TP
+.B trace_flags
+Trace flags, for debugging network problems
+.TP
+.B trace_flags_mask
+This is a bitmask of trace flags being set using values in
+\fItrace_flags\fP. When a bit is 1, the corresponding bit in the
+\fItrace_flags\fP parameter is applied. As a special case, a value 0
+in this field indicates that the entire \fItrace_flags\fP value is
+applied. This field is meaningless on a read.
+.TP
+.B use_udp_checksums
+Use UDP checksums in data frames. Default=ON
+.TP
+.B hello_timeout
+Set timeout used for periodic L2TP Hello messages (in seconds). Hello
+messages are sent only if no data or control frames have been sent or
+received since the last Hello was sent. Default=60.
+.TP
+.B max_retries
+The maximum number of retransmits of unacknowledged control
+frames. Setting this too low may bring down a tunnel unecessarily if a
+brief network error occurs. Setting it too high delays the system
+responding to real network outages. Control messages are retransmitted
+on an exponentially increasing delay. Default=5.
+.TP
+.B rx_window_size
+Receive window size. This is the maximum number of control messages
+that the system will queue for processing. It is the maximum number of
+unacknowledged messages. Must be 4 or greater.
+.TP
+.B tx_window_size
+Transmit window size. This is the preferred maximum number of
+unacknowledged messages that the local system will send to the
+peer. It can be reduced if the peer's
+.I rx_window_size
+is smaller.
+.TP
+.B retry_timeout
+Retry timeout. The delay (in seconds) before sending the first retry
+of unacknowledged control frames. Default=1.
+.TP
+.B idle_timeout
+Idle timeout. The time (in seconds) that a tunnel will remain after
+its last session has been torn down. Default=0, tunnel remains
+forever when it has no sessions, until a local administrator or
+network request deletes it..
+.TP
+.B max_sessions
+Maximum number of sessions allowed on tunnel. Default=0 (limited only
+by max_sessions limit in system parameters).
+.TP
+.B mtu
+MTU for all sessions in tunnel. Default=1460.
+.TP
+.B tunnel_name
+Administrative name of this tunnel. This name may be used when
+referring to specific tunnel instances in MODIFY, SHOW and DELETE
+requests.
+.TP
+.B peer_profile_name
+Name of peer profile which will be used for default values of the
+tunnel's parameters.
+.TP
+.B session_profile_name
+Name of session profile which will be used for default values of the
+tunnel's session parameters.
+.TP
+.B ppp_profile_name
+Name of ppp profile which will be used for default values of the
+tunnel's session PPP parameters.
+.TP
+.B interface_name
+Name of system interface for the tunnel. Default=l2tpN where N is
+tunnel_id.
+.LP
+.IP "\fIRead-only parameters:-\fP"
+.LP
+.SS SESSION PROFILE
+.nf
+Operations:-
+STATUS                      SESSION_PROFILE_CREATE(struct session_profile params)
+STATUS                      SESSION_PROFILE_DELETE(string profile_name)
+STATUS                      SESSION_PROFILE_MODIFY(struct session_profile params)
+struct session_profile      SESSION_PROFILE_GET(string profile_name)
+struct session_profile_list SESSION_PROFILE_LIST(void)
+STATUS                      SESSION_PROFILE_UNSET(struct session_profile_unset params)
+.fi
+.PP
+Referenced by: profile_name
+.LP
+.IP "\fICreate-only parameters:-\fP"
+.LP
+.TP 24
+.B profile_name
+The name of the profile which must be unique in the system.
+.LP
+.IP "\fIModifiable parameters:-\fP"
+.LP
+.TP 24
+.B tunnel_id
+Tunnel ID on which to create session.
+.TP
+.B tunnel_name
+Administrative name of tunnel on which to create session.
+.TP
+.B profile_name
+Name of session profile
+.TP
+.B ppp_profile_name
+Name of ppp profile to use for PPP parameters
+.TP
+.B session_name
+Administrative name of this session. This name may be used when
+referring to specific session instances in MODIFY, SHOW and DELETE
+requests.
+.TP
+.B trace_flags
+Trace flags, for debugging network problems. Default=NONE.
+.TP
+.B trace_flags_mask
+This is a bitmask of trace flags being set using values in
+\fItrace_flags\fP. When a bit is 1, the corresponding bit in the
+\fItrace_flags\fP parameter is applied. As a special case, a value 0
+in this field indicates that the entire \fItrace_flags\fP value is
+applied. This field is meaningless on a read.
+.TP
+.B sequencing_required
+The use of sequence numbers in the data channel is mandatory.
+.TP
+.B use_sequence_numbers
+Enable sequence numbers in the data channel if peer supports them.
+.TP
+.B no_ppp
+Don't start PPP on the L2TP session.
+.TP
+.B reorder_timeout
+Timeout to wait for out-of-sequence packets before
+discarding. Out-of-sequence packet reordering is not currently
+supported.
+.TP
+.B session_type
+Session type: LAC Incoming (LAIC), LAC Outgoing (LAOC), LNS Incoming
+(LNIC), LNS Outgoing (LNOC).  Default=derived from tunnel type.
+.TP
+.B priv_group_id
+Private group ID, used to separate this session into a named
+administrative group
+.TP
+.B interface_name
+PPP interface name. Not currently supported. Default=pppN
+.TP
+.B user_name
+PPP user name.
+.TP
+.B user_password
+PPP user password.
+.TP
+.B framing_type
+Framing type: sync, async or any. Default=any
+.TP
+.B bearer_type
+Bearer type: digital, analog, any. Default=any
+.TP
+.B minimum_bps
+Minimum bits/sec acceptable. Default=0
+.TP
+.B maximum_bps
+Maximum bits/sec required. Default=no limit
+.TP
+.B connect_speed
+Specified as speed[:txspeed], indicates connection speeds.
+.TP
+.B session_id
+Session ID of session. Default=system chooses random ID.
+.LP
+.IP "\fIRead-only parameters:-\fP"
+.LP
+.SS PPP PROFILE
+.nf
+Operations:-
+STATUS                   PPP_PROFILE_CREATE(struct ppp_profile params)
+STATUS                   PPP_PROFILE_DELETE(string profile_name)
+STATUS                   PPP_PROFILE_MODIFY(struct ppp_profile params)
+struct ppp_profile       PPP_PROFILE_GET(string profile_name)
+struct ppp_profile_list  PPP_PROFILE_LIST(void)
+STATUS                   PPP_PROFILE_UNSET(struct ppp_profile_unset params)
+.fi
+.PP
+Referenced by: profile_name
+.LP
+.IP "\fICreate-only parameters:-\fP"
+.LP
+.TP 24
+.B profile_name
+The name of the profile which must be unique in the system.
+.LP
+.IP "\fIModifiable parameters:-\fP"
+.LP
+.TP 24
+.B trace_flags
+Trace flags, for debugging network problems
+.TP
+.B trace_flags_mask
+This is a bitmask of trace flags being set using values in
+\fItrace_flags\fP. When a bit is 1, the corresponding bit in the
+\fItrace_flags\fP parameter is applied. As a special case, a value 0
+in this field indicates that the entire \fItrace_flags\fP value is
+applied. This field is meaningless on a read.
+.TP
+.B asyncmap
+Async character map. Valid only if PPP is async mode.
+.TP
+.B mtu
+Maximum Transmit Unit (MTU) or maximum packet size transmitted.
+.TP
+.B mru
+Maximum Receive Unit (MRU) or maximum packet size passed when received.
+.TP
+.B sync_mode
+Allow PPP sync/async operation.
+.TP
+.B auth_pap
+Allow PPP PAP authentication. Default=YES
+.TP
+.B auth_chap
+Allow PPP CHAP authentication. Default=YES
+.TP
+.B auth_mschapv1
+Allow PPP MSCHAP authentication. Default=YES
+.TP
+.B auth_mschapv2
+Allow PPP MSCHAPV2 authentication. Default=YES
+.TP
+.B auth_eap
+Allow PPP EAP authentication. Default=YES
+.TP
+.B auth_none
+Allow unauthenticated PPP users. Default=NO
+.TP
+.B chap_interval
+Rechallenge the peer every chap_interval seconds. Default=0 (don't
+rechallenge).
+.TP
+.B chap_max_challenge
+Maximum number of CHAP challenges to transmit without successful
+acknowledgment before declaring a failure. Default=10.
+.TP
+.B chap_restart
+Retransmission timeout for CHAP challenges. Default=3.
+.TP
+.B pap_max_auth_reqs
+Maximum number of PAP authenticate-request transmissions. Default=10.
+.TP
+.B pap_restart_interval
+Retransmission timeout for PAP requests. Default=3.
+.TP
+.B pap_timeout
+Maximum time to wait for peer to authenticate itself. Default=0 (no
+limit).
+.TP
+.B idle_timeout
+Disconnect session if idle for more than N seconds. Default=0 (no
+limit).
+.TP
+.B ipcp_max_cfg_reqs
+Maximum number of IPCP config-requests to transmit without successful
+acknowledgement before declaring a failure. Default=10.
+.TP
+.B ipcp_max_cfg_naks
+Maximum number of IPCP config-naks to allow before starting to send
+config-rejects instead. Default=10.
+.TP
+.B ipcp_max_term_reqs
+Maximum number of IPCP term-requests to send. Default=3.
+.TP
+.B ipcp_retransmit_interval
+IPCP retransmission timeout. Default=3.
+.TP
+.B lcp_echo_fail_count
+Number of LCP echo failures to accept before assuming peer is
+down. Default=5.
+.TP
+.B lcp_echo_interval
+Send LCP echo-request to peer every N seconds. Default=0 (don't send).
+.TP
+.B lcp_max_cfg_reqs
+Maximum number of LCP config-request transmissions. Default=10.
+.TP
+.B lcp_max_cfg_naks
+Maximum number of LCP config-requests to transmit without successful
+acknowledgement before declaring a failure. Default=10.
+.TP
+.B lcp_max_term_reqs
+Maximum number of LCP term-requests to send. Default=3.
+.TP
+.B lcp_retransmit_interval
+LCP retransmission timeout. Default=3.
+.TP
+.B max_connect_time
+Maximum connect time (in seconds) that the PPP session may stay in
+use.Default=0 (no limit)
+.TP
+.B local_ip_addr
+The IP address to assign to the local end of the PPP link.
+.TP
+.B peer_ip_addr
+The IP address to assign to the remote (peer) end of the PPP link.
+.TP
+.B dns_addr_1
+Primary DNS address to use over the PPP link.
+.TP
+.B dns_addr_2
+Secondary DNS address to use over the PPP link.
+.TP
+.B wins_addr_1
+Primary WINS address to use over the PPP link.
+.TP
+.B wins_addr_2
+Secondary WINS address to use over the PPP link.
+.TP
+.B ip_pool_name
+The name of an IP pool from which to allocate local and remote IP
+addresses if not otherwise assigned.  This value may be passed to
+RADIUS if RADIUS is configured.
+.I OpenL2TP
+does not provide IP pool functionality itself.
+.TP
+.B use_radius
+Says whether PPP should use RADIUS to authenticate the user and obtain
+user parameters for the connection.  RADIUS is the preferred method to
+derive values for IP addresses, DNS etc rather than using fixed values
+in PPP profiles.
+.TP
+.B radius_hint
+An arbitrary string that is passed to PPP when RADIUS is enabled. The
+PPP implementation may use this string in any way. The bundled
+.I ppp_unix
+plugin for use with
+.I pppd
+applies this value to 
+.I pppd's
+radius-config-file
+parameter.
+.TP
+.B default_route
+Says whether the PPP interface should be configured as the host's default route.
+Useful for use at a LAC which expects to use the L2TP tunnel as its path to
+the global internet.
+.TP
+.B multilink
+Enable PPP multilink. Default=off.
+.TP
+.B local_name
+The name to use for the local side for authentication with the peer, unless overridden by \fIuser_name\fP.
+.TP
+.B remote_name
+The name to assume for the remote peer for authentication purposes,
+unless overridden by a PPP username via PPP protocol exchange..
+.LP
+.IP "\fIRead-only parameters:-\fP"
+.LP
+.SS TUNNEL
+.nf
+Operations:-
+STATUS             TUNNEL_CREATE(struct tunnel params)
+STATUS             TUNNEL_DELETE(u_short tunnel_id, optstring tunnel_name)
+STATUS             TUNNEL_MODIFY(struct tunnel params)
+struct tunnel      TUNNEL_GET(u_short tunnel_id, optstring tunnel_name)
+struct tunnel_list TUNNEL_LIST(void)
+.fi
+.PP
+Referenced by: tunnel_id / tunnel_name
+.LP
+.IP "\fICreate-only parameters:-\fP"
+.LP
+.TP 24
+.B dest_ipaddr
+Destination IP address
+.TP
+.B config_id
+Optional configuration id, used to uniquify a tunnel when there is more the one tunnel between the same two IP addresses
+.TP
+.B tunnel_id
+Optional tunnel id of new tunnel. Usually auto-generated. Use is discouraged.
+.TP
+.B profile_name
+Name of tunnel profile which will be used for default values of this tunnel's parameters.
+.TP
+.B src_ipaddr
+Source IP address
+.TP
+.B udp_port
+UDP port number with which to contact peer L2TP server. Default=1701
+.TP
+.B mode
+Indicates whether the local tunnel is a LAC or LNS.
+.TP
+.B use_tiebreaker
+Enable use of a tiebreaker when setting up the tunnel. Default=ON
+.TP
+.B allow_ppp_proxy
+Allow PPP proxy
+.TP
+.B framing_caps
+Framing capabilities: sync, async, any. These are passed to the peer when
+the tunnel is set up to tell the capabilities of the network beyond the
+L2TP tunnel.
+.TP
+.B bearer_caps
+Bearer capabilities: digital, analog, any. These are passed to the peer when
+the tunnel is set up to tell the capabilities of the network beyond the
+L2TP tunnel.
+.TP
+.B host_name
+Name to advertise to peer when setting up the tunnel. This name is passed
+in the HOST_NAME AVP and may be used by the peer to invoke local policies.
+Default=local system hostname.
+.TP
+.B secret
+Optional secret which is shared with tunnel peer. Must be specified when hide_avps is enabled.
+.TP
+.B auth_mode
+Tunnel authentication mode:-
+.br
+none - no authentication, unless secret is given
+.br
+simple - check peer hostname
+.br
+challenge - require tunnel secret
+.TP
+.B hide_avps
+Hide AVPs. Default OFF
+.TP
+.B pmtu_discovery
+Do Path MTU Discovery. Default=OFF. Not yet implemented.
+.TP
+.B trace_flags
+Trace flags, for debugging network problems
+.TP
+.B trace_flags_mask
+This is a bitmask of trace flags being set using values in
+\fItrace_flags\fP. When a bit is 1, the corresponding bit in the
+\fItrace_flags\fP parameter is applied. As a special case, a value 0
+in this field indicates that the entire \fItrace_flags\fP value is
+applied. This field is meaningless on a read.
+.TP
+.B use_udp_checksums
+Use UDP checksums in data frames. Default=ON
+.TP
+.B persist
+Marks the tunnel as persistent. Persistent tunnels attempt to restore
+themselves if the tunnel fails for some reason. Any locally created
+sessions in persistent tunnels are also restored if/when the tunnel
+reestablishes. The period at which a down persistent tunnel will
+attempt to reestablish is 5 minutes but this can be modified by the
+system
+.I tunnel_persist_pend_timeout
+parameter.
+.TP
+.B max_retries
+The maximum number of retransmits of unacknowledged control
+frames. Setting this too low may bring down a tunnel unecessarily if a
+brief network error occurs. Setting it too high delays the system
+responding to real network outages. Control messages are retransmitted
+on an exponentially increasing delay. Default=5.
+.TP
+.B rx_window_size
+Receive window size. This is the maximum number of control messages that the system will queue 
+for processing. It is the maximum number of unacknowledged messages. Must be 4 or greater.
+.TP
+.B tx_window_size
+Transmit window size. This is the preferred maximum number of unacknowledged messages that the local
+system will send to the peer. It can be reduced if the peer's
+.TP
+.B mtu
+MTU for all sessions in tunnel. Default=1460.
+.TP
+.B tunnel_name
+Administrative name of this tunnel.
+.TP
+.B peer_profile_name
+Name of peer profile which will be used for default values of the tunnel's parameters.
+.TP
+.B session_profile_name
+Name of session profile which will be used for default values of the tunnel's session parameters.
+.LP
+.IP "\fIModifiable parameters:-\fP"
+.LP
+.TP 24
+.B trace_flags
+Trace flags, for debugging network problems
+.TP
+.B trace_flags_mask
+This is a bitmask of trace flags being set using values in
+\fItrace_flags\fP. When a bit is 1, the corresponding bit in the
+\fItrace_flags\fP parameter is applied. As a special case, a value 0
+in this field indicates that the entire \fItrace_flags\fP value is
+applied. This field is meaningless on a read.
+.TP
+.B use_udp_checksums
+Use UDP checksums in data frames. Default=ON
+.TP
+.B persist
+Marks the tunnel as persistent. Persistent tunnels attempt to restore
+themselves if the tunnel fails for some reason. Any locally created
+sessions in persistent tunnels are also restored if/when the tunnel
+reestablishes. The period at which a down persistent tunnel will
+attempt to reestablish is 5 minutes but this can be modified by the
+system
+.I tunnel_persist_pend_timeout
+parameter.
+.TP
+.B hello_timeout
+Set timeout used for periodic L2TP Hello messages (in seconds). Hello
+messages are sent only if no data or control frames have been sent
+or received since the last Hello was sent. Default=60.
+.TP
+.B retry_timeout
+Retry timeout. The delay (in seconds) before sending the first retry of unacknowledged control frames. Default=1.
+.TP
+.B idle_timeout
+Idle timeout. The time (in seconds) that a tunnel will remain after
+its last session has been torn down. Default=0, tunnel remains
+forever when it has no sessions, until a local administrator or
+network request deletes it..
+.TP
+.B max_sessions
+Maximum number of sessions allowed on tunnel. Default=0 (limited only by max_sessions limit in system parameters).
+.TP
+.B mtu
+MTU for all sessions in tunnel. Default=1460.
+.TP
+.B tunnel_name
+Administrative name of this tunnel. This name may be used when referring to specific tunnel instances
+in MODIFY, SHOW and DELETE requests.
+.TP
+.B peer_profile_name
+Name of peer profile which will be used for default values of the tunnel's parameters.
+.TP
+.B session_profile_name
+Name of session profile which will be used for default values of the tunnel's session parameters.
+.TP
+.B ppp_profile_name
+Name of ppp profile which will be used for default values of the tunnel's session PPP parameters.
+.TP
+.B interface_name
+Name of system interface for the tunnel. Not currently used. Default=l2tpN where N is tunnel_id.
+.LP
+.IP "\fIRead-only parameters:-\fP"
+.LP
+.TP 24
+.B create_time
+Tells when the tunnel was created. It is returned as a text string to avoid problems with timezones
+in cases where remote management crosses timezones.
+.TP
+.B peer.framing_cap_sync
+The peer supports synchronous framing.
+.TP
+.B peer.framing_cap_async
+The peer supports asynchronous framing.
+.TP
+.B peer.bearer_cap_digital
+The peer supports digital bearers, e.g. T1/E1, ethernet..
+.TP
+.B peer.bearer_cap_analog
+The peer supports analog bearers, e.g. POTS modem.
+.TP
+.B peer.protocol_version_ver
+The protocol version reported by the peer. For information only.
+.TP
+.B peer.protocol_version_rev
+The protocol revision reported by the peer. For information only.
+.TP
+.B peer.rx_window_size
+The receive window size of the peer. The local system sets its
+transmit window size to be no larger than this value.
+.TP
+.B peer.firmware_revision
+The peer firmware revision. Vendor specific. For information only.
+.TP
+.B peer.host_name
+The hostname of the peer.
+.TP
+.B peer.vendor_name
+The peer's vendor name. For information only.
+.TP
+.B peer.tiebreaker<8>
+The tiebreaker value being used by the peer.
+.TP
+.B peer.result_code_result
+The last result code received from the peer. This is useful to 
+diagnose tunnel setup problems, assuming the peer implementation
+puts useful values in its messages. See RFC2661 for a list of
+result codes.
+.TP
+.B peer.result_code_error
+The last error code received from the peer. This is useful to 
+diagnose tunnel setup problems, assuming the peer implementation
+puts useful values in its messages. See RFC2661 for a list of
+error codes.
+.TP
+.B peer.result_code_message
+Sometimes the peer includes a text string in L2TP error messages
+to tell more information about the problem. If the peer includes
+such text when it sends an error, it will be stored here.
+.TP
+.B stats.retransmits
+The total number of retransmitted control messages in this tunnel.
+.TP
+.B stats.tx_zlbs
+The number of Zero Length Buffer (ZLB) messages transmitted through
+this tunnel. These messages are used to acknowledge the peer.
+.TP
+.B stats.tx_zlb_fails
+If a local error occurs in transmitting a ZLB, perhaps due to resource
+error, it is counted. 
+.TP
+.B stats.rx_zlbs
+The number of ZLB messages received from the peer in this tunnel.
+.TP
+.B stats.duplicate_pkt_discards
+The number of times a control frame was received which was a duplicate
+of one already processed. This might happen if the peer doesn't receive
+our ack and so resends it. If this counter increases, it means that
+some frames are getting lost in the network or the peer is buggy.
+.TP
+.B stats.rx_hellos
+The number of L2TP HELLO messages received in this tunnel.
+.TP
+.B stats.tx_hellos
+The number of L2TP HELLO messages transmitted in this tunnel.
+.TP
+.B stats.tx_hello_fails
+The number times we failed to transmit a HELLO message due to a local 
+resource failure.
+.TP
+.B stats.ns
+The current
+.I Next Send
+sequence number.
+.TP
+.B stats.nr
+The current
+.I Next Receive
+sequence number.
+.TP
+.B stats.peer_ns
+The
+.I Next Send
+sequence number last reported by the peer.
+.TP
+.B stats.peer_nr
+The
+.I Next Receive
+sequence number last reported by the peer.
+.TP
+.B stats.cwnd
+Congestion Window. This is used by the Slow Start algorithm
+specified in RFC2661. For information only.
+.TP
+.B stats.ssthresh
+Slow Start Threshold. This is used by the Slow Start algorithm
+specified in RFC2661. For information only.
+.TP
+.B stats.congpkt_acc
+Congested Packet Accumulator. This is used by the Slow Start algorithm
+specified in RFC2661. For information only.
+.TP
+.B stats.control_rx_oos_packets
+The total number of received control frames that were received
+out-of-sequence.
+.TP
+.B stats.control_rx_oos_discards
+The total number of received control frames that were received
+out-of-sequence and have been discarded because packet reordering was
+either disabled or could not be completed within the configured
+reorder_timeout. This might happen if packets are occasionally
+reordered across the network; it does not necessarily indicate a bug.
+.TP
+.B stats.control_rx_packets
+Total number of control frames received in this tunnel.
+.TP
+.B stats.control_rx_bytes
+Total number of control bytes received in this tunnel.
+.TP
+.B stats.control_tx_packets
+Total number of control frames transmitted in this tunnel.
+.TP
+.B stats.control_tx_bytes
+.TP
+Total number of control bytes transmitted in this tunnel.
+.B stats.data_rx_packets
+Total number of data frames received in this tunnel.
+.TP
+.B stats.data_rx_oos_packets
+The total number of received data frames that were received
+out-of-sequence.
+.TP
+.B stats.data_rx_oos_discards
+The total number of received data frames that were received
+out-of-sequence and have been discarded because packet reordering was
+either disabled or could not be completed within the configured
+reorder_timeout. This might happen if packets are occasionally
+reordered across the network; it does not necessarily indicate a bug.
+.TP
+.B stats.data_rx_bytes
+Total number of data bytes received in this tunnel.
+.TP
+.B stats.data_rx_errors
+Total number of data frames received and discarded in this tunnel.
+This counter might indicate local congestion.
+.TP
+.B stats.data_tx_packets
+Total number of data frames transmitted in this tunnel.
+.TP
+.B stats.data_tx_bytes
+Total number of data bytes transmitted in this tunnel.
+.TP
+.B stats.data_tx_errors
+Total number of data frames received and discarded in this tunnel.
+This counter might indicate local overload.
+.TP
+.B stats.using_ipsec
+Tells whether the tunnel is secured using IPSec. Note that IPSec
+policies are configured outside
+.BI openl2tpd .
+If IPSec configuration says to use IPSec for L2TP's UDP tunnel then
+this parameter will indicate so.
+.TP
+.B peer_tunnel_id
+The peer's tunnel_id.
+.TP
+.B created_by_admin
+Indicates whether this tunnel was created by a local administrator
+or by remote request from the network.
+.TP
+.B actual_tx_window_size
+The actual transmit window size, negotiated with the peer. 
+.TP
+.B num_sessions
+The number of sessions in this tunnel.
+.TP
+.B num_establish_retries
+A locally created tunnel will automatically try to reestablish
+itself if it fails. This is a count of the number of times it has
+retried. Not yet implemented, always 0.
+.TP
+.B state
+The current state of the tunnel. The tunnel states are documented in RFC2661.
+.TP
+.B tiebreaker<8>
+The tiebreaker we used when setting up the tunnel.
+.TP
+.B result_code_result
+If a local error has occured, its result_code is reported here.
+See peer.result_code_result.
+.TP
+.B result_code_error
+If a local error has occured, its error_code is reported here.
+See peer.result_code_error.
+.TP
+.B result_code_message
+If a local error has occured, its error_message text is reported here.
+See peer.result_code_message.
+.SS SESSION
+.nf
+Operations:-
+STATUS              SESSION_CREATE(struct session params)
+STATUS              SESSION_DELETE(u_short tunnel_id, optstring tunnel_name, 
+                                   u_short session_id, optstring session_name)
+STATUS              SESSION_MODIFY(struct session params)
+struct session      SESSION_GET(u_short tunnel_id, optstring tunnel_name, 
+                                u_short session_id, optstring session_name)
+struct session_list SESSION_LIST(void)
+.fi
+.PP 16
+Referenced by: tunnel_id / tunnel_name, session_id / session_name
+.LP
+.IP "\fICreate-only parameters:-\fP"
+.LP
+.TP 24
+.B tunnel_id
+Tunnel ID on which to create session.
+.TP
+.B tunnel_name
+Administrative name of tunnel on which to create session.
+.TP
+.B profile_name
+Name of session profile. If not specified, the profile name is inherited from 
+the tunnel or the peer profile.
+.TP
+.B ppp_profile_name
+Name of ppp profile to use for PPP parameters. If not specified, the 
+profile name is inherited from the tunnel or the peer profile.
+.TP
+.B session_name
+Administrative name of this session. This may be used in subsequent
+MODIFY or SHOW requests to reference the session.
+.TP
+.B trace_flags
+Trace flags, for debugging network problems
+.TP
+.B trace_flags_mask
+This is a bitmask of trace flags being set using values in
+\fItrace_flags\fP. When a bit is 1, the corresponding bit in the
+\fItrace_flags\fP parameter is applied. As a special case, a value 0
+in this field indicates that the entire \fItrace_flags\fP value is
+applied. This field is meaningless on a read.
+.TP
+.B sequencing_required
+Says whether the use of sequence numbers in the data channel is mandatory. If set,
+the receipt of data packets without sequence numbers causes the session to be torn down.
+.TP
+.B use_sequence_numbers
+Says to enable sequence numbers in the data channel if peer supports them.
+.TP
+.B no_ppp
+Says to not start PPP on the L2TP session.
+.TP
+.B reorder_timeout
+Timeout to wait for out-of-sequence packets before discarding. Data packet
+out-of-sequence reordering is not currently implemented.
+.TP
+.B session_type
+Session type: LAC Incoming (LAIC), LAC Outgoing (LAOC), LNS Incoming (LNIC), LNS Outgoing (LNOC).
+Default=derived from tunnel type.
+.TP
+.B priv_group_id
+Private group ID, used to separate this session into a named administrative group
+.TP
+.B interface_name
+PPP interface name. Not currently supported. Default=pppN
+.TP
+.B user_name
+PPP user name
+.TP
+.B user_password
+PPP user password
+.TP
+.B framing_type
+Framing type: sync, async or any. Default=any. These are passed to the peer when
+the session is set up to tell the capabilities of the network beyond the
+L2TP tunnel.
+.TP
+.B bearer_type
+Bearer type: digital, analog, any. Default=any. These are passed to the peer when
+the session is set up to tell the capabilities of the network beyond the
+L2TP tunnel.
+.TP
+.B minimum_bps
+Minimum bits/sec acceptable. Default=0 (don't care)
+.TP
+.B maximum_bps
+Maximum bits/sec required. Default=9 (no limit)
+.TP
+.B connect_speed
+Indicates transmit and receive connection speeds.
+.TP
+.B session_id
+Session ID of session. Default=system chooses random ID.
+.LP
+.IP "\fIModifiable parameters:-\fP"
+.LP
+.TP 24
+.B session_name
+Administrative name of this session. This name may be used when
+referring to specific session instances in MODIFY, SHOW and DELETE
+requests.
+.TP
+.B trace_flags
+Trace flags, for debugging network problems
+.TP
+.B trace_flags_mask
+This is a bitmask of trace flags being set using values in
+\fItrace_flags\fP. When a bit is 1, the corresponding bit in the
+\fItrace_flags\fP parameter is applied. As a special case, a value 0
+in this field indicates that the entire \fItrace_flags\fP value is
+applied. This field is meaningless on a read.
+.TP
+.B sequencing_required
+Says whether the use of sequence numbers in the data channel is mandatory. If set,
+the receipt of data packets without sequence numbers causes the session to be torn down.
+.TP
+.B use_sequence_numbers
+Says whether to enable sequence numbers in the data channel if peer supports them.
+.TP
+.B no_ppp
+Says to not start PPP on the L2TP session.
+.TP
+.B reorder_timeout
+Timeout to wait for out-of-sequence packets before discarding. Out-of-sequence packet reordering is not currently
+supported.
+.LP
+.IP "\fIRead-only parameters:-\fP"
+.LP
+.TP 24
+.B create_time
+Tells when the session was created. It is returned as a text string to avoid problems with timezones
+in cases where remote management crosses timezones.
+.TP
+.B stats.data_rx_packets
+Total number of data frames received from the peer in this session.
+.TP
+.B stats.data_rx_bytes
+Total number of data bytes received from the peer in this session.
+.TP
+.B stats.data_rx_errors
+Total number of data frames received but were discarded due to an error.
+This might be because of local congestion.
+.TP
+.B stats.data_tx_packets
+Total number of data frames transmitted to the peer in this session.
+.TP
+.B stats.data_tx_bytes
+Total number of data bytes transmitted to the peer in this session.
+.TP
+.B stats.data_tx_errors
+Total number of data frames that we tried to transmit to the peer in
+this session but were discarded due to an error.  This might be
+because of local system overload..
+.TP
+.B peer.result_code
+The last result code received from the peer. This is useful to 
+diagnose session setup problems, assuming the peer implementation
+puts useful values in its messages. See RFC2661 for a list of
+result codes.
+.TP
+.B peer.error_code
+The last error code received from the peer. This is useful to 
+diagnose session setup problems, assuming the peer implementation
+puts useful values in its messages. See RFC2661 for a list of
+error codes.
+.TP
+.B peer.error_message
+Sometimes the peer includes a text string in L2TP session error messages
+to tell more information about the problem. If the peer includes
+such text when it sends an error, it will be stored here.
+.TP
+.B peer.minimum_bps
+The minimum bits-per-sec (bps) requested by the peer. It can be used
+by the local system to allocate resources or even reject the tunnel setup
+if the local system cannot meet the requirement. 
+.B OpenL2TP
+currently does nothing with this information.
+.TP
+.B peer.maximum_bps
+The maximum bits-per-sec (bps) requested by the peer.  It can be used
+by the local system to allocate resources or even reject the tunnel
+setup if the local system cannot meet the requirement.
+.B OpenL2TP
+currently does nothing with this information.
+.TP
+.B peer.connect_speed
+The connection speed of the peer's physical interface.
+.B OpenL2TP
+currently does nothing with this information.
+.TP
+.B peer.rx_connect_speed
+If the physical interface is asymmetric (different upstream and downstream
+speeds), the peer's receive connection speed is indicated here and 
+peer.connect_speed indicates the transmit speed.
+.B OpenL2TP
+currently does nothing with this information.
+.TP
+.B peer.private_group_id
+The private group name that the peer has requested us to put the session into.
+.B OpenL2TP
+currently does nothing with this information.
+.TP
+.B peer.framing_type_sync
+Indicates whether the peer supports synchronous framing in this session.
+.TP
+.B peer.framing_type_async
+Indicates whether the peer supports asynchronous framing in this session.
+.TP
+.B peer.bearer_type_digital
+Indicates whether the peer supports digital bearers in this session.
+.TP
+.B peer.bearer_type_analog
+Indicates whether the peer supports analog bearers in this session.
+.TP
+.B peer.sequencing_required
+Indicates whether the peer requires sequence numbers in data packets that 
+it receives in this session.
+.TP
+.B peer.call_serial_number
+The call serial number assigned by the peer for this session. This is for information
+only. It is usually derived from a counter that is increased each time a session
+create is attempted.
+.TP
+.B peer.physical_channel_id
+A number used by the peer to reference the physical channel used for this session.
+.TP
+.B peer.calling_number
+The (telephone) number that the peer is calling. This can actually be any text string
+and is used to tell us how to place an outgoing call for forwarding the data on.
+.TP
+.B peer.called_number
+The (telephone) number that the peer was called from. This can actually be any text string
+and may be used by us to assign local policy or to do local authentication.
+.TP
+.B peer.sub_address
+Additional information to be used when making outgoing calls.
+.TP
+.B peer.q931_cause_code
+The Q931 cause code reported by the peer.
+.B OpenL2TP
+currently does nothing with this information.
+.TP
+.B peer.q931_cause_msg
+The Q931 cause message reported by the peer.
+.B OpenL2TP
+currently does nothing with this information.
+.TP
+.B peer.q931_advisory_msg
+The Q931 advisory message reported by the peer.
+.B OpenL2TP
+currently does nothing with this information.
+.TP
+.B peer.call_errors
+Call error statistics reported by the peer, including checksum errors and framing errors.
+.TP
+.B peer.send_accm
+.TP
+.B peer.recv_accm
+.TP
+.B peer_session_id
+The peer's session_id.
+.TP
+.B state
+The current session state, as specified in RFC2661. These states are different depending on
+session type: LAC Incoming Call, LAC Outgoing Call, LNS Incoming Call, LNS Outgoing Call.
+.TP
+.B created_by_admin
+Indicates whether this session was created by local request or remote network request.
+.TP
+.B call_serial_number
+A unique serial number assigned by the local system for this session. This number is reported 
+to the peer and may be used in conjunction with peer.call_serial_number to cross-reference
+the session.
+.TP
+.B physical_channel_id
+The physical channel assigned by the local system for this session.
+.PD
+.SS USER LIST
+.nf
+Operations:-
+struct user_list USER_LIST(void)
+.fi
+.PP
+Referenced by: none
+.LP
+.IP "\fICreate-only parameters:-\fP"
+.LP
+.IP "\fIModifiable parameters:-\fP"
+.LP
+.IP "\fIRead-only parameters:-\fP"
+.LP
+.TP 24
+.B user_name
+The PPP user name of the user.
+.TP
+.B tunnel_id
+The \fItunnel_id\fP of the L2TP tunnel over which the user's data is
+being carried. This may be used in additional RPC requests to obtain
+details about the tunnel.
+.TP
+.B session_id
+The \Isession_id\fP of the L2TP tunnel over which the user's data is
+being carried. This may be used with \fItunnel_id\fP in additional RPC
+requests to obtain details about the session.
+.TP
+.B create_time
+Tells when the user (session) was created. It is returned as a text
+string to avoid problems with timezones in cases where remote
+management crosses timezones.
+.TP
+.B created_by_admin
+Indicates whether this user was created by local administrative
+request or remote network request.
+.LP
+.SH LICENSE
+.PP
+.B OpenL2TP
+is dual-licensed. Users can choose to use the OpenL2TP software as an
+Open Source/Free Software product under the terms of the GNU General
+Public License (http://www.fsf.org/licenses/) or can purchase a
+commercial license from Katalix Systems Ltd.  All applications written
+to the interface specified in this document fall under this
+license. Any application, even a closed source application, is deemed
+to be a
+.I derived work
+of 
+.B OpenL2TP
+when it implements this interface. Users not wanting to have this restriction
+must purchase a commercial license. For details see the
+.I LICENSE
+file in the
+.B OpenL2TP
+source distribution. 
+.PD
+.SH FILES
+.TP 8
+.BI /usr/lib/openl2tp/l2tp_rpc.x
+is the RPC interface definition source file.
+It may be used to generate C or Java API source code using appropriate tools.
+.PD
+.SH "SEE ALSO"
+.br
+.BR l2tpconfig ( 1 ),
+.BR openl2tp ( 7 ),
+.BR openl2tpd ( 8 ),
+.BR rpc ( 3 ).

@@ -1,0 +1,4761 @@
+diff -rupN orig_busybox-1.27.2/include/libbb.h busybox-1.27.2/include/libbb.h
+--- orig_busybox-1.27.2/include/libbb.h	2017-07-19 01:20:58.000000000 +0800
++++ busybox-1.27.2/include/libbb.h	2017-08-30 09:50:59.943725861 +0800
+@@ -1767,6 +1767,11 @@ typedef struct procps_status_t {
+ #if ENABLE_FEATURE_TOP_SMP_PROCESS
+ 	int last_seen_on_cpu;
+ #endif
++#ifdef BRCM_CMS_BUILD
++	int cpu_affinity;
++	int priority;
++	int sched_policy;
++#endif
+ } procps_status_t;
+ /* flag bits for procps_scan(xx, flags) calls */
+ enum {
+diff -rupN orig_busybox-1.27.2/libbb/procps.c busybox-1.27.2/libbb/procps.c
+--- orig_busybox-1.27.2/libbb/procps.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/libbb/procps.c	2017-08-30 09:50:59.943725861 +0800
+@@ -8,7 +8,9 @@
+  *
+  * Licensed under GPLv2 or later, see file LICENSE in this source tree.
+  */
+-
++#ifdef BRCM_CMS_BUILD
++#include <sched.h>
++#endif
+ #include "libbb.h"
+ 
+ 
+@@ -52,6 +54,30 @@ static int get_cached(cache_t *cp, uid_t
+ }
+ #endif
+ 
++// brcm begin
++static void bcmHidePassword(char *command) {
++	char *ptr = NULL;
++	char * begin, *end;
++	int len = 0;
++
++	/* pppd -i .....  -p password */
++	if ((ptr = strstr(command,"pppd")) != NULL) {
++		if (!strstr(ptr, "-p"))
++			return;
++		begin = strstr(ptr,"-p") + 3;
++		end = strchr(begin,' ');
++		if (end == NULL)
++			len = strlen(begin);
++		else
++			len = end - begin;
++		while (len > 0) {
++			*begin = '*';
++			begin++; len--;
++		}
++	}
++}
++// brcm end
++
+ static char* get_cached(cache_t *cp, uid_t id,
+ 			char* FAST_FUNC x2x_utoa(uid_t id))
+ {
+@@ -448,7 +474,12 @@ procps_status_t* FAST_FUNC procps_scan(p
+ 			cp = skip_fields(cp, 6); /* tpgid, flags, min_flt, cmin_flt, maj_flt, cmaj_flt */
+ 			sp->utime = fast_strtoul_10(&cp);
+ 			sp->stime = fast_strtoul_10(&cp);
++#ifdef BRCM_CMS_BUILD
++			cp = skip_fields(cp, 2); /* cutime, cstime */
++			sp->priority = (int) fast_strtol_10(&cp);
++#else
+ 			cp = skip_fields(cp, 3); /* cutime, cstime, priority */
++#endif
+ 			tasknice = fast_strtol_10(&cp);
+ 			cp = skip_fields(cp, 2); /* timeout, it_real_value */
+ 			sp->start_time = fast_strtoul_10(&cp);
+@@ -469,6 +500,17 @@ procps_status_t* FAST_FUNC procps_scan(p
+ #if ENABLE_FEATURE_PS_ADDITIONAL_COLUMNS
+ 			sp->niceness = tasknice;
+ #endif
++#ifdef BRCM_CMS_BUILD
++			{
++				// see taskset.c
++				cpu_set_t mask;
++				sp->cpu_affinity = 0;
++				if (sched_getaffinity(pid, sizeof(mask), &mask) >= 0) {
++					if (CPU_ISSET(0, &mask)) sp->cpu_affinity |= 1;
++					if (CPU_ISSET(1, &mask)) sp->cpu_affinity |= 2;
++				}
++			}
++#endif            
+ 			sp->state[1] = ' ';
+ 			sp->state[2] = ' ';
+ 			s_idx = 1;
+@@ -595,6 +637,17 @@ void FAST_FUNC read_cmdline(char *buf, i
+ 		if (base[0] == '-') /* "-sh" (login shell)? */
+ 			base++;
+ 
++		// brcm begin
++		if ( strncmp(comm,"pppd",4)==0)
++			bcmHidePassword(buf);
++
++                if ( strncmp(buf, "voice", 5) == 0 ||
++			strncmp(buf, "dectd", 5) == 0 )
++                {
++                	strncpy(buf, comm, col);
++                }
++		// brcm end
++
+ 		/* If comm differs from argv0, prepend "{comm} ".
+ 		 * It allows to see thread names set by prctl(PR_SET_NAME).
+ 		 */
+diff -rupN orig_busybox-1.27.2/Makefile busybox-1.27.2/Makefile
+--- orig_busybox-1.27.2/Makefile	2017-08-17 18:58:23.000000000 +0800
++++ busybox-1.27.2/Makefile	2017-08-30 09:50:59.947725900 +0800
+@@ -328,6 +328,9 @@ LDLIBS		:=
+ KERNELRELEASE = $(shell cat .kernelrelease 2> /dev/null)
+ KERNELVERSION = $(VERSION).$(PATCHLEVEL).$(SUBLEVEL)$(EXTRAVERSION)
+ 
++# brcm: avoid rebuild busybox when there is no config changed.
++BUSYBOX_CONFDIFF := $(shell if [ -e ./.config.old ]; then cmp -i 106 ./.config ./.config.old; else echo yes; fi)
++
+ export	VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION \
+ 	ARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC \
+ 	CPP AR NM STRIP OBJCOPY OBJDUMP MAKE AWK GENKSYMS PERL UTS_MACHINE \
+@@ -361,8 +364,14 @@ scripts/basic/%: scripts_basic ;
+ 
+ # This target generates Kbuild's and Config.in's from *.c files
+ PHONY += gen_build_files
++ifneq ($(strip $(BUSYBOX_CONFDIFF)),)
+ gen_build_files: $(wildcard $(srctree)/*/*.c) $(wildcard $(srctree)/*/*/*.c)
+ 	$(Q)$(srctree)/scripts/gen_build_files.sh $(srctree) $(objtree)
++else
++gen_build_files: 
++	@echo "skipping busybox: gen_build_files.sh"
++endif
++
+ 
+ # bbox: we have helpers in applets/
+ # we depend on scripts_basic, since scripts/basic/fixdep
+diff -rupN orig_busybox-1.27.2/Makefile.flags busybox-1.27.2/Makefile.flags
+--- orig_busybox-1.27.2/Makefile.flags	2017-07-19 01:14:50.000000000 +0800
++++ busybox-1.27.2/Makefile.flags	2017-08-30 09:50:59.947725900 +0800
+@@ -81,6 +81,44 @@ CFLAGS += $(call cc-option,-fsanitize=le
+ CFLAGS += $(call cc-option,-fsanitize=undefined,)
+ endif
+ 
++# brcm begin
++CFLAGS += -I$(BCM_FSBUILD_DIR)/public/include
++CFLAGS += -I$(BUILD_DIR)/userspace/public/include -I$(BUILD_DIR)/userspace/public/include/$(OALDIR)
++CFLAGS += -I$(BUILD_DIR)/shared/opensource/include/bcm963xx
++CFLAGS += -DTFTPD $(CMS_COMPILE_FLAGS) $(CMS_INCLUDE_PATHS)
++CFLAGS += $(CMS_LOG_FLAGS)
++CFLAGS += -I$(TOOLCHAIN)/include
++CFLAGS += $(BRCM_WERROR_CFLAGS)
++CFLAGS += -I$(INC_KERNEL_BASE)
++LDFLAGS += -Wl,-L$(TOOLCHAIN)/lib
++LDFLAGS += -Wl,-L$(TOOLCHAIN)/mips-linux/lib -L$(INSTALL_DIR)/lib -L$(INSTALL_DIR)/lib/public
++
++LDLIBS +=  $(BRCM_LIBS)
++
++ifneq ($(strip $(DESKTOP_LINUX)),)
++CFLAGS += -DDESKTOP_LINUX $(BCM_LD_FLAGS)
++# On Fedora 7, these ICMP6 symbols are not defined, so define them in the Makefile
++# so we don't have to change the .c file.
++CFLAGS += -DICMP6_MEMBERSHIP_QUERY=130 -DICMP6_MEMBERSHIP_REPORT=131 -DICMP6_MEMBERSHIP_REDUCTION=132
++LDFLAGS += $(BCM_LD_FLAGS)
++LDLIBS += rt
++endif
++
++ifeq ($(strip $(CONFIG_FEATURE_WGET_HTTPS)),y)
++CFLAGS += -I$(BUILD_DIR)/userspace/public/libs/openssl/include
++LDLIBS += ssl crypto gcc_s
++endif
++
++ifeq ($(strip $(BUILD_SNMP_CHINA_TELECOM_CPE_MIB)),y)
++	CFLAGS += -DCPE_DSL_MIB
++endif
++
++ifeq ($(strip $(BCM_SPEEDYGET)),y)
++	CFLAGS += -DCONFIG_BCM_SPEEDYGET
++endif
++
++# brcm end
++
+ # If arch/$(ARCH)/Makefile did not override it (with, say, -fPIC)...
+ ARCH_FPIC ?= -fpic
+ ARCH_FPIE ?= -fpie
+diff -rupN orig_busybox-1.27.2/miscutils/Config.src busybox-1.27.2/miscutils/Config.src
+--- orig_busybox-1.27.2/miscutils/Config.src	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/miscutils/Config.src	2017-08-30 09:50:59.947725900 +0800
+@@ -7,4 +7,12 @@ menu "Miscellaneous Utilities"
+ 
+ INSERT
+ 
++# brcm begin
++config SYSINFO
++	bool "sysinfo"
++	default y
++	help
++	  The system status report utility.
++# brcm end
++
+ endmenu
+diff -rupN orig_busybox-1.27.2/miscutils/sysinfo.c busybox-1.27.2/miscutils/sysinfo.c
+--- orig_busybox-1.27.2/miscutils/sysinfo.c	1970-01-01 08:00:00.000000000 +0800
++++ busybox-1.27.2/miscutils/sysinfo.c	2017-08-30 09:50:59.947725900 +0800
+@@ -0,0 +1,116 @@
++/* vi: set sw=4 ts=4: */
++/*
++ * Licensed under GPLv2 or later, see file LICENSE in this source tree.
++ *
++ */
++
++//config:config SYSINFO
++//config:	bool "sysinfo"
++//config:	default y
++//config:	select PLATFORM_LINUX
++//config:	help
++//config:	  The system status report utility.
++
++//applet:IF_SYSINFO(APPLET(sysinfo, BB_DIR_SBIN, BB_SUID_DROP))
++
++//kbuild:lib-$(CONFIG_SYSINFO)  += sysinfo.o
++
++//usage:#define sysinfo_trivial_usage
++//usage:       "System status report"
++//usage:#define sysinfo_full_usage "\n\n"
++//usage:       "System status report\n"
++//usage:     "\n"
++
++#include <stdio.h>
++#include <errno.h>
++#include <stdlib.h>
++#include <time.h>
++#include <sys/sysinfo.h>
++#include "busybox.h"
++
++static const int FSHIFT = 16;              /* nr of bits of precision */
++#define FIXED_1         (1<<FSHIFT)     /* 1.0 as fixed-point */
++#define LOAD_INT(x) ((x) >> FSHIFT)
++#define LOAD_FRAC(x) LOAD_INT(((x) & (FIXED_1-1)) * 100)
++
++static int sysinfo_mem(void)
++{
++	struct sysinfo info;
++	sysinfo(&info);
++
++	/* Kernels prior to 2.4.x will return info.mem_unit==0, so cope... */
++	if (info.mem_unit==0) {
++		info.mem_unit=1;
++	}
++	info.mem_unit*=1024;
++
++	/* TODO:  Make all this stuff not overflow when mem >= 4 Gib */
++	info.totalram/=info.mem_unit;
++	info.freeram/=info.mem_unit;
++	info.totalswap/=info.mem_unit;
++	info.freeswap/=info.mem_unit;
++	info.sharedram/=info.mem_unit;
++	info.bufferram/=info.mem_unit;
++
++	printf("%6s%13s%13s%13s%13s%13s\n", "", "total", "used", "free",
++			"shared", "buffers");
++
++	printf("%6s%13ld%13ld%13ld%13ld%13ld\n", "Mem:", info.totalram,
++			info.totalram-info.freeram, info.freeram,
++			info.sharedram, info.bufferram);
++
++	printf("%6s%13ld%13ld%13ld\n", "Swap:", info.totalswap,
++			info.totalswap-info.freeswap, info.freeswap);
++
++	printf("%6s%13ld%13ld%13ld\n", "Total:", info.totalram+info.totalswap,
++			(info.totalram-info.freeram)+(info.totalswap-info.freeswap),
++			info.freeram+info.freeswap);
++	return EXIT_SUCCESS;
++}
++
++
++
++static int sysinfo_uptime(void)
++{
++	int updays, uphours, upminutes;
++	struct sysinfo info;
++	struct tm *current_time;
++	time_t current_secs;
++
++	time(&current_secs);
++	current_time = localtime(&current_secs);
++
++	sysinfo(&info);
++
++    printf("Number of processes: %d\n", info.procs);
++	printf(" %2d:%02d%s  up ",
++			current_time->tm_hour%12 ? current_time->tm_hour%12 : 12,
++			current_time->tm_min, current_time->tm_hour > 11 ? "pm" : "am");
++	updays = (int) info.uptime / (60*60*24);
++	if (updays)
++		printf("%d day%s, ", updays, (updays != 1) ? "s" : "");
++	upminutes = (int) info.uptime / 60;
++	uphours = (upminutes / 60) % 24;
++	upminutes %= 60;
++	if(uphours)
++		printf("%2d:%02d, ", uphours, upminutes);
++	else
++		printf("%d min, ", upminutes);
++
++	printf("\nload average: 1 min:%ld.%02ld, 5 min:%ld.%02ld, 15 min:%ld.%02ld\n",
++			LOAD_INT(info.loads[0]), LOAD_FRAC(info.loads[0]),
++			LOAD_INT(info.loads[1]), LOAD_FRAC(info.loads[1]),
++			LOAD_INT(info.loads[2]), LOAD_FRAC(info.loads[2]));
++
++	return EXIT_SUCCESS;
++}
++
++extern int sysinfo_main(int argc UNUSED_PARAM, char **argv UNUSED_PARAM) MAIN_EXTERNALLY_VISIBLE;
++extern int sysinfo_main(int argc UNUSED_PARAM, char **argv UNUSED_PARAM)
++{
++    sysinfo_uptime();
++    sysinfo_mem();
++
++    return EXIT_SUCCESS;
++
++}
+diff -rupN orig_busybox-1.27.2/networking/ftpgetput.c busybox-1.27.2/networking/ftpgetput.c
+--- orig_busybox-1.27.2/networking/ftpgetput.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/networking/ftpgetput.c	2017-08-30 09:50:59.947725900 +0800
+@@ -73,6 +73,13 @@
+ 
+ #include "libbb.h"
+ #include "common_bufsiz.h"
++// brcm begin
++#include "cms_util.h"
++#include "cms_msg.h"
++#include "bcm_imgutil_api.h"
++
++static IMGUTIL_HANDLE imgUtilHandle = NULL;
++// brcm end
+ 
+ struct globals {
+ 	const char *user;
+@@ -81,6 +88,7 @@ struct globals {
+ 	FILE *control_stream;
+ 	int verbose_flag;
+ 	int do_continue;
++	int ftp_upgrade; // brcm
+ 	char buf[4]; /* actually [BUFSZ] */
+ } FIX_ALIASING;
+ #define G (*(struct globals*)bb_common_bufsiz1)
+@@ -91,12 +99,32 @@ enum { BUFSZ = COMMON_BUFSIZE - offsetof
+ #define control_stream (G.control_stream)
+ #define verbose_flag   (G.verbose_flag  )
+ #define do_continue    (G.do_continue   )
++#define ftp_upgrade    (G.ftp_upgrade   ) // brcm
+ #define buf            (G.buf           )
+ #define INIT_G() do { \
+ 	setup_common_bufsiz(); \
+ 	BUILD_BUG_ON(sizeof(G) > COMMON_BUFSIZE); \
+ } while (0)
+ 
++// brcm begin
++#define CPE_FTP_OPER_STATUS_NORMAL           1
++#define CPE_FTP_OPER_STATUS_CONNECT_SUCCESS  2
++#define CPE_FTP_OPER_STATUS_CONECT_FAILURE   3
++#define CPE_FTP_OPER_STATUS_DOWNLOADING      4
++#define CPE_FTP_OPER_STATUS_DOWNLOAD_SUCCESS 5
++#define CPE_FTP_OPER_STATUS_DOWNLOAD_FAILURE 6
++#define CPE_FTP_OPER_STATUS_SAVING           7
++#define CPE_FTP_OPER_STATUS_SAVE_FAILURE     8
++#define CPE_FTP_OPER_STATUS_UPGRADE_SUCCESS  9
++#define CPE_FTP_OPER_STATUS_UPGRADE_FAIL     10
++static int glbStartTime;
++static int glbTotal_size = 0;
++static int glbRead_total = 0;
++
++static void *msgHandle=NULL;
++
++// brcm end
++
+ 
+ static void ftp_die(const char *msg) NORETURN;
+ static void ftp_die(const char *msg)
+@@ -235,6 +263,146 @@ static int pump_data_and_QUIT(int from,
+ 	return EXIT_SUCCESS;
+ }
+ 
++// brcm begin
++static void ftp_log(int status, int totalSize, int doneSize, int elapseTime)
++{
++	static FILE *ftpFile = NULL;    // store ftp statistics
++	ftpFile = fopen ("/var/ftpStats", "w");
++	if (ftpFile == NULL)
++	{
++		bb_error_msg_and_die("ftp error: failed to open file\n");
++	}
++
++	fprintf(ftpFile, "operStatus = %d totalSize = %d doneSize = %d elapseTime = %d\n", 
++		status, totalSize/1024, doneSize/1024, elapseTime);
++	fclose(ftpFile);
++}
++static int myWrite(char *inBuf, int inBufLen)
++{
++	int byteCount;
++
++	if (imgUtilHandle == NULL)
++	{
++		imgutil_open_parms_t openParams;
++
++		memset(&openParams, 0x0, sizeof(imgutil_open_parms_t));
++		openParams.clientCtxP = msgHandle;
++		openParams.options = CMS_IMAGE_WR_OPT_NO_REBOOT;
++		openParams.clientValidateFuncP = cmsImg_ConfigFileValidate;
++		openParams.clientFlashFuncP = cmsImg_ConfigFileWrite;
++
++		imgUtilHandle = img_util_open(&openParams);
++		if (imgUtilHandle == NULL)
++		{
++			bb_error_msg("img_util_open() failed.");   
++			return -1;
++		}
++	}
++
++	byteCount = img_util_write(imgUtilHandle, (UINT8*)inBuf, inBufLen);
++	if ((byteCount < 0) || (byteCount != (int)inBufLen))
++	{
++		bb_error_msg("img_util_write() failed, towrite=%d, ret=%d", inBufLen, byteCount);
++        	return -1;
++	}
++
++	return inBufLen;
++}
++
++// from copyfd.c function bb_full_fd_action
++static size_t brcm_get_ftp_data(int src_fd, const size_t size)
++{
++	size_t read_total = 0;
++	struct timeval tim;
++	int ftp_status = CPE_FTP_OPER_STATUS_NORMAL;
++	FILE *ftpPid = NULL;
++	int elapseTime, currentTime;
++
++	RESERVE_CONFIG_BUFFER(buffer,BUFSIZ);
++
++	gettimeofday(&tim, NULL);
++	glbStartTime = (int) tim.tv_sec;
++
++	// init ftp log
++	ftp_log(ftp_status, (int)size, 0,  0);
++
++	if ((ftpPid = fopen ("/var/ftpPid", "w")) != NULL) 
++	{
++		fprintf(ftpPid,"%d\n",getpid()); (void)fclose(ftpPid);
++	}
++	else 
++	{
++		bb_perror_msg(bb_msg_write_error);
++		return read_total;
++	}
++	
++	glbTotal_size = (int) size;
++	currentTime = glbStartTime;
++
++	while ((size == 0) || (read_total < size)) 
++	{
++		size_t read_try;
++		ssize_t read_actual;
++
++		if ((size == 0) || (size - read_total > BUFSIZ)) 
++		{
++			read_try = BUFSIZ;
++		} 
++		else 
++		{
++			read_try = size - read_total;
++		}
++
++		read_actual = safe_read(src_fd, buffer, read_try);
++		if (read_actual > 0) 
++		{
++			if (myWrite(buffer, (int)read_actual) != (int) read_actual) 
++			{
++				bb_perror_msg(bb_msg_write_error);	/* match Read error below */
++				break;
++			}
++		}
++		else if (read_actual == 0) 
++		{
++			if (size) 
++			{
++				bb_error_msg("Unable to read all data");
++			}
++			break;
++		} 
++		else 
++		{
++			/* read_actual < 0 */
++			bb_perror_msg("Read error");
++			break;
++		}
++
++		read_total += read_actual;
++		glbRead_total = (int) read_total;
++		gettimeofday(&tim, NULL);
++		if (currentTime < (int) tim.tv_sec) 
++		{
++			currentTime = (int) tim.tv_sec;
++			ftp_log(CPE_FTP_OPER_STATUS_DOWNLOADING, glbTotal_size, glbRead_total, (currentTime - glbStartTime));
++		}
++	}
++	
++	RELEASE_CONFIG_BUFFER(buffer);
++
++	gettimeofday(&tim, NULL);
++	elapseTime = (int) tim.tv_sec - glbStartTime;
++	printf(" *** received ftp size = %d, need size = %d and %d seconds elapsed\n", read_total, size, elapseTime);
++	if (read_total != size) 
++	{
++		ftp_log(CPE_FTP_OPER_STATUS_DOWNLOAD_FAILURE, (int)size, read_total, elapseTime);
++		return(read_total);
++	}
++
++	return(read_total);
++}
++// brcm end
++
++
+ #if !ENABLE_FTPGET
+ int ftp_receive(const char *local_path, char *server_path);
+ #else
+@@ -244,6 +412,10 @@ int ftp_receive(const char *local_path,
+ 	int fd_data;
+ 	int fd_local = -1;
+ 	off_t beg_range = 0;
++// brcm begin
++	off_t filesize = 0;
++	CmsRet ret;
++// brcm end
+ 
+ 	/* connect to the data socket */
+ 	fd_data = xconnect_ftpdata();
+@@ -251,6 +423,11 @@ int ftp_receive(const char *local_path,
+ 	if (ftpcmd("SIZE", server_path) != 213) {
+ 		do_continue = 0;
+ 	}
++	else
++	{
++		// filesize = XATOOFF(buf + 4);
++		filesize = strtoul(buf+4, NULL, 0);
++	}
+ 
+ 	if (LONE_DASH(local_path)) {
+ 		fd_local = STDOUT_FILENO;
+@@ -275,21 +452,97 @@ int ftp_receive(const char *local_path,
+ 		if (ftpcmd(buf, NULL) != 350) {
+ 			do_continue = 0;
+ 		}
++		else 
++		{
++			filesize -= beg_range;
++		}
+ 	}
+ 
+ 	if (ftpcmd("RETR", server_path) > 150) {
+ 		ftp_die("RETR");
+ 	}
+ 
+-	/* create local file _after_ we know that remote file exists */
+-	if (fd_local == -1) {
+-		fd_local = xopen(local_path,
+-			do_continue ? (O_APPEND | O_WRONLY)
+-			            : (O_CREAT | O_TRUNC | O_WRONLY)
+-		);
+-	}
++// brcm begin
++	if (ftp_upgrade)
++	{
++		char connIfName[CMS_IFNAME_LENGTH]={0};
++
++		if (filesize == 0) 
++		{       // not getting it from SIZE command, try it on RETR buf
++			char *ptr = NULL, *ptr2 = NULL;
++			ptr = strchr(buf, '(');
++			if (ptr) 
++			{
++				ptr2 = strchr(ptr, ' ');
++				if (ptr2)
++				{
++					*ptr2 = '\0';
++				}
++				filesize = strtoul(ptr+1, NULL, 0);
++			}
++			else
++				bb_error_msg("No size info in RETR command\n");
++		}
++
++
+ 
+-	return pump_data_and_QUIT(fd_data, fd_local);
++		/*
++		* There is a big image coming.  tftp is about to malloc a big buffer
++		* and start filling it.  Notify smd so it can do killAllApps or
++		* something to make memory available on the modem.
++		*/
++		if ((ret = cmsImg_saveIfNameFromSocket(fd_data, connIfName)) != CMSRET_SUCCESS)
++		{
++			cmsLog_error("could not get ifName for socket %d, ret=%d", fd_data, ret);
++			/*
++			* We can still go on even if we cannot get connIfName.  smd is able to
++			* handle a blank connIfName.
++			*/
++		}
++	
++		cmsImg_sendLoadStartingMsg(msgHandle, connIfName);
++
++
++		/* get the file */
++		if (brcm_get_ftp_data(fd_data, filesize) != filesize) 
++		{
++			img_util_abort(imgUtilHandle);
++			bb_error_msg("img_util_abort() abort");
++			exit(EXIT_FAILURE);
++		}
++
++		/* close it all down */
++		close(fd_data);
++
++		if (ftpcmd(NULL, NULL) != 226) 
++		{
++			ftp_die(NULL);
++		}
++
++	 	ftpcmd("QUIT", NULL);
++	
++		bb_error_msg("ftp image succeeds\n");
++	
++		img_util_close(imgUtilHandle, NULL, NULL);
++		bb_error_msg("img_util_close() ok, reboot");
++		cmsUtil_sendRequestRebootMsg(msgHandle);
++	
++		cmsImg_sendLoadDoneMsg(msgHandle);
++
++		cmsMsg_cleanup(&msgHandle);
++		return(EXIT_SUCCESS);
++	}else{
++// brcm end
++		/* create local file _after_ we know that remote file exists */
++		if (fd_local == -1) {
++			fd_local = xopen(local_path,
++				do_continue ? (O_APPEND | O_WRONLY)
++				            : (O_CREAT | O_TRUNC | O_WRONLY)
++			);
++		}
++		cmsMsg_cleanup(&msgHandle); // brcm
++		return pump_data_and_QUIT(fd_data, fd_local);
++	} // brcm
+ }
+ #endif
+ 
+@@ -338,6 +591,10 @@ int ftpgetput_main(int argc, char **argv
+ int ftpgetput_main(int argc UNUSED_PARAM, char **argv)
+ {
+ 	const char *port = "ftp";
++// brcm begin
++	CmsLogLevel logLevel = DEFAULT_LOG_LEVEL; 
++	CmsRet ret;
++// brcm end
+ 	/* socket to ftp server */
+ 
+ #if ENABLE_FTPPUT && !ENABLE_FTPGET
+@@ -358,15 +615,26 @@ int ftpgetput_main(int argc UNUSED_PARAM
+ 	user = "anonymous";
+ 	password = "busybox@";
+ 
++// brcm begin
++	cmsLog_init(EID_FTP);
++	cmsLog_setLevel(logLevel);
++
++	if ((ret = cmsMsg_init(EID_FTP, &msgHandle)) != CMSRET_SUCCESS)
++	{
++		printf("failed to open comm link with smd, tftp failed.");
++		return 0;
++	}
++// brcm end
++
+ 	/*
+ 	 * Decipher the command line
+ 	 */
+ #if ENABLE_FEATURE_FTPGETPUT_LONG_OPTIONS
+ 	applet_long_options = ftpgetput_longopts;
+ #endif
+-	opt_complementary = "-2:vv:cc"; /* must have 2 to 3 params; -v and -c count */
+-	getopt32(argv, "cvu:p:P:", &user, &password, &port,
+-					&verbose_flag, &do_continue);
++	opt_complementary = "-2:vv:cc:ff"; /* must have 2 to 3 params; -v and -c count */
++        getopt32(argv, "cvfu:p:P:", &user, &password, &port,
++                                        &verbose_flag, &do_continue, &ftp_upgrade);
+ 	argv += optind;
+ 
+ 	/* We want to do exactly _one_ DNS lookup, since some
+diff -rupN orig_busybox-1.27.2/networking/interface.c busybox-1.27.2/networking/interface.c
+--- orig_busybox-1.27.2/networking/interface.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/networking/interface.c	2017-08-30 09:50:59.947725900 +0800
+@@ -35,6 +35,11 @@
+ #include "inet_common.h"
+ #include <net/if.h>
+ #include <net/if_arp.h>
++
++
++#define _LINUX_IF_H
++#include <bcm_local_kernel_include/linux/netdevice.h>
++
+ #ifdef HAVE_NET_ETHERNET_H
+ # include <net/ethernet.h>
+ #endif
+@@ -52,6 +57,7 @@
+ #endif
+ 
+ #define _PATH_PROCNET_DEV               "/proc/net/dev"
++#define _PATH_PROCNET_DEVEXTSTATS       "/proc/net/dev_extstats"
+ #define _PATH_PROCNET_IFINET6           "/proc/net/if_inet6"
+ 
+ #ifdef HAVE_AFINET6
+@@ -295,6 +301,18 @@ struct user_net_device_stats {
+ 	unsigned long rx_dropped;	/* no space in linux buffers    */
+ 	unsigned long tx_dropped;	/* no space available in linux  */
+ 	unsigned long rx_multicast;	/* multicast packets received   */
++
++#if defined(BRCM_CMS_BUILD)
++    unsigned long long  tx_multicast_packets;  /* multicast packets transmitted */
++    unsigned long long  rx_multicast_bytes;  /* multicast bytes recieved */ 
++    unsigned long long  tx_multicast_bytes;  /* multicast bytes transmitted */
++    unsigned long long  rx_unicast_packets;  /* unicast packets recieved */
++    unsigned long long  tx_unicast_packets;  /* unicast packets transmitted */
++    unsigned long long  rx_broadcast_packets;  /* broadcast packets recieved */
++    unsigned long long  tx_broadcast_packets;  /* broadcast packets transmitted */
++    unsigned long long  rx_unknown_packets;  /* unknown protocol packets recieved */
++#endif
++
+ 	unsigned long rx_compressed;
+ 	unsigned long tx_compressed;
+ 	unsigned long collisions;
+@@ -331,6 +349,11 @@ struct interface {
+ 	char hwaddr[32];                        /* HW address            */
+ 	int statistics_valid;
+ 	struct user_net_device_stats stats;     /* statistics            */
++
++#if defined(BRCM_CMS_BUILD)
++    int procnetdev_vsn;                     /* Format of statistics */
++    int procnetdev_num_fields_read;         /* Number of statistics fields parsed */
++#endif
+ 	int keepalive;                          /* keepalive value for SLIP */
+ 	int outfill;                            /* outfill value for SLIP */
+ };
+@@ -441,53 +464,112 @@ static char *get_name(char *name, char *
+ static const char *const ss_fmt[] = {
+ 	"%n%llu%u%u%u%u%n%n%n%llu%u%u%u%u%u",
+ 	"%llu%llu%u%u%u%u%n%n%llu%llu%u%u%u%u%u",
+-	"%llu%llu%u%u%u%u%u%u%llu%llu%u%u%u%u%u%u"
++	"%llu%llu%u%u%u%u%u%u%llu%llu%u%u%u%u%u%u",
++	
++#if defined(BRCM_CMS_BUILD)
++    /* Extended statstics format */
++    "%llu%llu%u%u%u%u%u%u%llu%llu%u%u%u%u%u%u%llu%llu%llu%llu%llu%llu%llu%llu"
++#endif
+ };
+ #else
+ static const char *const ss_fmt[] = {
+ 	"%n%llu%lu%lu%lu%lu%n%n%n%llu%lu%lu%lu%lu%lu",
+ 	"%llu%llu%lu%lu%lu%lu%n%n%llu%llu%lu%lu%lu%lu%lu",
+-	"%llu%llu%lu%lu%lu%lu%lu%lu%llu%llu%lu%lu%lu%lu%lu%lu"
++	"%llu%llu%lu%lu%lu%lu%lu%lu%llu%llu%lu%lu%lu%lu%lu%lu",
++
++#if defined(BRCM_CMS_BUILD)
++    /* Extended statstics format */
++	"%llu%llu%lu%lu%lu%lu%lu%lu%llu%llu%lu%lu%lu%lu%lu%lu%llu%llu%llu%llu%llu%llu%llu%llu"
++#endif
+ };
+ 
+ #endif
+ 
++#if defined(BRCM_CMS_BUILD)
++#define NUM_SS_FMT_FIELDS_BASE 16       /* Fields parsed in base format */
++#define NUM_SS_FMT_FIELDS_EXTSTATS 24   /* Fields parsed in extended format */
++#endif
++
+ static void get_dev_fields(char *bp, struct interface *ife, int procnetdev_vsn)
+ {
++    /* Clear the statistics structure */
+ 	memset(&ife->stats, 0, sizeof(struct user_net_device_stats));
+ 
+-	sscanf(bp, ss_fmt[procnetdev_vsn],
+-		   &ife->stats.rx_bytes, /* missing for 0 */
+-		   &ife->stats.rx_packets,
+-		   &ife->stats.rx_errors,
+-		   &ife->stats.rx_dropped,
+-		   &ife->stats.rx_fifo_errors,
+-		   &ife->stats.rx_frame_errors,
+-		   &ife->stats.rx_compressed, /* missing for <= 1 */
+-		   &ife->stats.rx_multicast, /* missing for <= 1 */
+-		   &ife->stats.tx_bytes, /* missing for 0 */
+-		   &ife->stats.tx_packets,
+-		   &ife->stats.tx_errors,
+-		   &ife->stats.tx_dropped,
+-		   &ife->stats.tx_fifo_errors,
+-		   &ife->stats.collisions,
+-		   &ife->stats.tx_carrier_errors,
+-		   &ife->stats.tx_compressed /* missing for <= 1 */
+-		   );
+-
+-	if (procnetdev_vsn <= 1) {
+-		if (procnetdev_vsn == 0) {
+-			ife->stats.rx_bytes = 0;
+-			ife->stats.tx_bytes = 0;
+-		}
+-		ife->stats.rx_multicast = 0;
+-		ife->stats.rx_compressed = 0;
+-		ife->stats.tx_compressed = 0;
+-	}
++#if defined(BRCM_CMS_BUILD)
++    /* Record what format is being used (so we can print it out appropriately) */
++    ife->procnetdev_vsn = procnetdev_vsn;
++#endif
++    
++    /* Parse depending on the format of the file */
++    if(procnetdev_vsn < 3) {
++
++    	sscanf(bp, ss_fmt[procnetdev_vsn],
++    		   &ife->stats.rx_bytes, /* missing for 0 */
++    		   &ife->stats.rx_packets,
++    		   &ife->stats.rx_errors,
++    		   &ife->stats.rx_dropped,
++    		   &ife->stats.rx_fifo_errors,
++    		   &ife->stats.rx_frame_errors,
++    		   &ife->stats.rx_compressed, /* missing for <= 1 */
++    		   &ife->stats.rx_multicast, /* missing for <= 1 */
++    		   &ife->stats.tx_bytes, /* missing for 0 */
++    		   &ife->stats.tx_packets,
++    		   &ife->stats.tx_errors,
++    		   &ife->stats.tx_dropped,
++    		   &ife->stats.tx_fifo_errors,
++    		   &ife->stats.collisions,
++    		   &ife->stats.tx_carrier_errors,
++    		   &ife->stats.tx_compressed /* missing for <= 1 */
++    		   );
++
++    	if (procnetdev_vsn <= 1) {
++    		if (procnetdev_vsn == 0) {
++    			ife->stats.rx_bytes = 0;
++    			ife->stats.tx_bytes = 0;
++    		}
++    		ife->stats.rx_multicast = 0;
++    		ife->stats.rx_compressed = 0;
++    		ife->stats.tx_compressed = 0;
++    	}
++    }
++
++#if defined(BRCM_CMS_BUILD)
++    else {
++        /* Read format from extended output, including multi/uni/broadcast data */
++        ife->procnetdev_num_fields_read = sscanf(bp, ss_fmt[procnetdev_vsn],
++                /* Basic statistics, just like procnetdev_vsn == 2 */
++               &ife->stats.rx_bytes, 
++               &ife->stats.rx_packets,
++               &ife->stats.rx_errors,
++               &ife->stats.rx_dropped,
++               &ife->stats.rx_fifo_errors,
++               &ife->stats.rx_frame_errors,
++               &ife->stats.rx_compressed, 
++               &ife->stats.rx_multicast, 
++               &ife->stats.tx_bytes, 
++               &ife->stats.tx_packets,
++               &ife->stats.tx_errors,
++               &ife->stats.tx_dropped,
++               &ife->stats.tx_fifo_errors,
++               &ife->stats.collisions,
++               &ife->stats.tx_carrier_errors,
++               &ife->stats.tx_compressed,       
++               
++               /* extended statistics */
++               &ife->stats.tx_multicast_packets, &ife->stats.rx_multicast_bytes, &ife->stats.tx_multicast_bytes, 
++               &ife->stats.rx_unicast_packets, &ife->stats.tx_unicast_packets, &ife->stats.rx_broadcast_packets, &ife->stats.tx_broadcast_packets, 
++               &ife->stats.rx_unknown_packets
++               );
++    }
++#endif
++    
+ }
+ 
+ static int procnetdev_version(char *buf)
+ {
++    /* Look for labels in the heading that indicate what format is being used */    
++	if (strstr(buf, "unicast"))
++		return 3;
+ 	if (strstr(buf, "compressed"))
+ 		return 2;
+ 	if (strstr(buf, "bytes"))
+@@ -555,14 +637,25 @@ static int if_readlist_proc(char *target
+ 	if (!target)
+ 		proc_read = 1;
+ 
+-	fh = fopen_or_warn(_PATH_PROCNET_DEV, "r");
++#if defined(BRCM_CMS_BUILD)
++    /* Try to read extended statistics first */
++    if((fh = fopen(_PATH_PROCNET_DEVEXTSTATS, "r")) == NULL)
++#endif 
++        fh = fopen_or_warn(_PATH_PROCNET_DEV, "r");
++
+ 	if (!fh) {
+ 		return if_readconf();
+ 	}
+-	fgets(buf, sizeof buf, fh);	/* eat line */
+-	fgets(buf, sizeof buf, fh);
++	fgets(buf, sizeof buf, fh);	/* eat first line */
++	fgets(buf, sizeof buf, fh); /* read second line */
+ 
+ 	procnetdev_vsn = procnetdev_version(buf);
++    
++#if defined(BRCM_CMS_BUILD)
++    /* For some formats, there's a third line of header that needs to be ignored */
++    if(procnetdev_vsn == 3)
++        fgets(buf, sizeof buf, fh);	/* eat third line */
++#endif
+ 
+ 	err = 0;
+ 	while (fgets(buf, sizeof buf, fh)) {
+@@ -576,7 +669,11 @@ static int if_readlist_proc(char *target
+ 			break;
+ 	}
+ 	if (ferror(fh)) {
++#if defined(BRCM_CMS_BUILD)    
++		bb_perror_msg(_PATH_PROCNET_DEVEXTSTATS);
++#else
+ 		bb_perror_msg(_PATH_PROCNET_DEV);
++#endif        
+ 		err = -1;
+ 		proc_read = 0;
+ 	}
+@@ -816,7 +913,7 @@ static int hw_null_address(const struct
+ 
+ static const char TRext[] ALIGN1 = "\0\0\0Ki\0Mi\0Gi\0Ti";
+ 
+-static void print_bytes_scaled(unsigned long long ull, const char *end)
++static void print_bytes_scaled(unsigned long long ull)
+ {
+ 	unsigned long long int_part;
+ 	const char *ext;
+@@ -836,7 +933,7 @@ static void print_bytes_scaled(unsigned
+ 		--i;
+ 	} while (i);
+ 
+-	printf("X bytes:%llu (%llu.%u %sB)%s", ull, int_part, frac_part, ext, end);
++	printf("%llu (%llu.%u %sB)", ull, int_part, frac_part, ext);
+ }
+ 
+ 
+@@ -1031,33 +1128,114 @@ static void ife_print(struct interface *
+ 	/* If needed, display the interface statistics. */
+ 
+ 	if (ptr->statistics_valid) {
+-		/* XXX: statistics are currently only printed for the primary address,
+-		 *      not for the aliases, although strictly speaking they're shared
+-		 *      by all addresses.
+-		 */
+-		printf("          ");
+-
+-		printf("RX packets:%llu errors:%lu dropped:%lu overruns:%lu frame:%lu\n",
+-			ptr->stats.rx_packets, ptr->stats.rx_errors,
+-			ptr->stats.rx_dropped, ptr->stats.rx_fifo_errors,
+-			ptr->stats.rx_frame_errors);
+-		if (can_compress)
+-			printf("             compressed:%lu\n",
+-				ptr->stats.rx_compressed);
+-		printf("          ");
+-		printf("TX packets:%llu errors:%lu dropped:%lu overruns:%lu carrier:%lu\n",
+-			ptr->stats.tx_packets, ptr->stats.tx_errors,
+-			ptr->stats.tx_dropped, ptr->stats.tx_fifo_errors,
+-			ptr->stats.tx_carrier_errors);
+-		printf("          collisions:%lu ", ptr->stats.collisions);
+-		if (can_compress)
+-			printf("compressed:%lu ", ptr->stats.tx_compressed);
+-		if (ptr->tx_queue_len != -1)
+-			printf("txqueuelen:%d ", ptr->tx_queue_len);
+-		printf("\n          R");
+-		print_bytes_scaled(ptr->stats.rx_bytes, "  T");
+-		print_bytes_scaled(ptr->stats.tx_bytes, "\n");
+-	}
++
++#if defined(BRCM_CMS_BUILD)
++        /* Depending on the format read in and whether or not the interface supports
++           extended stats, output the statistics */
++        if(ptr->procnetdev_vsn <= 2 || ptr->procnetdev_num_fields_read < NUM_SS_FMT_FIELDS_EXTSTATS) {
++#endif
++            /* Legacy formats */
++            
++            /* XXX: statistics are currently only printed for the primary address,
++             *      not for the aliases, although strictly speaking they're shared
++             *      by all addresses.
++             */
++            printf("          ");
++
++            printf("RX packets:%llu errors:%lu dropped:%lu overruns:%lu frame:%lu\n",
++                   ptr->stats.rx_packets, ptr->stats.rx_errors,
++                   ptr->stats.rx_dropped, ptr->stats.rx_fifo_errors,
++                   ptr->stats.rx_frame_errors);               
++            
++            printf("          ");
++            printf("TX packets:%llu errors:%lu dropped:%lu overruns:%lu carrier:%lu\n",
++                   ptr->stats.tx_packets, ptr->stats.tx_errors,
++                   ptr->stats.tx_dropped, ptr->stats.tx_fifo_errors,
++                   ptr->stats.tx_carrier_errors);
++            printf("          collisions:%lu ", ptr->stats.collisions);
++            if (can_compress)
++                printf("compressed:%lu ", ptr->stats.tx_compressed);
++                
++            if (ptr->tx_queue_len != -1)
++                {
++                printf("          ");
++                printf("txqueuelen:%d ", ptr->tx_queue_len);
++                }
++                
++            // Byte counts
++            printf("\n");
++            printf("          ");
++            printf("RX bytes:");
++            print_bytes_scaled(ptr->stats.rx_bytes);
++            printf(" TX bytes:");        
++            print_bytes_scaled(ptr->stats.tx_bytes);
++            printf("\n");
++
++#if defined(BRCM_CMS_BUILD)
++        }
++    else {
++            /* Extended formats, including multi/uni/broadcast data */
++            
++            /* XXX: statistics are currently only printed for the primary address,
++             *      not for the aliases, although strictly speaking they're shared
++             *      by all addresses.
++             */              
++
++            // RX packet counts
++            printf("          ");
++            printf("RX packets:%llu multicast:%lu unicast:%llu broadcast:%llu",
++                   ptr->stats.rx_packets, ptr->stats.rx_multicast,
++                   ptr->stats.rx_unicast_packets, ptr->stats.rx_broadcast_packets);
++            if (can_compress)
++                printf(" compressed:%lu\n", ptr->stats.rx_compressed);
++            else
++                printf("\n");
++                
++            // RX error counts
++            printf("          ");
++            printf("RX errors:%lu dropped:%lu overruns:%lu frame:%lu\n",
++                   ptr->stats.rx_errors,
++                   ptr->stats.rx_dropped, ptr->stats.rx_fifo_errors,
++                   ptr->stats.rx_frame_errors);
++
++            // TX packet counts
++            printf("          ");
++            printf("TX packets:%llu multicast:%llu unicast:%llu broadcast:%llu",
++                   ptr->stats.tx_packets, ptr->stats.tx_multicast_packets,
++                   ptr->stats.tx_unicast_packets, ptr->stats.tx_broadcast_packets);
++            if (can_compress)
++                printf(" compressed:%lu\n", ptr->stats.tx_compressed);
++            else
++                printf("\n");
++                              
++            // TX error counts
++            printf("          ");
++            printf("TX errors:%lu dropped:%lu overruns:%lu carrier:%lu collisions:%lu\n",
++                   ptr->stats.tx_errors,
++                   ptr->stats.tx_dropped, ptr->stats.tx_fifo_errors,
++                   ptr->stats.tx_carrier_errors, ptr->stats.collisions);             
++                
++            if (ptr->tx_queue_len != -1)
++                {
++                printf("          ");
++                printf("txqueuelen:%d\n", ptr->tx_queue_len);
++                }
++                
++            // Byte counts
++            printf("          ");
++            printf("RX bytes:");
++            print_bytes_scaled(ptr->stats.rx_bytes);
++            printf(" TX bytes:");        
++            print_bytes_scaled(ptr->stats.tx_bytes);
++            printf("\n          ");
++            printf("RX multicast bytes:");
++            print_bytes_scaled(ptr->stats.rx_multicast_bytes);
++            printf(" TX multicast bytes:");        
++            print_bytes_scaled(ptr->stats.tx_multicast_bytes);
++            printf("\n");
++        }
++#endif
++    }
+ 
+ 	if (ptr->map.irq || ptr->map.mem_start
+ 	 || ptr->map.dma || ptr->map.base_addr
+diff -rupN orig_busybox-1.27.2/networking/ntpd.c busybox-1.27.2/networking/ntpd.c
+--- orig_busybox-1.27.2/networking/ntpd.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/networking/ntpd.c	2017-08-30 09:50:59.951725940 +0800
+@@ -101,6 +101,25 @@
+ #endif
+ 
+ 
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++#include "cms_msg.h"
++#include "cms_util.h"
++#include "cms_log.h"
++
++#define NTP_SCHED_TIMEOUT_IN_SECS   1
++
++static int currentNtpState = TIME_STATE_UNSYNCHRONIZED;
++static void *ntp_msg_hndl=NULL;
++static int wanStatus = 0;
++static bool osl_wan_isup(void);
++static int ntp_msg_handler(CmsMsgHeader *msg);
++static int process_cms_message(void);
++static CmsRet ntpd_cms_init(const CmsEntityId entityId);
++static void ntpd_cms_cleanup(void);
++#endif  /* BRCM_CMS_BUILD */
++// brcm end
++
+ /* Verbosity control (max level of -dddd options accepted).
+  * max 6 is very talkative (and bloated). 3 is non-bloated,
+  * production level setting.
+@@ -331,13 +350,14 @@ enum {
+ 	OPT_q = (1 << 1),
+ 	OPT_N = (1 << 2),
+ 	OPT_x = (1 << 3),
++	OPT_m = (1 << 4),    //brcm
+ 	/* Insert new options above this line. */
+ 	/* Non-compat options: */
+-	OPT_w = (1 << 4),
+-	OPT_p = (1 << 5),
+-	OPT_S = (1 << 6),
+-	OPT_l = (1 << 7) * ENABLE_FEATURE_NTPD_SERVER,
+-	OPT_I = (1 << 8) * ENABLE_FEATURE_NTPD_SERVER,
++	OPT_w = (1 << 5),
++	OPT_p = (1 << 6),
++	OPT_S = (1 << 7),
++	OPT_l = (1 << 8) * ENABLE_FEATURE_NTPD_SERVER,
++	OPT_I = (1 << 9) * ENABLE_FEATURE_NTPD_SERVER,
+ 	/* We hijack some bits for other purposes */
+ 	OPT_qq = (1 << 31),
+ };
+@@ -444,6 +464,57 @@ struct globals {
+ #define VERB5 if (MAX_VERBOSE >= 5 && G.verbose >= 5)
+ #define VERB6 if (MAX_VERBOSE >= 6 && G.verbose >= 6)
+ 
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++/* this is call to send message back to SMD*/ 
++static void ntp_send_message_to_dhcpd(long delta)
++{
++	char buf[sizeof(CmsMsgHeader) + sizeof(long)]={0};
++	CmsMsgHeader *msg=(CmsMsgHeader *) buf;
++	long *offset = (long *) (msg+1);
++	CmsRet ret = CMSRET_SUCCESS;
++	
++	msg->type = CMS_MSG_EVENT_TIME_SYNC;
++	msg->src = EID_NTPD;
++	msg->dst = EID_DHCPD;
++	msg->flags_event = 1;
++	msg->flags_bounceIfNotRunning = 1;
++	msg->dataLength = sizeof(long);
++	*offset = delta;
++	
++	if ((ret = cmsMsg_send(ntp_msg_hndl, msg)) != CMSRET_SUCCESS)
++	{
++		cmsLog_error("could not send out CMS_MSG_EVENT_TIME_SYNC, ret=%d", ret);
++	}
++	else
++	{
++		cmsLog_notice("sent out CMS_MSG_EVENT_TIME_SYNC (delta=%d)", delta);
++	}
++}
++
++
++static void ntp_send_message_to_smd(int state)
++{
++	CmsMsgHeader msg = EMPTY_MSG_HEADER;
++	CmsRet ret = CMSRET_SUCCESS;
++	
++	/* send a message to SSK to let it know the state change */
++	msg.type = CMS_MSG_TIME_STATE_CHANGED;
++	msg.src = EID_NTPD;
++	msg.dst = EID_SMD;
++	msg.flags_event = 1;
++	msg.wordData = state;
++	
++	if ((ret = cmsMsg_send(ntp_msg_hndl, &msg)) != CMSRET_SUCCESS)
++	{
++		cmsLog_error("Fail to send state change msg failed. ret=%d", ret);
++	}
++	else
++	{
++		cmsLog_debug("Send state change msg. State %d", state);
++	}
++}
++#endif
+ 
+ static double LOG2D(int a)
+ {
+@@ -1020,6 +1091,11 @@ step_time(double offset)
+ 	char buf[sizeof("yyyy-mm-dd hh:mm:ss") + /*paranoia:*/ 4];
+ 	time_t tval;
+ 
++#ifdef BRCM_CMS_BUILD
++	if ((option_mask32 & OPT_m) && offset > 30)
++		ntp_send_message_to_dhcpd((long)offset);
++#endif  /* BRCM_CMS_BUILD */
++
+ 	gettimeofday(&tvc, NULL); /* never fails */
+ 	dtime = tvc.tv_sec + (1.0e-6 * tvc.tv_usec) + offset;
+ 	d_to_tv(dtime, &tvn);
+@@ -1418,6 +1494,12 @@ set_new_values(int disc_state, double of
+ 	 * of the last clock filter sample, which must be earlier than
+ 	 * the current time.
+ 	 */
++#ifdef BRCM_CMS_BUILD
++   if ((option_mask32 & OPT_m) && 
++	    (G.discipline_state != disc_state && disc_state == STATE_SYNC))
++		ntp_send_message_to_smd(TIME_STATE_SYNCHRONIZED);
++#endif /* BRCM_CMS_BUILD */
++
+ 	VERB4 bb_error_msg("disc_state=%d last update offset=%f recv_time=%f",
+ 			disc_state, offset, recv_time);
+ 	G.discipline_state = disc_state;
+@@ -2233,7 +2315,7 @@ static NOINLINE void ntp_init(char **arg
+ 	opt_complementary = "dd:wn"  /* -d: counter; -p: list; -w implies -n */
+ 		IF_FEATURE_NTPD_SERVER(":Il"); /* -I implies -l */
+ 	opts = getopt32(argv,
+-			"nqNx" /* compat */
++			"nqNxm" /* compat */ /* brcm */
+ 			"wp:*S:"IF_FEATURE_NTPD_SERVER("l") /* NOT compat */
+ 			IF_FEATURE_NTPD_SERVER("I:") /* compat */
+ 			"d" /* compat */
+@@ -2267,35 +2349,40 @@ static NOINLINE void ntp_init(char **arg
+ 		bb_daemonize_or_rexec(DAEMON_DEVNULL_STDIO, argv);
+ 		logmode = LOGMODE_NONE;
+ 	}
+-
+-	if (peers) {
+-		while (peers)
+-			add_peers(llist_pop(&peers));
+-	}
++#ifdef BRCM_CMS_BUILD
++	if (wanStatus) {
++#endif
++		if (peers) {
++			while (peers)
++				add_peers(llist_pop(&peers));
++		}
+ #if ENABLE_FEATURE_NTPD_CONF
+-	else {
+-		parser_t *parser;
+-		char *token[3];
+-
+-		parser = config_open("/etc/ntp.conf");
+-		while (config_read(parser, token, 3, 1, "# \t", PARSE_NORMAL)) {
+-			if (strcmp(token[0], "server") == 0 && token[1]) {
+-				add_peers(token[1]);
+-				continue;
++		else {
++			parser_t *parser;
++			char *token[3];
++
++			parser = config_open("/etc/ntp.conf");
++			while (config_read(parser, token, 3, 1, "# \t", PARSE_NORMAL)) {
++				if (strcmp(token[0], "server") == 0 && token[1]) {
++					add_peers(token[1]);
++					continue;
++				}
++				bb_error_msg("skipping %s:%u: unimplemented command '%s'",
++					"/etc/ntp.conf", parser->lineno, token[0]
++				);
+ 			}
+-			bb_error_msg("skipping %s:%u: unimplemented command '%s'",
+-				"/etc/ntp.conf", parser->lineno, token[0]
+-			);
++			config_close(parser);
+ 		}
+-		config_close(parser);
+-	}
+ #endif
+-	if (G.peer_cnt == 0) {
+-		if (!(opts & OPT_l))
+-			bb_show_usage();
+-		/* -l but no peers: "stratum 1 server" mode */
+-		G.stratum = 1;
++		if (G.peer_cnt == 0) {
++			if (!(opts & OPT_l))
++				bb_show_usage();
++			/* -l but no peers: "stratum 1 server" mode */
++			G.stratum = 1;
++		}
++#ifdef BRCM_CMS_BUILD
+ 	}
++#endif
+ 	/* If network is up, syncronization occurs in ~10 seconds.
+ 	 * We give "ntpd -q" 10 seconds to get first reply,
+ 	 * then another 50 seconds to finish syncing.
+@@ -2335,6 +2422,23 @@ int ntpd_main(int argc UNUSED_PARAM, cha
+ 	memset(&G, 0, sizeof(G));
+ 	SET_PTR_TO_GLOBALS(&G);
+ 
++#ifdef BRCM_CMS_BUILD
++	ntp_init(argv); // to parse and set the option_mas32 first.
++	if (option_mask32 & OPT_m)
++	{
++		ntpd_cms_init(EID_NTPD);
++		cmsLog_debug("starting ntpd argv %s", *argv);
++		while (!wanStatus && !bb_got_signal)
++		{
++			wanStatus = osl_wan_isup();
++			sleep(NTP_SCHED_TIMEOUT_IN_SECS);
++		}
++		G.verbose = 0;
++	}
++	else
++		wanStatus = 1;
++#endif
++
+ 	ntp_init(argv);
+ 
+ 	/* If ENABLE_FEATURE_NTPD_SERVER, + 1 for listen_fd: */
+@@ -2491,13 +2595,239 @@ int ntpd_main(int argc UNUSED_PARAM, cha
+ 			run_script("unsync", 0.0);
+  have_reachable_peer: ;
+ 		}
++#ifdef BRCM_CMS_BUILD
++		if (option_mask32 & OPT_m)
++			process_cms_message();
++#endif 
+ 	} /* while (!bb_got_signal) */
+ 
++#ifdef BRCM_CMS_BUILD
++	if (option_mask32 & OPT_m)
++		ntpd_cms_cleanup();
++#endif 
++
+ 	remove_pidfile(CONFIG_PID_FILE_PATH "/ntpd.pid");
+ 	kill_myself_with_sig(bb_got_signal);
+ }
+ 
++#ifdef BRCM_CMS_BUILD
++static bool osl_wan_isup(void)
++{
++	CmsMsgHeader *msg;
++	char *data;
++	void *msgBuf;
++	UINT32 msgDataLen = 0;
++	CmsRet ret;
++	void *msgHandle = ntp_msg_hndl;
++	
++	msgDataLen = 0;
++	
++	msgBuf = cmsMem_alloc(sizeof(CmsMsgHeader) + msgDataLen, ALLOC_ZEROIZE);
++	
++	if(msgBuf == NULL)
++	{
++		cmsLog_error(" cmsMem_alloc failed to allocate %d bytes", sizeof(CmsMsgHeader) + msgDataLen);
++		return FALSE;
++	}
++	
++	msg = (CmsMsgHeader *)msgBuf;
++	
++	msg->type = CMS_MSG_GET_WAN_CONN_STATUS;
++	msg->src = EID_NTPD;
++	msg->dst = EID_SSK;
++	msg->flags_request = 1;
++	
++	data = (char *) (msg + 1);
++	msg->dataLength = msgDataLen;
++	
++	/*
++	 * ssk will reply with TRUE or FALSE for wan connection up.
++	 * Need to check for that instead of the usual CMSRET enum.
++	 */
++	ret = cmsMsg_sendAndGetReply(msgHandle, msg);
++	cmsMem_free(msgBuf);
++	
++	if (ret == TRUE)
++	{
++		cmsLog_debug("ssk says wan is up. ret=%d", ret);
++		return TRUE;
++	}
++	else
++	{
++		cmsLog_debug("ssk says wan is not up. ret=%d", ret);
++		return FALSE;
++	}
++}
++
++static int ntp_msg_handler(CmsMsgHeader *msg)
++{
++
++	CmsRet ret = CMSRET_SUCCESS;
++	
++	switch (msg->type)
++	{
++		case CMS_MSG_WAN_CONNECTION_UP:
++			wanStatus = 1;
++			break;
++
++		case CMS_MSG_TERMINATE:
++			cmsLog_notice("NTP is received message to terminate");
++			// send reply msg to acknowledge
++			msg->wordData = CMSRET_SUCCESS;
++			if ((ret = cmsMsg_sendReply(ntp_msg_hndl, msg, CMSRET_SUCCESS)) != CMSRET_SUCCESS)
++			{
++				cmsLog_error("send response for msg 0x%x failed, ret=%d", msg->type, ret);
++			}
++			break;
++		default:
++			cmsLog_notice("Invalid message type (%x)", (unsigned int)msg->type);
++			// make sure we don't bomb out for this reason.
++
++	}
++	return 0;
++}
++
++static int process_cms_message(void)
++{
++	int rv = 0;
++	CmsRet ret;
++	SINT32 commFd = 0;
++	fd_set readFds; 
++	CmsMsgHeader *msg = NULL;
++	struct timeval tm;
++
++
++	/* get the CMS messaging handle */
++	cmsMsg_getEventHandle(ntp_msg_hndl, &commFd);
++
++	tm.tv_sec = NTP_SCHED_TIMEOUT_IN_SECS;
++	tm.tv_usec = 0;
++
++	/* set up all the fd stuff for select */
++	FD_ZERO(&readFds);
++	FD_SET(commFd, &readFds);
++
++	rv = select(commFd+1, &readFds, NULL, NULL, &tm);
++	if (rv < 0)
++		return 0;
++
++	if (FD_ISSET(commFd, &readFds))
++	{
++		if ((ret = cmsMsg_receiveWithTimeout(ntp_msg_hndl, &msg, 1000)) != CMSRET_SUCCESS)
++		{
++			if (!cmsFil_isFilePresent(SMD_SHUTDOWN_IN_PROGRESS))
++			{
++				cmsLog_error("Failed to receive message (ret=%d)", ret);
++			}
++			rv = 0;
++		}
++		else
++		{
++			rv = ntp_msg_handler(msg);
++			CMSMEM_FREE_BUF_AND_NULL_PTR(msg);
++		}
++	}
++	return rv;
++}
++
++static void ntp_register_event
++	(CmsMsgType msgType,
++	UBOOL8 positive,
++	void *msgData,
++	UINT32 msgDataLen)
++{
++	CmsMsgHeader *msg = NULL;
++	char *data = NULL;
++	void *msgBuf = NULL;
++	char *action __attribute__ ((unused)) = (positive) ? "REGISTER" : "UNREGISTER";
++	CmsRet ret = CMSRET_SUCCESS;
++
++	if (msgData != NULL && msgDataLen != 0)
++	{
++		/* for msg with user data */
++		msgBuf = cmsMem_alloc(sizeof(CmsMsgHeader) + msgDataLen, ALLOC_ZEROIZE);
++	} 
++	else
++	{
++		msgBuf = cmsMem_alloc(sizeof(CmsMsgHeader), ALLOC_ZEROIZE);
++	}
++
++	msg = (CmsMsgHeader *)msgBuf;
++
++	/* fill in the msg header */
++	msg->type = (positive) ? CMS_MSG_REGISTER_EVENT_INTEREST : CMS_MSG_UNREGISTER_EVENT_INTEREST;
++	msg->src = EID_NTPD;
++	msg->dst = EID_SMD;
++	msg->flags_request = 1;
++	msg->wordData = msgType;
++
++	if (msgData != NULL && msgDataLen != 0)
++	{
++		data = (char *) (msg + 1);
++		msg->dataLength = msgDataLen;
++		memcpy(data, (char *)msgData, msgDataLen);
++	}
++
++	ret = cmsMsg_sendAndGetReply(ntp_msg_hndl, msg);
++	if (ret != CMSRET_SUCCESS)
++	{
++		 bb_error_msg("%s_EVENT_INTEREST for 0x%x failed, ret=%d", action, msgType, ret);
++	}
++	else
++	{
++		 cmsLog_debug("%s_EVENT_INTEREST for 0x%x succeeded", action, msgType);
++	}
++	
++	cmsMem_free(msgBuf);
++}
++
++
++static void ntpd_cms_cleanup(void)
++{
++	cmsMsg_cleanup(&ntp_msg_hndl);
++}
++
++
++static CmsRet ntpd_cms_init(const CmsEntityId entityId)
++{
++	CmsRet ret = CMSRET_SUCCESS;
++	int sessionPid;
++	CmsMsgHeader *buf = NULL;
++
++	cmsLog_setLevel(LOG_LEVEL_DEBUG);
++
++	/*
++	* Detach myself from the terminal so I don't get any control-c/sigint.
++	* On the desktop, it is smd's job to catch control-c and exit.
++	*/
++	if ((sessionPid = setsid()) == -1)
++	{
++		bb_error_msg("Could not detach from terminal");
++	}
++	else
++	{
++		cmsLog_debug("Detached from terminal");
++	}
++
++	if ((ret = cmsMsg_init(entityId, &ntp_msg_hndl)) != CMSRET_SUCCESS)
++	{
++		bb_error_msg("msg initialization failed, ret=%d", ret);
++		return ret;
++	}
++
++	ret = cmsMsg_receiveWithTimeout(ntp_msg_hndl, &buf, 100);
++	if(ret == CMSRET_SUCCESS)
++	{
++		 CMSMEM_FREE_BUF_AND_NULL_PTR(buf);
++	}
++
++	// Register NTPD interest events with smd.
++	ntp_register_event(CMS_MSG_WAN_CONNECTION_UP, TRUE, NULL, 0);
++
++	return ret;
++}
+ 
++#endif // BRCM_CMS_BUILD
+ 
+ 
+ 
+diff -rupN orig_busybox-1.27.2/networking/ping.c busybox-1.27.2/networking/ping.c
+--- orig_busybox-1.27.2/networking/ping.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/networking/ping.c	2017-08-30 09:50:59.951725940 +0800
+@@ -145,6 +145,14 @@
+ # endif
+ #endif
+ 
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++#include "cms_msg.h"
++#include "cms_util.h"
++#include "cms_log.h"
++#endif
++// brcm end
++
+ enum {
+ 	DEFDATALEN = 56,
+ 	MAXIPLEN = 60,
+@@ -155,6 +163,24 @@ enum {
+ 	pingsock = 0,
+ };
+ 
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++
++#define PING_IN_PROGRESS     0
++#define PING_FINISHED        1
++#define PING_ERROR           2  /* ping process exits on error */
++#define PING_UNKNOWN_HOST    3  /* ping unable to resolve host name */
++
++#ifdef BRCM_OMCI
++static UINT16 tcID = 0;
++static OmciPingDataMsgBody omciMsg;
++#endif
++static void *msgHandle=NULL;
++static CmsEntityId requesterId=0;
++#endif  /* BRCM_CMS_BUILD */
++// brcm end
++
++
+ static void
+ #if ENABLE_PING6
+ create_icmp_socket(len_and_sockaddr *lsa)
+@@ -341,26 +367,31 @@ static int common_ping_main(sa_family_t
+ 
+ /* Full(er) version */
+ 
+-#define OPT_STRING ("qvc:+s:t:+w:+W:+I:np:4" IF_PING6("6"))
++#define OPT_STRING ("qvmc:+s:t:+w:+W:+I:d:i:np:4" IF_PING6("6"))
+ enum {
+ 	OPT_QUIET = 1 << 0,
+ 	OPT_VERBOSE = 1 << 1,
+-	OPT_c = 1 << 2,
+-	OPT_s = 1 << 3,
+-	OPT_t = 1 << 4,
+-	OPT_w = 1 << 5,
+-	OPT_W = 1 << 6,
+-	OPT_I = 1 << 7,
+-	/*OPT_n = 1 << 8, - ignored */
+-	OPT_p = 1 << 9,
+-	OPT_IPV4 = 1 << 10,
+-	OPT_IPV6 = (1 << 11) * ENABLE_PING6,
++	OPT_m = 1 << 2, // brcm
++	OPT_c = 1 << 3,
++	OPT_s = 1 << 4,
++	OPT_t = 1 << 5,
++	OPT_w = 1 << 6,
++	OPT_W = 1 << 7,
++	OPT_I = 1 << 8,
++	OPT_d = 1 << 9, // brcm
++	OPT_i = 1 << 10, // brcm
++	/*OPT_n = 1 << 11, - ignored */
++	OPT_p = 1 << 12,
++	OPT_IPV4 = 1 << 13,
++	OPT_IPV6 = (1 << 14) * ENABLE_PING6,
+ };
+ 
+ 
+ struct globals {
+ 	int if_index;
+ 	char *str_I;
++	char *str_d;  // brcm
++	char *str_i;  // brcm
+ 	len_and_sockaddr *source_lsa;
+ 	unsigned datalen;
+ 	unsigned pingcount; /* must be int-sized */
+@@ -391,6 +422,8 @@ struct globals {
+ #define if_index     (G.if_index    )
+ #define source_lsa   (G.source_lsa  )
+ #define str_I        (G.str_I       )
++#define str_d        (G.str_d       )  // brcm
++#define str_i        (G.str_i       )  // brcm
+ #define datalen      (G.datalen     )
+ #define pingcount    (G.pingcount   )
+ #define opt_ttl      (G.opt_ttl     )
+@@ -405,12 +438,14 @@ struct globals {
+ #define dotted       (G.dotted      )
+ #define pingaddr     (G.pingaddr    )
+ #define rcvd_tbl     (G.rcvd_tbl    )
++// brcm: changed default value of pingcount from 0 to 4.
+ #define INIT_G() do { \
+ 	setup_common_bufsiz(); \
+ 	BUILD_BUG_ON(sizeof(G) > COMMON_BUFSIZE); \
+ 	datalen = DEFDATALEN; \
+ 	timeout = MAXWAIT; \
+ 	tmin = UINT_MAX; \
++	pingcount = 4; \
+ } while (0)
+ 
+ 
+@@ -420,6 +455,159 @@ struct globals {
+ #define CLR(bit)	(BYTE(bit) &= (~MASK(bit)))
+ #define TST(bit)	(BYTE(bit) & MASK(bit))
+ 
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++/* this is call to send message back to SMD to relay to interested party about the
++ * statistic of the most recent completed or stopped PING test */
++static void sendEventMessage(int finish, const char *host)
++{
++	char buf[sizeof(CmsMsgHeader) + sizeof(PingDataMsgBody)]={0};
++	CmsMsgHeader *msg=(CmsMsgHeader *) buf;
++	PingDataMsgBody *pingBody = (PingDataMsgBody*) (msg+1);
++	CmsRet ret;
++	
++	cmsLog_debug("finish %d, ip %s, nTransmited/receive/tmin/tmax/tsum %d/%d/%d/%d/%d",
++	             finish,host,G.ntransmitted,G.nreceived,tmin,tmax,tsum);
++	
++	msg->type = CMS_MSG_PING_STATE_CHANGED;
++	msg->src = MAKE_SPECIFIC_EID(getpid(), EID_PING);
++	msg->dst = EID_SSK;
++	msg->flags_event = 1;
++	msg->dataLength = sizeof(PingDataMsgBody);
++	
++	if (finish == PING_FINISHED)
++	{
++		sprintf(pingBody->diagnosticsState,MDMVS_COMPLETE); 
++	}
++	else if (finish == PING_IN_PROGRESS)
++	{
++		sprintf(pingBody->diagnosticsState,MDMVS_PING_INPROGRESS); 
++	}
++	else if (finish == PING_ERROR)
++	{
++		/* none, no status to report because ping process has error and die */
++		sprintf(pingBody->diagnosticsState,MDMVS_ERROR_CANNOTRESOLVEHOSTNAME); 
++	}
++	
++	//   sprintf(pingBody->host,ip); 
++	sprintf(pingBody->host,host); 
++	pingBody->requesterId = requesterId;
++	pingBody->successCount = G.nreceived;
++	pingBody->failureCount = (G.ntransmitted-G.nreceived);
++	if (G.nreceived)
++	{
++		/*
++		* tsum,tmin,tmax are in us, but data model expects value in ms, so
++		* divide by 1000, with a round up to nearest ms.
++		*/
++#ifndef CONFIG_FEATURE_FANCY_PING
++		pingBody->averageResponseTime = tsum / (G.nreceived + G.nrepeats);
++#else
++		pingBody->averageResponseTime = tsum / G.nreceived;
++#endif
++		pingBody->averageResponseTime = (pingBody->averageResponseTime+500)/1000;
++		pingBody->minimumResponseTime = (tmin+500) / 1000;
++		pingBody->maximumResponseTime = (tmax+500) / 1000;
++	}
++	else 
++	{
++		pingBody->averageResponseTime = 0;
++		pingBody->minimumResponseTime = 0;
++		pingBody->maximumResponseTime = 0;
++	}
++
++	if ((ret = cmsMsg_send(msgHandle, msg)) != CMSRET_SUCCESS)
++	{
++		cmsLog_error("could not send out CMS_MSG_PING_STATE_CHANGED to SSK, ret=%d", ret);
++	}
++	else
++	{
++		cmsLog_notice("sent out CMS_MSG_PING_STATE_CHANGED (finish=%d) to SSK", finish);
++	}
++	if (requesterId != 0)
++	{
++		msg->dst = requesterId;
++		if ((ret = cmsMsg_send(msgHandle, msg)) != CMSRET_SUCCESS)
++		{
++			cmsLog_error("could not send out CMS_MSG_PING_STATE_CHANGED to requestId %d, ret=%d", ret,(int)requesterId);
++		}
++		else
++		{
++			cmsLog_notice("sent out CMS_MSG_PING_STATE_CHANGED (finish=%d) to requesterId %d", finish,(int)requesterId);
++		}   
++	}
++	return;
++}
++
++#ifdef BRCM_OMCI
++static void sendOmciEventMessage(int finish)
++{
++	char buf[sizeof(CmsMsgHeader) + sizeof(OmciPingDataMsgBody)]={0};
++	CmsMsgHeader *msg=(CmsMsgHeader *) buf;
++	OmciPingDataMsgBody *pingBody = (OmciPingDataMsgBody*) (msg+1);
++	CmsRet ret;
++	
++	if (finish == PING_IN_PROGRESS)
++		return;
++	
++	cmsLog_debug("finish %d", finish);
++	
++	msg->type = CMS_MSG_PING_STATE_CHANGED;
++	msg->src = MAKE_SPECIFIC_EID(getpid(), EID_PING);
++	msg->dst = EID_OMCID;
++	msg->flags_event = 1;
++	msg->dataLength = sizeof(OmciPingDataMsgBody);
++	
++	omciMsg.tcid = tcID;
++	if (finish == PING_FINISHED)
++	{
++		omciMsg.result = CMSRET_SUCCESS;
++	}
++	else 
++	{
++		/* none, no status to report because ping process has error and die */
++		omciMsg.result = CMSRET_INTERNAL_ERROR;
++	}
++	memcpy(pingBody, &omciMsg, sizeof(omciMsg));
++	
++	if ((ret = cmsMsg_send(msgHandle, msg)) != CMSRET_SUCCESS)
++	{
++		cmsLog_error("could not send out CMS_MSG_PING_STATE_CHANGED to OMCID, ret=%d", ret);
++	}
++	else
++	{
++		cmsLog_notice("sent out CMS_MSG_PING_STATE_CHANGED (finish=%d) to OMCID", finish);
++	}
++}
++#endif /* BRCM_OMCI */
++
++static void cmsCleanup(void)
++{
++	if (option_mask32 & OPT_m)
++	{
++		cmsMsg_cleanup(&msgHandle);
++	}
++	cmsLog_cleanup();
++}
++
++static void logStat(int finish)
++{
++	/* 
++	 * Only call sendEventMessage if msgHandle to smd was successfully initialized.
++	 */
++	if (msgHandle != NULL)
++	{
++#ifdef BRCM_OMCI
++		if (option_mask32 & OPT_i)
++			sendOmciEventMessage(finish);
++		else
++#endif /* BRCM_OMCI */
++			sendEventMessage(finish,hostname);
++	}
++}
++#endif  /* BRCM_CMS_BUILD */
++// brcm end
++
+ static void print_stats_and_exit(int junk) NORETURN;
+ static void print_stats_and_exit(int junk UNUSED_PARAM)
+ {
+@@ -428,6 +616,11 @@ static void print_stats_and_exit(int jun
+ 
+ 	signal(SIGINT, SIG_IGN);
+ 
++#ifdef BRCM_CMS_BUILD
++	// call logStat before ntransmitted is wiped out below
++	logStat(PING_FINISHED);
++#endif
++
+ 	nrecv = G.nreceived;
+ 	printf("\n--- %s ping statistics ---\n"
+ 		"%lu packets transmitted, "
+@@ -447,6 +640,10 @@ static void print_stats_and_exit(int jun
+ 			tavg / 1000, tavg % 1000,
+ 			tmax / 1000, tmax % 1000);
+ 	}
++
++#ifdef BRCM_CMS_BUILD
++	cmsCleanup();
++#endif
+ 	/* if condition is true, exit with 1 -- 'failure' */
+ 	exit(nrecv == 0 || (deadline && nrecv < pingcount));
+ }
+@@ -462,9 +659,49 @@ static void sendping_tail(void (*sp)(int
+ 
+ 	/* sizeof(pingaddr) can be larger than real sa size, but I think
+ 	 * it doesn't matter */
++// brcm begin
++//BRCM: fix network unreachable, ping exit in xsendto
++#if 0
+ 	sz = xsendto(pingsock, G.snd_packet, size_pkt, &pingaddr.sa, sizeof(pingaddr));
++#else
++	//copy from xsendto
++	sz = sendto(pingsock, G.snd_packet, size_pkt, 0, &pingaddr.sa, sizeof(pingaddr));
++	if (sz < 0) {
++#ifdef BRCM_CMS_BUILD
++#ifdef BRCM_OMCI
++		if (option_mask32 & OPT_i)
++		{
++			//clear icmpReply, omcipmd sends out test timeout
++			memset(omciMsg.msg.icmpReply, 0, sizeof(omciMsg.msg.icmpReply));
++		}
++#endif
++		logStat(PING_ERROR);
++		cmsCleanup();
++#endif
++		if (ENABLE_FEATURE_CLEAN_UP)
++			close(pingsock);
++		bb_perror_msg_and_die("sendto");
++	}
++#endif
++// brcm end
++
++// brcm begin
+ 	if (sz != size_pkt)
++	{
++#ifdef BRCM_CMS_BUILD
++#ifdef BRCM_OMCI
++		if (option_mask32 & OPT_i)
++		{
++			//clear icmpReply, omcipmd sends out test timeout
++			memset(omciMsg.msg.icmpReply, 0, sizeof(omciMsg.msg.icmpReply));
++		}
++#endif
++		logStat(PING_ERROR);
++		cmsCleanup();
++#endif
+ 		bb_error_msg_and_die(bb_msg_write_error);
++	}
++// brcm end
+ 
+ 	if (pingcount == 0 || deadline || G.ntransmitted < pingcount) {
+ 		/* Didn't send all pings yet - schedule next in 1s */
+@@ -615,6 +852,21 @@ static void unpack_tail(int sz, uint32_t
+ 		dupmsg += 7;
+ 	}
+ 
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++#ifdef BRCM_OMCI
++	if (msgHandle != NULL)
++	{
++		if (recv_seq < pingcount) {
++			omciMsg.msg.responseTime[recv_seq] = (triptime < 1000) ? 1 : (triptime/1000);
++		}
++	}
++#endif
++	logStat(PING_IN_PROGRESS);
++#endif /* BRCM_CMS_BUILD */
++// brcm end
++
++
+ 	if (option_mask32 & OPT_QUIET)
+ 		return;
+ 
+@@ -640,8 +892,46 @@ static void unpack4(char *buf, int sz, s
+ 	hlen = iphdr->ihl << 2;
+ 	sz -= hlen;
+ 	icmppkt = (struct icmp *) (buf + hlen);
++// brcm begin
+ 	if (icmppkt->icmp_id != myid)
++	{
++#if defined(BRCM_CMS_BUILD) && defined(BRCM_OMCI)
++		if (icmppkt->icmp_type == ICMP_DEST_UNREACH || 
++        		icmppkt->icmp_type == ICMP_SOURCE_QUENCH ||
++        		icmppkt->icmp_type == ICMP_TIME_EXCEEDED)
++		{
++			struct iphdr *iphdr_in;
++			struct icmp *icmppkt_in;
++			int hlen_in;
++			
++			//icmp header len is 4, and 4 bytes unsed
++			//then ori ip header and icmp header
++			iphdr_in = (struct iphdr *) (buf + hlen + 8);
++			hlen_in = iphdr_in->ihl << 2;
++			//now sz = sz - hlen, sz must >= 4(outter icmp header) + 4(unused of icmp) 
++			// + hlen_in + 6(inner icmp header)
++			if (sz < (4 + 4 + hlen_in + 6))
++				return;
++			
++			icmppkt_in = (struct icmp *) (buf + hlen + 4 + 4 + hlen_in);
++			if (icmppkt_in->icmp_id != myid)
++				return;
++			
++			if (option_mask32 & OPT_i)
++			{
++				memcpy(omciMsg.msg.icmpReply, &buf[hlen], sizeof(omciMsg.msg.icmpReply));
++				logStat(PING_ERROR);
++				cmsCleanup();
++				bb_error_msg_and_die("Warning: Got ICMP %d (%s)",
++				icmppkt->icmp_type, icmp_type_name (icmppkt->icmp_type));
++			}
++			
++		}
++		else
++#endif
+ 		return;				/* not our ping */
++	}
++// brcm end
+ 
+ 	if (icmppkt->icmp_type == ICMP_ECHOREPLY) {
+ 		uint16_t recv_seq = ntohs(icmppkt->icmp_seq);
+@@ -653,7 +943,18 @@ static void unpack4(char *buf, int sz, s
+ 			inet_ntoa(*(struct in_addr *) &from->sin_addr.s_addr),
+ 			recv_seq, iphdr->ttl);
+ 	} else if (icmppkt->icmp_type != ICMP_ECHO) {
+-		bb_error_msg("warning: got ICMP %d (%s)",
++#if defined(BRCM_CMS_BUILD) && defined(BRCM_OMCI)
++		if (option_mask32 & OPT_i)
++		{
++			memcpy(omciMsg.msg.icmpReply, &buf[hlen], sizeof(omciMsg.msg.icmpReply));
++			logStat(PING_ERROR);
++			cmsCleanup();
++			bb_error_msg_and_die("Warning: Got ICMP %d (%s)",
++			icmppkt->icmp_type, icmp_type_name (icmppkt->icmp_type));
++		}
++		else
++#endif
++			bb_error_msg("warning: got ICMP %d (%s)",
+ 				icmppkt->icmp_type,
+ 				icmp_type_name(icmppkt->icmp_type));
+ 	}
+@@ -866,7 +1167,7 @@ static int common_ping_main(int opt, cha
+ 
+ 	/* exactly one argument needed; -v and -q don't mix; -c NUM, -t NUM, -w NUM, -W NUM */
+ 	opt_complementary = "=1:q--v:v--q";
+-	opt |= getopt32(argv, OPT_STRING, &pingcount, &str_s, &opt_ttl, &deadline, &timeout, &str_I, &str_p);
++	opt |= getopt32(argv, OPT_STRING, &pingcount, &str_s, &opt_ttl, &deadline, &timeout, &str_I, &str_d, &str_i, &str_p); // brcm
+ 	if (opt & OPT_s)
+ 		datalen = xatou16(str_s); // -s
+ 	if (opt & OPT_I) { // -I
+@@ -880,6 +1181,25 @@ static int common_ping_main(int opt, cha
+ 	if (opt & OPT_p)
+ 		G.pattern = xstrtou_range(str_p, 16, 0, 255);
+ 
++#ifdef BRCM_CMS_BUILD
++	if (option_mask32 & OPT_d)
++		requesterId = xatou16(str_d); // -d
++
++#ifdef BRCM_OMCI
++	if (option_mask32 & OPT_i)
++	{
++		tcID = xatou16(str_i); // -i
++		memset(&omciMsg, 0, sizeof(OmciPingDataMsgBody));
++	}
++#endif
++	cmsLog_initWithName(EID_PING, argv[0]);
++	cmsLog_setLevel(DEFAULT_LOG_LEVEL);
++	if (opt & OPT_m)
++		cmsMsg_initWithFlags(EID_PING, EIF_MULTIPLE_INSTANCES, &msgHandle);
++	
++	cmsLog_debug("starting ping argv %s",*argv);
++#endif
++
+ 	myid = (uint16_t) getpid();
+ 	hostname = argv[optind];
+ #if ENABLE_PING6
+diff -rupN orig_busybox-1.27.2/networking/sendarp.c busybox-1.27.2/networking/sendarp.c
+--- orig_busybox-1.27.2/networking/sendarp.c	1970-01-01 08:00:00.000000000 +0800
++++ busybox-1.27.2/networking/sendarp.c	2017-08-30 09:50:59.951725940 +0800
+@@ -0,0 +1,193 @@
++/* vi: set sw=4 ts=4: */
++/*
++ * Licensed under GPLv2 or later, see file LICENSE in this source tree.
++ *
++ */
++
++//config:config SENDARP 
++//config:	bool "sendarp"
++//config:	default y
++//config:	select PLATFORM_LINUX
++//config:	help
++//config:	  Ping hosts by ARP packets.
++
++//applet:IF_SENDARP(APPLET(sendarp, BB_DIR_USR_SBIN, BB_SUID_DROP))
++
++//kbuild:lib-$(CONFIG_SENDARP)  += sendarp.o
++
++//usage:#define sendarp_trivial_usage
++//usage:       "-s SRC_IP -d DST_IP"
++//usage:#define sendarp_full_usage "\n\n"
++//usage:       "Send ARP packet with src device's IP and Hardware address to dst device.\n"
++//usage:     "\n	-s SRC_IP	Sender IP address"
++//usage:     "\n	-d DST_IP	Target IP address"
++
++#include <stdlib.h>
++#include <string.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <linux/if_packet.h>
++#include <net/if.h>
++#include <sys/ioctl.h>
++#include <netinet/if_ether.h>
++#include "busybox.h"
++
++#define MAC_BCAST_ADDR	"\xff\xff\xff\xff\xff\xff"
++
++#define IFIPADDR        1
++#define IFHWADDR        2
++
++struct arpMsg {
++	struct ethhdr ethhdr;	 		/* Ethernet header */
++	u_short htype;				/* hardware type (must be ARPHRD_ETHER) */
++	u_short ptype;				/* protocol type (must be ETH_P_IP) */
++	u_char  hlen;				/* hardware address length (must be 6) */
++	u_char  plen;				/* protocol address length (must be 4) */
++	u_short operation;			/* ARP opcode */
++	u_char  sHaddr[6];			/* sender's hardware address */
++	u_char  sInaddr[4];			/* sender's IP address */
++	u_char  tHaddr[6];			/* target's hardware address */
++	u_char  tInaddr[4];			/* target's IP address */
++	u_char  pad[18];			/* pad for min. Ethernet payload (60 bytes) */
++};
++
++/* local prototypes */
++static void sendArp(char *srcDev, char *destDev);
++static void mkArpMsg(int opcode, u_long tInaddr, u_char *tHaddr, u_long sInaddr, u_char *sHaddr, struct arpMsg *msg);
++static int getDevInfo (char *devname, int infotype, char *data);
++
++int sendarp_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
++int sendarp_main(int argc, char **argv)
++{
++	char *srcdev = NULL;
++	char *dstdev = NULL;
++	int opt;
++
++	while ((opt = getopt(argc, argv, "s:d:")) != -1) {
++		switch (opt) {
++		case 's': 
++			srcdev = xstrdup(optarg);
++			break;
++		case 'd':
++			dstdev = xstrdup(optarg);
++			break;
++		}
++	}
++
++    if ((srcdev == NULL) || (dstdev == NULL)) {
++        bb_show_usage();
++        return 0;
++    }
++
++    /* send gratutious ARP packet with srcdev's IP and hardware address to dstdev */
++    sendArp(srcdev, dstdev);
++
++	return EXIT_SUCCESS;
++}
++
++static void mkArpMsg(int opcode, u_long tInaddr, u_char *tHaddr,
++		 u_long sInaddr, u_char *sHaddr, struct arpMsg *msg) {
++	bzero(msg, sizeof(*msg));
++	bcopy(MAC_BCAST_ADDR, msg->ethhdr.h_dest, 6); /* MAC DA */
++	bcopy(sHaddr, msg->ethhdr.h_source, 6);	/* MAC SA */
++	msg->ethhdr.h_proto = htons(ETH_P_ARP);	/* protocol type (Ethernet) */
++	msg->htype = htons(ARPHRD_ETHER);		/* hardware type */
++	msg->ptype = htons(ETH_P_IP);			/* protocol type (ARP message) */
++	msg->hlen = 6;							/* hardware address length */
++	msg->plen = 4;							/* protocol address length */
++	msg->operation = htons(opcode);			/* ARP op code */
++//brcm start
++   bcopy((u_char *)&sInaddr, &msg->sInaddr[0], 4);  /* source IP address */
++	bcopy(sHaddr, msg->sHaddr, 6);			/* source hardware address */
++   bcopy((u_char *)&tInaddr, &msg->tInaddr[0], 4);  /* target IP address */
++//brcm end
++	if ( opcode == ARPOP_REPLY )
++		bcopy(tHaddr, msg->tHaddr, 6);		/* target hardware address */
++}
++
++static int getDevInfo (char *devname, int infotype, char *data) {
++    int    sock;
++    struct ifreq ifr;
++    int rc = 0;
++
++    /* create device level socket */
++    if ((sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0)
++    {
++		perror("cannot open socket ");
++        return -1;
++    }
++
++    memset(&ifr, 0, sizeof(struct ifreq));
++    strcpy(ifr.ifr_name, devname);
++    switch(infotype) {
++        case IFIPADDR:
++            /* get IP address */
++            if (ioctl(sock, SIOCGIFADDR, &ifr) == -1) {
++                rc = -1;
++            } else {
++                memcpy(data, &((struct sockaddr_in *)&(ifr.ifr_addr))->sin_addr, sizeof(struct in_addr));
++            }
++            break;
++        case IFHWADDR:
++            /* get hardware address */
++            if (ioctl(sock, SIOCGIFHWADDR, &ifr) == -1) {
++                rc = -1;
++            } else {
++                memcpy(data, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
++            }
++            break;
++        default:
++            rc = -1;
++            break;
++    }
++	close (sock);
++	return rc;
++}
++
++static void sendArp(char *srcDev, char *destDev) {
++    int sock;
++    struct arpMsg arp;
++    unsigned char br_macaddr[ETH_ALEN];
++    unsigned char eth_macaddr[ETH_ALEN];
++    unsigned int br_ipAddr;
++    struct sockaddr_ll sll; 
++    struct ifreq ifr;
++    int flag;
++
++    if ((getDevInfo(srcDev, IFIPADDR, (char *)&br_ipAddr) == 0) &&
++       (getDevInfo(srcDev, IFHWADDR, (char *)br_macaddr) == 0) &&
++       (getDevInfo(destDev, IFHWADDR, (char *)eth_macaddr) == 0)) {
++            /* create device level socket */
++            if ((sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
++		        perror("cannot open socket ");
++                return;
++            }
++
++            memset(&sll, 0, sizeof(sll));
++            sll.sll_family = AF_PACKET;
++            sll.sll_protocol = htons(ETH_P_ALL);
++
++            /* get interface index number */
++            memset(&ifr, 0, sizeof(struct ifreq));
++            strcpy(ifr.ifr_name, destDev);
++            if (ioctl(sock, SIOCGIFINDEX, &ifr) < 0) {
++ 		        perror("SIOCGIFINDEX(): ");
++                close(sock);
++                return;
++            }
++            sll.sll_ifindex = ifr.ifr_ifindex;
++            /* bind the socket to the interface */
++            if (bind(sock, (struct sockaddr *)&sll,	sizeof(sll)) == -1) {
++ 		        perror("bind(): ");
++                close(sock);
++                return;
++            }
++            /* set socket to non-blocking operation */
++            if ((flag = fcntl(sock, F_GETFL, 0)) >= 0) {
++                fcntl(sock, F_SETFL, flag | O_NONBLOCK);
++            }
++            mkArpMsg(ARPOP_REQUEST, br_ipAddr, NULL, br_ipAddr, br_macaddr, &arp);
++            sendto(sock, &arp, sizeof(arp), 0, (struct sockaddr *)&sll, sizeof(sll));
++            close(sock);
++    }
++}
+diff -rupN orig_busybox-1.27.2/networking/tftp.c busybox-1.27.2/networking/tftp.c
+--- orig_busybox-1.27.2/networking/tftp.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/networking/tftp.c	2017-08-30 09:50:59.951725940 +0800
+@@ -104,6 +104,9 @@
+ //usage:	IF_FEATURE_TFTP_BLOCKSIZE(
+ //usage:     "\n	-b SIZE	Transfer blocks of SIZE octets"
+ //usage:	)
++//usage:     "\n	-g -t i -f filename server_ip   Get (flash) broadcom or whole image to modem" 
++//usage:     "\n	-g -t c -f filename server_ip   Get (flash) config file to modem" 
++//usage:     "\n	-p -t f -f filename server_ip   Put (backup) config file to tftpd server" 
+ //usage:
+ //usage:#define tftpd_trivial_usage
+ //usage:       "[-cr] [-u USER] [DIR]"
+@@ -124,6 +127,18 @@
+ #include "common_bufsiz.h"
+ #include <syslog.h>
+ 
++// brcm begin
++#include "cms_util.h"
++#include "cms_msg.h"
++
++#ifdef SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE
++#include "cms_image.h"
++
++CmsImageTransferStats imageTransferStats;
++#endif /* SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE */
++// brcm end
++
++
+ #if ENABLE_FEATURE_TFTP_GET || ENABLE_FEATURE_TFTP_PUT
+ 
+ #define TFTP_BLKSIZE_DEFAULT       512  /* according to RFC 1350, don't change */
+@@ -208,6 +223,176 @@ struct globals {
+ #define G_error_pkt_reason (G.error_pkt[3])
+ #define G_error_pkt_str    ((char*)(G.error_pkt + 4))
+ 
++// brcm begin
++// use some globals to reduce the messiness of change the original tftp function.
++char *glbImagePtr = NULL;
++int glbUploadSize = 0;
++int brcm_tftp = 0;
++char *glbCurPtr = NULL;
++char glbUploadType = 'i';
++static void *msgHandle=NULL;
++/* 
++ * connIfName is the linux interface name that our socket is going out of.
++ * We need this information when doing image downloads because we might
++ * want to kill all unneeded WAN services to free up memory.
++ */
++char connIfName[CMS_IFNAME_LENGTH]={0};
++
++
++static int myRead(char *outBuf, int inLen)
++{
++	int readLen = 0;
++	static int xmlCfgLen = 0;
++	static int offset = 0;
++	static CmsMsgHeader *responseMsg=NULL;
++	CmsMsgHeader requestMsg = EMPTY_MSG_HEADER;
++	char *cfgStart;
++	CmsRet ret;
++   
++   
++	if (responseMsg == NULL) 
++	{
++		cmsLog_debug("first time, get config file from smd");
++		/*
++		 * This is the first time that we were called.
++		 * Send a message to smd to request a copy of the config file.
++		 */
++		requestMsg.src = EID_TFTP;
++		requestMsg.dst = EID_SMD;
++		requestMsg.type = CMS_MSG_GET_CONFIG_FILE;
++		requestMsg.flags_request = 1;
++
++		if ((ret = cmsMsg_send(msgHandle, &requestMsg)) != CMSRET_SUCCESS)
++		{
++			cmsLog_error("could not send GET_CONFIG_FILE msg to smd.");
++			return -1;
++		}
++
++		if ((ret = cmsMsg_receive(msgHandle, &responseMsg)) != CMSRET_SUCCESS)
++		{
++			cmsLog_error("could not receive GET_CONFIG_FILE msg from smd.");
++			CMSMEM_FREE_BUF_AND_NULL_PTR(responseMsg);
++			return -1;
++		}      
++
++		xmlCfgLen = (int) responseMsg->dataLength;
++		cmsLog_debug("got config buffer len=%u", xmlCfgLen);
++	}
++
++	/* config data starts immediately after the header */
++	cfgStart = (char *) (responseMsg + 1);
++	
++	if (xmlCfgLen <= inLen)
++		readLen = xmlCfgLen;
++	else
++		readLen = inLen;
++	
++	memcpy(outBuf, (cfgStart + offset), readLen);
++	
++	xmlCfgLen -= readLen;
++	offset += readLen;
++	glbUploadSize += readLen;
++	
++	if (xmlCfgLen == 0)
++	{
++		/* done copying all the config data out, free the message */
++		CMSMEM_FREE_BUF_AND_NULL_PTR(responseMsg);
++		offset = 0;
++		cmsLog_debug("send out entire config buf, free msg");
++	}
++	
++	return readLen;
++}
++
++
++static int myWrite(char *inBuf, int inBufLen)
++{
++	/* To use the old logic - allocate memory with flash size    
++	* replace  CMS_IMAGE_MAX_ALLOC_LEN with 0, ie. 
++	* int bcmImageGussstimated = 0;
++	*/
++	SINT32 bcmImageGussstimated = CMS_IMAGE_MAX_ALLOC_LEN;
++	static SINT32 allocSize = 0;
++	
++	if (glbCurPtr == NULL) 
++	{
++		UINT32 bcmImageSize = 0;
++		
++		if (inBufLen < TFTP_BLKSIZE_DEFAULT)   // not enough data for a valid first packet and exit
++			return -1;   
++		
++		
++		
++		if (cmsImg_isBcmTaggedImage(inBuf, &bcmImageSize))
++		{
++			/* If it is a bcmTagged image, use the image length info from the bcmTag 
++			* and also make bcmImageGussstimated 0 since bcmTagged image will not use that
++			*/
++			allocSize =  bcmImageSize;
++			bcmImageGussstimated = 0;
++		}
++		else
++		{
++			/* Not bcmTagged image.  Need to check if bcmImageGussstimated is initialized (> 0) or not */
++			if (bcmImageGussstimated > 0)
++			{
++			   /* If bcmImageGstmated size > 0, Use guestimated image size */
++				allocSize = bcmImageGussstimated;
++			}
++			else
++			{
++				/* original logic if bcmImageGussstimated == 0, allocate memory with flash size plus bcm image tag */
++				allocSize = cmsImg_getImageFlashSize() + cmsImg_getBroadcomImageTagSize();
++			}     
++		}
++		
++		bb_error_msg("Allocating %d bytes for flash image.\n", allocSize);
++		
++		if ((glbCurPtr = (char *) malloc(allocSize)) == NULL)
++		{
++			if (bcmImageGussstimated > 0)
++			{
++				/* If bcmImageGussstimated is initialized, try that (with allocSize = bcmImageGussstimated)
++				* and if still failing,  try reducing 64K from allocSize and try again as long as
++				* allocSize > CMS_IMAGE_REQUIRED_LEN.
++				*/
++				while  (((glbCurPtr = (char *) malloc(allocSize)) == NULL) && 
++				   (allocSize > CMS_IMAGE_REQUIRED_LEN))
++				{
++					allocSize -= 64 * 1024 ;
++					cmsLog_debug("Try allocating %d kb", allocSize/1024);
++				}
++			}
++			
++			/* Failed to allocate memory and will quite tftp operation */
++			if (glbCurPtr == NULL)
++			{
++				bb_error_msg("Not enough memory error.  Could not allocate %u bytes.", allocSize);   
++				return -1;
++			}
++		}         
++		bb_error_msg("Memory allocated\n");
++		glbImagePtr = glbCurPtr;
++	}
++	
++	// copy the data from the current packet into our buffer
++	if (glbUploadSize + inBufLen <= allocSize)
++	{
++		memcpy(glbCurPtr, inBuf, inBufLen);
++		glbCurPtr += inBufLen;
++		glbUploadSize += inBufLen;
++	}
++	else
++	{
++		bb_error_msg("Image could not fit into %u byte buffer.\n", allocSize);
++		return -1;
++	}
++	
++	return inBufLen;
++}
++// brcm end
++
++
+ #if ENABLE_FEATURE_TFTP_PROGRESS_BAR
+ static void tftp_progress_update(void)
+ {
+@@ -315,7 +500,7 @@ static int tftp_protocol(
+ 	uint16_t opcode;
+ 	uint16_t block_nr;
+ 	uint16_t recv_blk;
+-	int open_mode, local_fd;
++	int open_mode, local_fd = -1; // brcm
+ 	int retries, waittime_ms;
+ 	int io_bufsize = blksize + 4;
+ 	char *cp;
+@@ -355,7 +540,8 @@ static int tftp_protocol(
+ 		open_mode = O_RDONLY;
+ 	} else {
+ 		open_mode = O_WRONLY | O_TRUNC | O_CREAT;
+-#if ENABLE_TFTPD
++// #if ENABLE_TFTPD // brcm
++#if !ENABLE_BRCMTFTPD
+ 		if ((option_mask32 & (TFTPD_OPT+TFTPD_OPT_c)) == TFTPD_OPT) {
+ 			/* tftpd without -c */
+ 			open_mode = O_WRONLY | O_TRUNC;
+@@ -421,9 +607,24 @@ static int tftp_protocol(
+ 		}
+ 	} else { /* tftp */
+ 		/* Open file (must be after changing user) */
+-		local_fd = CMD_GET(option_mask32) ? STDOUT_FILENO : STDIN_FILENO;
+-		if (NOT_LONE_DASH(local_file))
+-			local_fd = xopen(local_file, open_mode);
++// brcm begin
++		if ( !brcm_tftp ) {
++			local_fd = CMD_GET(option_mask32) ? STDOUT_FILENO : STDIN_FILENO;
++			if (NOT_LONE_DASH(local_file))
++				local_fd = xopen(local_file, open_mode);
++		} else {
++			/* need to send in the connection interface name to smd */
++			if (glbUploadType == 'i')
++			{
++			   /*
++			    * There is a big image coming.  tftp is about to malloc a big buffer
++			    * and start filling it.  Notify smd so it can do killAllApps or
++			    * something to make memory available on the modem.
++			    */
++			   cmsImg_sendLoadStartingMsg(msgHandle, connIfName);
++			}
++		}
++// brcm end
+ /* Removing #if, or using if() statement instead of #if may lead to
+  * "warning: null argument where non-null required": */
+ #if ENABLE_TFTP
+@@ -516,7 +717,13 @@ static int tftp_protocol(
+ 		opcode = TFTP_ACK;
+ 		if (CMD_PUT(option_mask32)) {
+ 			opcode = TFTP_DATA;
+-			len = full_read(local_fd, cp, blksize);
++// brcm begin
++			if( brcm_tftp ) {
++ 				len = myRead(cp, blksize);
++			} else {
++	  			len = full_read(local_fd, cp, blksize);
++			}
++// brcm end
+ 			if (len < 0) {
+ 				goto send_read_err_pkt;
+ 			}
+@@ -680,7 +887,16 @@ static int tftp_protocol(
+ 
+ 		if (CMD_GET(option_mask32) && (opcode == TFTP_DATA)) {
+ 			if (recv_blk == block_nr) {
+-				int sz = full_write(local_fd, &rbuf[4], len - 4);
++// brcm begin
++				// int sz = full_write(local_fd, &rbuf[4], len - 4);
++				int sz; 
++				if ( local_fd != -1 ) {
++					sz=write(local_fd, &rbuf[4], len - 4);
++					glbUploadSize += sz;
++				}else{
++					sz=myWrite(&rbuf[4], len - 4);
++				}
++// brcm end
+ 				if (sz != len - 4) {
+ 					strcpy(G_error_pkt_str, bb_msg_write_error);
+ 					G_error_pkt_reason = ERR_WRITE;
+@@ -755,21 +971,35 @@ int tftp_main(int argc UNUSED_PARAM, cha
+ 	const char *blksize_str = TFTP_BLKSIZE_DEFAULT_STR;
+ 	int blksize;
+ # endif
++// brcm begin
++	const char *brcm_remote_file = NULL;
++	const char *upload_type = NULL; 
++	const char *brcm_loglevel = NULL;
++	CmsLogLevel logLevel=DEFAULT_LOG_LEVEL;
++	SINT32 logLevelNum;
++	CmsRet ret;
++// brcm end
+ 	int result;
+ 	int port;
+ 	IF_GETPUT(int opt;)
+ 
+ 	INIT_G();
++// brcm begin
++	cmsLog_init(EID_TFTP);
++	cmsLog_setLevel(logLevel);
++// brcm end
+ 
+ 	/* -p or -g is mandatory, and they are mutually exclusive */
+ 	opt_complementary = "" IF_FEATURE_TFTP_GET("g:") IF_FEATURE_TFTP_PUT("p:")
+ 			IF_GETPUT("g--p:p--g:");
+ 
++// brcm begin
+ 	IF_GETPUT(opt =) getopt32(argv,
+ 			IF_FEATURE_TFTP_GET("g") IF_FEATURE_TFTP_PUT("p")
+-				"l:r:" IF_FEATURE_TFTP_BLOCKSIZE("b:"),
+-			&local_file, &remote_file
++				"l:r:f:t:v" IF_FEATURE_TFTP_BLOCKSIZE("b:"),
++			&local_file, &remote_file, &brcm_remote_file, &upload_type, &brcm_loglevel
+ 			IF_FEATURE_TFTP_BLOCKSIZE(, &blksize_str));
++// brcm end
+ 	argv += optind;
+ 
+ # if ENABLE_FEATURE_TFTP_BLOCKSIZE
+@@ -782,6 +1012,25 @@ int tftp_main(int argc UNUSED_PARAM, cha
+ 	}
+ # endif
+ 
++// brcm begin
++	if ( upload_type && brcm_remote_file ) {
++		brcm_tftp = 1;
++		glbUploadType = upload_type[0];
++		remote_file = brcm_remote_file;
++	}
++	if (brcm_loglevel) {
++		logLevelNum = xatoul_range(brcm_loglevel, 0, 7);
++		if (logLevelNum == 0) {
++			logLevel = LOG_LEVEL_ERR;
++		} else if (logLevelNum == 1) {
++			logLevel = LOG_LEVEL_NOTICE;
++		} else {
++			logLevel = LOG_LEVEL_DEBUG;
++		}
++		cmsLog_setLevel(logLevel);
++	}
++// brcm end
++
+ 	if (remote_file) {
+ 		if (!local_file) {
+ 			const char *slash = strrchr(remote_file, '/');
+@@ -807,23 +1056,135 @@ int tftp_main(int argc UNUSED_PARAM, cha
+ # if ENABLE_FEATURE_TFTP_PROGRESS_BAR
+ 	G.file = remote_file;
+ # endif
+-	result = tftp_protocol(
+-		NULL /*our_lsa*/, peer_lsa,
+-		local_file, remote_file
+-		IF_FEATURE_TFTP_BLOCKSIZE(, 1 /* want_transfer_size */)
+-		IF_FEATURE_TFTP_BLOCKSIZE(, blksize)
+-	);
+-	tftp_progress_done();
+ 
+-	if (result != EXIT_SUCCESS && NOT_LONE_DASH(local_file) && CMD_GET(opt)) {
+-		unlink(local_file);
++// brcm begin
++	/* We need to establish a comm link with smd. */
++	if ((ret = cmsMsg_init(EID_TFTP, &msgHandle)) != CMSRET_SUCCESS)
++	{
++		bb_error_msg("failed to open comm link with smd, tftp failed.");
++		if (brcm_tftp)
++		   return 0;
+ 	}
++
++	if( brcm_tftp ) {
++#ifdef SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE
++		memset(&imageTransferStats,0,sizeof(CmsImageTransferStats));
++		imageTransferStats.startTime = time(NULL);
++#endif
++
++		result = tftp_protocol(
++				NULL /*our_lsa*/, peer_lsa,
++				local_file, remote_file
++				IF_FEATURE_TFTP_BLOCKSIZE(, 1 /* want_transfer_size */)
++				IF_FEATURE_TFTP_BLOCKSIZE(, blksize)
++				);
++
++#ifdef SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE
++		imageTransferStats.fileSize = glbUploadSize;
++		imageTransferStats.completeTime = time(NULL);
++		if (result == 0)
++		{
++			imageTransferStats.faultCode = CMSRET_SUCCESS;
++		}
++#endif
++
++		if ( glbUploadType == 'f' ) {
++#ifdef SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE
++			imageTransferStats.isDownload = FALSE;
++			imageTransferStats.fileType = CMS_IMAGE_FORMAT_XML_CFG;
++#endif
++			cmsLog_debug("sending config to remote file %s", remote_file);
++			if (result == 0) {		
++				bb_error_msg("backed up config file to %s (%d bytes)\n", remote_file, glbUploadSize);
++			} else {
++				bb_error_msg("Could not back up config file.\n");
++#ifdef SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE
++				imageTransferStats.faultCode = CMSRET_UPLOAD_FAILURE;
++				strcpy(imageTransferStats.faultStr,"Could not backup config file.");
++#endif
++			}
++#ifdef SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE
++			cmsImg_sendAutonomousTransferCompleteMsg(msgHandle,&imageTransferStats);
++#endif
++		} else {
++#ifdef SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE
++			imageTransferStats.isDownload = TRUE;         
++			if (glbUploadType == 'i')
++			{
++				imageTransferStats.fileType = CMS_IMAGE_FORMAT_FLASH;
++			}
++			else
++			{
++				imageTransferStats.fileType = CMS_IMAGE_FORMAT_XML_CFG;
++			}
++#endif
++			if ( result == EXIT_SUCCESS ) {
++				bb_error_msg("Got image via tftp, total image size: %d\n", glbUploadSize);
++	
++			
++				/*
++				* cmsImsg_writeImage will determine the image format and write
++				* to flash.  If successful, the system will do a sysMipsSoftReset
++				* immediately.  So we will not return from this function call.
++				* (But on the desktop, this call does return, so we still have to check the
++				* return value.)
++				*/
++#ifdef SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE
++				cmsImg_storeImageTransferStats(&imageTransferStats);   
++#endif
++
++				if ((ret = cmsImg_writeImage(glbImagePtr, glbUploadSize, msgHandle)) != CMSRET_SUCCESS)
++				{
++					bb_error_msg("Tftp Image failed: Illegal image.\n");
++#ifdef SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE
++					imageTransferStats.faultCode = CMSRET_DOWNLOAD_FAILURE;
++					strcpy(imageTransferStats.faultStr,"Illegal image error.");
++#endif
++				}
++				/*
++				 * If we get here, the image download has failed.  Tell smd to go back
++				 * to normal operation.
++				 */
++				if (glbImagePtr)
++				{
++					free(glbImagePtr);
++				}
++
++#ifdef SUPPORT_TR69C_AUTONOMOUS_TRANSFER_COMPLETE
++				strcpy(imageTransferStats.faultStr,"Flash image failed.");
++				/* send a message to TR69c to do autonmous transfer complete.  If flash were successful, 
++				 * after reboot the autonomous transfer message would be sent. */
++				cmsImg_sendAutonomousTransferCompleteMsg(msgHandle,&imageTransferStats);
++#endif
++
++				if (glbUploadType == 'i')
++				{
++					cmsImg_sendLoadDoneMsg(msgHandle);
++				}
++			}
++		}
++
++	} else {
++// brcm end
++		result = tftp_protocol(
++			NULL /*our_lsa*/, peer_lsa,
++			local_file, remote_file
++			IF_FEATURE_TFTP_BLOCKSIZE(, 1 /* want_transfer_size */)
++			IF_FEATURE_TFTP_BLOCKSIZE(, blksize)
++		);
++		tftp_progress_done();
++	
++		if (result != EXIT_SUCCESS && NOT_LONE_DASH(local_file) && CMD_GET(opt)) {
++			unlink(local_file);
++		}
++        }
+ 	return result;
+ }
+ 
+ #endif /* ENABLE_TFTP */
+ 
+-#if ENABLE_TFTPD
++// #if ENABLE_TFTPD // brcm
++#if !ENABLE_BRCMTFTPD
+ int tftpd_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
+ int tftpd_main(int argc UNUSED_PARAM, char **argv)
+ {
+diff -rupN orig_busybox-1.27.2/networking/tftpd.c busybox-1.27.2/networking/tftpd.c
+--- orig_busybox-1.27.2/networking/tftpd.c	1970-01-01 08:00:00.000000000 +0800
++++ busybox-1.27.2/networking/tftpd.c	2017-08-30 09:50:59.951725940 +0800
+@@ -0,0 +1,1017 @@
++/* vi: set sw=4 ts=4: */
++/* 
++ * A simple tftpd server for busybox
++ *
++ * Copyright (C) 2001 Steven Carr <Steven_Carr@yahoo.com>
++ *
++ * Tries to follow RFC1350 and RFC2347.
++ * Only "octet" mode supported.
++ * tsize option is supported on sending files only (pxelinux support).
++ * chroot jail for security.
++ *
++ * Licensed under GPLv2 or later, see file LICENSE in this source tree.
++ */
++
++//config:config BRCMTFTPD
++//config:	bool "brcmtftpd"
++//config:	default y
++//config:	depends on TFTPD
++//config:	help
++//config:	  This will give you the tftpd with f/w upgrading feature.
++
++//applet:IF_TFTPD(APPLET(tftpd, BB_DIR_USR_BIN, BB_SUID_DROP))
++
++//kbuild:lib-$(CONFIG_BRCMTFTPD) += tftpd.o
++
++//usage:#define tftpd_trivial_usage
++//usage:       "CMS tftpd"
++//usage:#define tftpd_full_usage "\n\n"
++//usage:       "Transfer a file on tftp client's request\n"
++//usage:       "\n"
++//usage:       "tftpd will be launched by CMS.\n"
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <sys/time.h>
++#include <sys/stat.h>
++#include <netdb.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
++#include <arpa/tftp.h>
++#include <linux/if.h>
++#include <unistd.h>
++#include <fcntl.h>
++#include <ctype.h>
++#include <asm/ioctls.h>
++#include <sys/ioctl.h>
++#include <signal.h>
++#include <errno.h>
++#include "busybox.h"
++
++#include "cms.h"
++#include "cms_util.h"
++#include "cms_msg.h"
++
++
++#ifndef OACK
++#define OACK 6
++#endif
++#ifndef EOPTNEG
++#define EOPTNEG 8
++#endif
++
++#define ENOPUT -2
++#define ENOGET -3
++
++#if !defined(__UCLIBC__) || defined(__UCLIBC_HAS_MMU__)
++#define FORK() fork()
++#else
++#define FORK() vfork()
++#endif
++
++#define TFTP_BLOCKSIZE_DEFAULT 512   /* according to RFC 1350, don't change */
++#define TFTP_TIMEOUT           5     /* seconds */
++#define TFTPD_TIMEOUT          300   /* seconds */
++
++// brcm begin.  Enable put only
++
++#define DUP_PKT_CHECK_COUNT      3
++//Enable put only
++//#define CONFIG_FEATURE_TFTPD_GET
++#define CONFIG_FEATURE_TFTPD_PUT
++static char connIfName[CMS_IFNAME_LENGTH]={0};
++static void *msgHandle=NULL;
++static int glbPeerFd=-1;
++
++
++static void common_exit(int code)
++{
++   if (glbPeerFd != -1)
++   {
++      close(glbPeerFd);
++   }
++   
++   exit(code);  
++}
++
++static void handler_sigterm(int signum)
++{
++   cmsLog_notice("received signal %d", signum);
++   common_exit(0);
++}
++
++
++static void perror_msg_and_die(const char * msg)
++{
++    printf("fatal: %s\n", msg);
++    common_exit(0);
++}
++
++
++
++/*
++ * Handle initial connection protocol.
++ *     +-------+---~~---+---+---~~---+---+---~~---+---+---~~---+---+-->  >-------+---+---~~---+---+
++ *     |  opc  |filename| 0 |  mode  | 0 |  opt1  | 0 | value1 | 0 | <  <  optN  | 0 | valueN | 0 |
++ *     +-------+---~~---+---+---~~---+---+---~~---+---+---~~---+---+-->  >-------+---+---~~---+---+
++ *             ^--->
++ */
++
++/* The options are zero terminated, retrieve a list of pointers to the first character of each option */
++static int tftpd_options (char *options, int opt_len, char **argv, int max_arg)
++{
++  int x;
++  int y;
++  argv[0] = options;
++  for (y = 1, x = 0; (y < max_arg) && (x < (opt_len - 1)); x++)
++    {
++      if (options[x] == 0)
++   {
++     if (options[x + 1] == 0)
++       return y;
++     argv[y] = &options[x + 1];
++     y++;
++   }
++    }
++  return y;
++}
++
++
++/*
++ * Send a nak packet (error message).
++ * Error code passed in is one of the
++ * standard TFTP codes, or a UNIX errno
++ * offset by 100.
++ */
++static void tftpd_nak (int peer, int error)
++{
++  char buf[TFTP_BLOCKSIZE_DEFAULT + 4];
++  struct tftphdr *pkt;
++
++  pkt = (struct tftphdr *) buf;
++  pkt->th_opcode = htons ((u_short) ERROR);
++  pkt->th_code = htons ((u_short) error);
++
++  switch (error)
++    {
++    case ENOPUT:
++      strcpy (pkt->th_msg, "Put not supported");
++      pkt->th_code = htons (EUNDEF);
++      break;
++    case ENOGET:
++      strcpy (pkt->th_msg, "Get not supported");
++      pkt->th_code = htons (EUNDEF);
++      break;
++    case EUNDEF:
++      strcpy (pkt->th_msg, "Undefined error code");
++      break;
++    case ENOTFOUND:
++      strcpy (pkt->th_msg, "File not found");
++      break;
++    case EACCESS:
++      strcpy (pkt->th_msg, "Access violation");
++      break;
++    case ENOSPACE:
++      strcpy (pkt->th_msg, "Disk full or allocation exceeded");
++      break;
++    case EBADOP:
++      strcpy (pkt->th_msg, "Illegal TFTP operation");
++      break;
++    case EBADID:
++      strcpy (pkt->th_msg, "Unknown transfer ID");
++      break;
++    case EEXISTS:
++      strcpy (pkt->th_msg, "File already exists");
++      break;
++    case ENOUSER:
++      strcpy (pkt->th_msg, "No such user");
++      break;
++    case EOPTNEG:
++      strcpy (pkt->th_msg, "Failure to negotiate RFC2347 options");
++      break;
++    default:
++      strcpy (pkt->th_msg, strerror (error - 100));
++      pkt->th_code = htons (EUNDEF);
++      break;
++    }
++
++  send (peer, buf, strlen (pkt->th_msg) + 5, 0);
++}
++
++/*
++ * Send a ack packet 
++ */
++static void tftpd_ack (int peer, int block)
++{
++  struct tftphdr pkt;
++
++  pkt.th_opcode = htons (ACK);
++  pkt.th_block = htons (block);
++
++  if (send (peer, &pkt, sizeof(pkt), 0)!=sizeof(pkt))
++     perror_msg_and_die("tftpd_ack send");
++}
++
++
++#ifdef CONFIG_FEATURE_TFTPD_GET
++/*
++ * send an oack
++ */
++static void tftpd_oack (int peer, int count, char **list)
++{
++  char buf[TFTP_BLOCKSIZE_DEFAULT + 4];
++  struct tftphdr *pkt;
++  int x;
++  char *ptr;
++
++  pkt=(struct tftphdr *)buf;
++  pkt->th_opcode = htons (OACK);
++  ptr=pkt->th_stuff;
++  
++  for (x=0;x<count;x++)
++    ptr=strrchr (strcpy (ptr, list[x]), '\0') + 1;
++
++ if ( send (peer, buf, (ptr-buf), 0)!=(ptr-buf))
++     perror_msg_and_die("tftpd_oack send");
++}
++
++
++/*
++ * send data
++ */
++static void tftpd_data (int peer, int block, char *data, int size)
++{
++  struct tftphdr *pkt;
++  char buf[TFTP_BLOCKSIZE_DEFAULT + 4];
++
++  pkt=(struct tftphdr *)buf;
++  pkt->th_opcode = htons (DATA);
++  pkt->th_block  = htons(block);
++  
++  memcpy(pkt->th_data,data,size);
++
++  if (send (peer, &buf, size+4, 0)!=(size+4))
++     perror_msg_and_die("tftpd_data send");
++}
++#endif /* CONFIG_FEATURE_TFTPD_GET */
++
++static int tftpd_getdata(int peer, int block, char *data, int size)
++{
++  struct tftphdr *pkt;
++  struct timeval tv;
++  fd_set rfds;
++  int len=-1;
++  int timeout_counter = 4;
++  
++  pkt=(struct tftphdr *)data;
++  
++  do {   
++      tv.tv_sec = TFTP_TIMEOUT;
++      tv.tv_usec = 0;
++      FD_ZERO (&rfds);
++      FD_SET (peer, &rfds);
++      switch (select (FD_SETSIZE, &rfds, NULL, NULL, &tv))
++   {
++   case 1:      /* data ready */
++     len = recv (peer, data, size, 0);
++     if (len < 0)
++       perror_msg_and_die ("failed to read (data)");
++
++     pkt->th_opcode = ntohs (pkt->th_opcode);
++     pkt->th_block = ntohs (pkt->th_block);
++     if (pkt->th_opcode == ERROR)
++       {
++         bb_error_msg (pkt->th_data);
++         common_exit(0);
++       }
++     if ((pkt->th_opcode == DATA) && (pkt->th_block != block))
++       {
++         //synchronize (peer);
++       }
++     break;
++   case 0:      /* timeout */
++     timeout_counter--;
++     if (timeout_counter == 0)
++       {
++         bb_error_msg ("last timeout");
++         common_exit(0);
++       }
++     break;
++   default:      /* error */
++     perror_msg_and_die ("select failed");
++     break;
++   }
++   }while (!(pkt->th_opcode == DATA) && (pkt->th_block == block));
++   return len;
++}
++
++
++
++#ifdef CONFIG_FEATURE_TFTPD_GET
++static int tftpd_getack(int peer, int block)
++{
++  char data[TFTP_BLOCKSIZE_DEFAULT + 4];
++  struct tftphdr *pkt;
++  struct timeval tv;
++  fd_set rfds;
++  int timeout_counter = 4;
++  int len;
++  
++  pkt=(struct tftphdr *)data;
++
++  do {   
++      tv.tv_sec = TFTP_TIMEOUT;
++      tv.tv_usec = 0;
++      FD_ZERO (&rfds);
++      FD_SET (peer, &rfds);
++      switch (select (FD_SETSIZE, &rfds, NULL, NULL, &tv))
++   {
++   case 1:      /* data ready */
++
++     len = recv (peer, data, TFTP_BLOCKSIZE_DEFAULT + 4, 0);
++     if (len < 0)
++       perror_msg_and_die ("failed to read (data)");
++
++     pkt->th_opcode = ntohs (pkt->th_opcode);
++     pkt->th_block = ntohs (pkt->th_block);
++
++     if (pkt->th_opcode == ERROR)
++       {
++         bb_error_msg (pkt->th_data);
++         common_exit(0);
++       }
++
++     if ((pkt->th_opcode == ACK) && (pkt->th_block != block))
++       {
++         //synchronize (peer);
++       }
++     break;
++   case 0:      /* timeout */
++     timeout_counter--;
++     if (timeout_counter == 0)
++       {
++         bb_error_msg ("last timeout");
++         common_exit(0);
++       }
++     break;
++   default:      /* error */
++     perror_msg_and_die ("select failed");
++     break;
++   }
++   }while (! ((pkt->th_opcode == ACK) && (pkt->th_block == block)) );
++
++  return (1==1);
++}
++#endif /* CONFIG_FEATURE_TFTPD_GET */
++
++
++
++
++
++#ifndef CONFIG_FEATURE_TFTPD_GET
++static void
++tftpd_send (int peer,
++            struct tftphdr *tp UNUSED_PARAM,
++            int n UNUSED_PARAM,
++            int buffersize UNUSED_PARAM)
++{
++   /* we aren't configured for sending files */
++   tftpd_nak (peer, ENOGET);
++   common_exit(0);
++}
++
++#else
++static void
++tftpd_send (int peer, struct tftphdr *first_pkt, int pkt_len, int buffersize)
++{
++   FILE *file=NULL;
++   char buffer[TFTP_BLOCKSIZE_DEFAULT+4];
++   char *list[64]; /* list of pointers to options and values */
++   int listcount;
++   char *reply_list[64];
++   int reply_listcount=0;
++   char tsize_ret[32];
++   int block, inbytes, x;
++   
++   listcount = tftpd_options (first_pkt->th_stuff, pkt_len, list ,64);
++
++   /* get the size of the file (remember, chroot() supposed to point us in the right directory) */
++
++   if (strcasecmp(list[1],"octet")!=0)
++   {
++      tftpd_nak(peer,EBADOP);
++      common_exit(0);
++   }
++
++
++   file = fopen (list[0], "r");
++   if (file == NULL)
++   {
++     tftpd_nak (peer, ENOTFOUND);
++     common_exit(0);
++   }
++   fseek (file, 0, SEEK_END);
++   sprintf(tsize_ret,"%lu", ftell (file));
++   fseek (file, 0, SEEK_SET);
++
++
++   /* 0=filename, 1=mode, 2=option, 3=option_value ... */
++   block = 1;
++   reply_listcount=0;
++
++   /* look through the options for the ones we support */
++   for (x=2;x<listcount;x++)
++   {
++      if (strcasecmp(list[x],"tsize")==0) /* only one option supported so far */
++      {
++         reply_list[reply_listcount]=list[x];      
++         reply_listcount++;
++         reply_list[reply_listcount]=tsize_ret; /* point to the real value */
++         reply_listcount++;
++      }
++   }
++
++   /* if there are any options, send an OACK instead of an ACK */
++   if (reply_listcount>0)
++   {
++      do
++      {
++         tftpd_oack(peer,reply_listcount,reply_list);
++      }
++      while (!tftpd_getack(peer,0));
++   }   
++
++
++   /* Send the file! */
++   while ((inbytes = fread(buffer,1,TFTP_BLOCKSIZE_DEFAULT,file))>0)
++   {
++      do
++      {
++         tftpd_data(peer,block,buffer,inbytes);
++      }
++      while (!tftpd_getack(peer,block));
++      block++;
++   }
++   fclose(file);
++   common_exit(0);
++}
++
++#endif
++
++
++#ifndef CONFIG_FEATURE_TFTPD_PUT
++static void
++tftpd_receive (int peer, struct tftphdr *tp, int n, int buffersize)
++{
++   /* we aren't configured for receiving files */
++   tftpd_nak (peer, ENOPUT);
++   common_exit(0);
++}
++
++#else
++static void
++//brcm begin
++tftpd_receive (int peer, struct tftphdr *first_pkt, int pkt_len, int buffersize UNUSED_PARAM)
++{
++// brcm   FILE *file=NULL;
++   char buffer[TFTP_BLOCKSIZE_DEFAULT+4];
++   struct tftphdr *pkt;
++   int block, inbytes;
++   char *list[64];
++   int listcount;
++
++    //brcm begin
++    int byteRd = 0;
++    int i = 0;   
++    CmsRet ret;
++    static UBOOL8 isConfigFile=FALSE;
++    int totalAllocatedSize = 0;
++    int uploadSize = 0;
++    char *imagePtr = NULL;
++    char *curPtr = NULL;
++    
++
++
++//printf("tftpd_receive, peer = %d, pkt_len = %d, buffersize=%d\n", peer, pkt_len, buffersize);
++
++   pkt=(struct tftphdr *)buffer;
++   listcount = tftpd_options (first_pkt->th_stuff, pkt_len, list ,64);
++
++   /* get the size of the file (remember, chroot() supposed to point us in the right directory) */
++
++//printf ("mode= %s, file= %s\n", list[1], list[0]);   
++    if (strcasecmp(list[1],"octet")!=0)
++   {
++        printf("Only support 'bin' mode. Type 'bin' at tftp client\n");
++      tftpd_nak(peer,EBADOP);
++      common_exit(0);
++   }
++
++#if 0//brcm
++    file = fopen (list[0], "w");
++   if (file == NULL)
++   {
++     tftpd_nak (peer, EACCESS);
++     common_exit(0);
++   }
++#endif //brcm
++
++
++
++   block=0;
++
++   do
++   {
++      tftpd_ack(peer,block);
++      block++;
++
++      // if duplicate pkt, (for slow ack on 38R board) discard it.
++      for (i = 0; i < DUP_PKT_CHECK_COUNT; i++)
++      {
++         inbytes=tftpd_getdata(peer,block,buffer,TFTP_BLOCKSIZE_DEFAULT+4);
++         if (block == (int) (*(short*)(buffer+2)))
++            break;
++      }
++      
++      
++      // brcm fwrite(pkt->th_msg,1,inbytes-4,file);
++      byteRd=inbytes-4;
++      
++      // brcm begin
++      if (curPtr == NULL) 
++      {
++         // First time through, need to allocate buffer for image
++         
++         if (byteRd < TFTP_BLOCKSIZE_DEFAULT)   // not enough data for a valid first packet and exit
++         {
++            cmsLog_error("first packet too short, byteRd=%d default block size=%d", byteRd, TFTP_BLOCKSIZE_DEFAULT);
++            uploadSize = byteRd;
++            break;
++         }
++         
++         // The first TFTP_BLOCKSIZE_DEFAULT (512 bytes) of the image
++         // is in pkt->th_msg.  First determine if it is a config file.
++         isConfigFile = cmsImg_isConfigFileLikely(pkt->th_msg);
++         cmsLog_debug("isConfigFile = %d", isConfigFile);
++
++         if (isConfigFile)
++         {
++            totalAllocatedSize = cmsImg_getConfigFlashSize();
++         }
++         else
++         {
++            totalAllocatedSize = cmsImg_getImageFlashSize() + cmsImg_getBroadcomImageTagSize();
++            // let smd know that we are about to start a big download
++            cmsImg_sendLoadStartingMsg(msgHandle, connIfName);
++         }       
++
++         if ((curPtr = (char *) malloc(totalAllocatedSize)) == NULL)
++         {
++            printf("Not enough memory error (%d bytes needed).\n", totalAllocatedSize);       
++            common_exit(0);
++         }
++
++         printf("%d bytes allocated for image\n", totalAllocatedSize);
++         imagePtr = curPtr;
++      } // if curPtr == NULL
++
++      if (uploadSize + byteRd < totalAllocatedSize)
++      {
++         memcpy(curPtr, pkt->th_msg, byteRd);
++         curPtr += byteRd;
++         uploadSize += byteRd;
++      }
++      else
++      {
++         printf("Image could not fit into %d byte buffer.\n", totalAllocatedSize);
++         common_exit(0);
++      }
++   }
++   while (inbytes==(TFTP_BLOCKSIZE_DEFAULT+4));
++
++    tftpd_ack(peer,block); /* final acknowledge */
++
++// brcm   fclose(file);
++
++   printf("Total upload size: %d bytes\n", uploadSize);
++   
++    /*
++     * cmsImsg_writeImage will determine the image format and write
++     * to flash.  If successful, the system will do a sysMipsSoftReset
++     * immediately.  So we will not return from this function call.
++     * But on desktop linux, we still return from this call, so still
++     * check for return value.
++     */
++    if ((ret = cmsImg_writeImage(imagePtr, uploadSize, msgHandle)) != CMSRET_SUCCESS)
++    {
++       printf("Tftp Image failed: Illegal image.\n");
++    }  
++    
++    if (!isConfigFile)
++    {
++       cmsImg_sendLoadDoneMsg(msgHandle);
++    } 
++    
++    if (imagePtr)
++    {
++       free(imagePtr);
++    }
++    
++    common_exit(0);
++}
++// brcm end
++#endif
++
++#ifdef not_used
++static struct in_addr getLanIp(void) //struct in_addr *lan_ip)
++{
++#ifdef DESKTOP_LINUX
++   struct in_addr inaddr;
++   
++   inet_aton("127.0.0.1", &inaddr);
++   return inaddr;
++#else
++
++   int socketfd;
++   struct ifreq lan;
++
++   cmsLog_debug("getting LAN ip (what for?)");
++   
++   memset(&lan, 0, sizeof(lan));
++   if ((socketfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
++        printf("Error openning socket when getting LAN info\n");
++   }
++   else  {
++        strcpy(lan.ifr_name, "br0");
++        if (ioctl(socketfd,SIOCGIFADDR,&lan) < 0) {
++            printf("Error getting LAN IP address\n");
++        }
++   }
++   close(socketfd);
++   return ((struct sockaddr_in *)&(lan.ifr_addr))->sin_addr;
++#endif
++}
++#endif /* not_used */
++
++// brcm -- from igmp
++#include <bits/socket.h>
++#include <sys/uio.h>
++#define MAXCTRLSIZE                  \
++   (sizeof(struct cmsghdr) + sizeof(struct sockaddr_in) +   \
++   sizeof(struct cmsghdr) + sizeof(int) + 32)
++// brmc end
++
++static int
++tftpd_daemon (char *directory UNUSED_PARAM,
++              char *address UNUSED_PARAM,
++              int port UNUSED_PARAM)
++{
++   struct tftphdr *tp;
++#ifdef SUPPORT_IPV6
++   struct sockaddr_in6 from;
++   struct sockaddr_in6 myaddr;
++#else
++   struct sockaddr_in from;
++   struct sockaddr_in myaddr;
++#endif
++   int fd = -1;
++   int rv;
++   int n;
++#if 0
++   struct sockaddr_in bindaddr;
++   pid_t pid;
++   int i = 1;
++#endif
++   int peer;
++
++   char buf[TFTP_BLOCKSIZE_DEFAULT + 4];
++   struct iovec iov = { buf, sizeof buf };
++   struct cmsghdr *cmsg;
++   char *ctrl = (char *)xmalloc(MAXCTRLSIZE);
++   struct msghdr msg = { (void*)&from, sizeof from, &iov, 1, (void*)ctrl, MAXCTRLSIZE, 0};
++   struct in_pktinfo *info = NULL;
++
++#if 1
++
++   //
++   // We should have defined a CONFIG_FEATURE_TFTPD_INETD
++   // to distinguish between inetd based tftpd or consoled based tftpd spawning
++   // In the latter case, we do need to daemonize using daemon(0,1) so that
++   // the tftpd could detach from the console/cli.
++   //
++   // CRDDB00016882
++   // daemon(0,1);	inetd already daemonizes tftpd.
++   //
++
++
++   signal(SIGTERM, handler_sigterm);
++   
++   /* mwang: for smd dynamic launch, the server fd is at a fixed number */
++   fd = CMS_DYNAMIC_LAUNCH_SERVER_FD;
++   
++#endif
++
++#if 0
++   /* mwang: do not daemonize in CMS */
++   daemon(0,1);
++
++   if ((fd = socket (PF_INET, SOCK_DGRAM, 0)) < 0)
++      perror_msg_and_die ("socket");
++   memset (&bindaddr, 0, sizeof (bindaddr));
++   bindaddr.sin_family = AF_INET;
++   bindaddr.sin_addr.s_addr = INADDR_ANY;
++   bindaddr.sin_port = htons (port);
++   if (address != NULL)
++   {
++      struct hostent *hostent;
++      hostent = xgethostbyname (address);
++      if (!hostent || hostent->h_addrtype != AF_INET)
++         perror_msg_and_die ("cannot resolve local bind address");
++      memcpy (&bindaddr.sin_addr, hostent->h_addr, hostent->h_length);
++   }
++   // set option for getting the to ip address.
++   setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &i, sizeof(i));
++
++   if (bind (fd, (struct sockaddr *) &bindaddr, sizeof (bindaddr)) < 0)
++      perror_msg_and_die ("daemon bind failed");
++   /* This means we don't want to wait() for children */
++   signal (SIGCHLD, SIG_IGN);
++
++  // get pid for web access function to start/stop tftpd.
++  {
++    FILE *pid_fp;
++    if (!(pid_fp = fopen("/var/run/tftpd_pid", "w"))) 
++    {
++        printf("Error open /var/run/tftpd_pid");
++        common_exit(0);
++    }
++    fprintf(pid_fp, "%d\n", getpid());
++    fclose(pid_fp);
++  }
++#endif
++
++   while (1)
++   {
++      struct timeval timer;
++      fd_set         readset;
++      
++      memset(buf,0,TFTP_BLOCKSIZE_DEFAULT + 4);
++      memset (&myaddr, 0, sizeof (myaddr));
++
++      /* You have to do this in Linux, reinitialize timer each iteration */
++      timer.tv_sec  = TFTPD_TIMEOUT;
++      timer.tv_usec = 0;
++
++      FD_ZERO (&readset);
++      FD_SET (fd, &readset);
++
++      /* Never time out, we're in standalone mode */
++      rv = select (fd + 1, &readset, NULL, NULL, &timer);
++      if (rv <= 0)
++      {
++         perror_msg_and_die("error during select, exit");
++      }
++
++#if 0 //inetd
++      if (rv == -1 && errno == EINTR)
++         continue;      /* Signal caught, reloop */
++      if (rv == -1)
++         perror_msg_and_die ("select loop");
++      if (rv == 0)
++      {
++	  bb_error_msg ("We shouldn't be timeing out!");
++	  exit (0);		/* Timeout, return to inetd */
++      }
++#endif
++      n = recvmsg (fd, &msg, MSG_WAITALL);
++      if (n <= 0)
++      {
++         if (n == 0)  /* Keven -- Received message with zero length, reloop */
++            continue;
++         else
++         {         
++            perror_msg_and_die("*** error recvmsg < 0\n");
++         }
++      }
++//printf("incoming_ip=%s, n=%d\n", inet_ntoa(from.sin_addr), n);
++      for(cmsg=CMSG_FIRSTHDR(&msg); cmsg != NULL;cmsg =CMSG_NXTHDR(&msg,cmsg))
++      {
++         if (cmsg->cmsg_type == IP_PKTINFO)
++         {
++            info = (struct in_pktinfo *)CMSG_DATA(cmsg);
++//            printf("sepc_dst=%s, ipi_addr=%s\n", inet_ntoa(info->ipi_spec_dst),inet_ntoa(info->ipi_addr));
++            break;
++         }
++      }
++
++      /* Process the request */
++#ifdef SUPPORT_IPV6
++      bzero((char *)&myaddr, sizeof(struct sockaddr_in6));
++      myaddr.sin6_family = AF_INET6;
++      myaddr.sin6_port = htons (0);   /* we want a new local port */
++      myaddr.sin6_addr = in6addr_any;
++#else
++      bzero((char *)&myaddr, sizeof(struct sockaddr_in));
++      myaddr.sin_family = AF_INET;
++      myaddr.sin_port = htons (0);   /* we want a new local port */
++      myaddr.sin_addr.s_addr = INADDR_ANY;   //getLanIp();
++#endif
++
++#if 0
++      // mwang: not sure exactly what this is trying to do, but it doesn't
++      // make any sense and does no good.  Just skip it.
++      if (myaddr.sin_addr.s_addr != info->ipi_spec_dst.s_addr)
++         memcpy (&myaddr.sin_addr, &bindaddr.sin_addr,sizeof bindaddr.sin_addr);
++#endif
++
++      /* we got the request, break out of loop */
++      break;
++
++#if 0 //inetd
++      /* Now that we have read the request packet from the UDP
++         socket, we fork and go back to listening to the socket. */
++      pid = FORK ();
++
++      if (pid < 0)
++         perror_msg_and_die ("cannot fork");
++      if (pid == 0)
++         break;         /* Child exits the while(1), parent continues to loop */
++#endif
++   }  //while (1)
++
++   /* Close file descriptors we don't need */
++   // brcm close (fd);
++
++   /* Get a socket.  This has to be done before the chroot() (/dev goes away) */
++#ifdef SUPPORT_IPV6
++   peer = socket (AF_INET6, SOCK_DGRAM, 0);
++#else
++   peer = socket (AF_INET, SOCK_DGRAM, 0);
++#endif
++   glbPeerFd = peer;
++   if (peer < 0)
++      perror_msg_and_die ("socket");
++#ifndef DESKTOP_LINUX
++   if (chroot ("."))
++      perror_msg_and_die ("chroot");
++#endif
++//   from.sin_family = AF_INET;
++
++   /* Process the request */
++//   cmsLog_debug("binding to %s", inet_ntoa(myaddr.sin_addr));
++   if (bind (peer, (struct sockaddr *) &myaddr, sizeof myaddr) < 0)
++      perror_msg_and_die ("daemon-child bind");
++
++//printf("after bind. my_ip=%s*****\n", inet_ntoa(myaddr.sin_addr));
++
++   if (connect (peer, (struct sockaddr *) &from, sizeof from) < 0)
++   {
++      perror_msg_and_die ("daemon-child connect");
++   }
++   
++   /* save the connection interface name for later deciding if
++   * it is a WAN or LAN interface in the uploading process
++   */
++   if (cmsImg_saveIfNameFromSocket(peer, connIfName) != CMSRET_SUCCESS)
++   {
++      printf("Failed to get remote ifc name!\n");
++   }         
++
++
++   tp = (struct tftphdr *) buf;
++
++//printf("after connect \n");
++
++   /*
++    * iptables will block any traffic that is not allowed.
++    * Unlike before, userspace code do not need to check with access
++    * control lists.  If tftpd gets a packet, it should service it.
++    */
++
++   tp->th_opcode = ntohs (tp->th_opcode);
++
++   switch(tp->th_opcode)
++   {
++      case RRQ:
++         tftpd_send (peer, tp, n, TFTP_BLOCKSIZE_DEFAULT);
++         break;
++      case WRQ:
++         tftpd_receive (peer, tp, n, TFTP_BLOCKSIZE_DEFAULT);
++         break;
++   }
++
++   common_exit(0);
++   return 0; // not reached, but suppresses a compiler warning
++}
++
++
++
++int tftpd_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
++int tftpd_main (int argc, char **argv)
++{
++  int result;
++  char *address = NULL;      /* address to listen to */
++  
++  // brcm in CMS, smd opens the tftpd server port and launches tftpd when
++  // activity is detected on that port.  So port number is not used here.
++  int port = -1;  /* actually 69 */
++  
++  CmsLogLevel logLevel=DEFAULT_LOG_LEVEL;
++  SINT32 logLevelNum;
++  int opt;
++  
++  cmsLog_init(EID_TFTPD);
++  while ((opt = getopt(argc, argv, "v:")) != -1)
++  {
++     switch(opt)
++     {
++     case 'v':
++     logLevelNum = atoi(optarg);
++     if (logLevelNum == 0)
++     {
++        logLevel = LOG_LEVEL_ERR;
++     }
++     else if (logLevelNum == 1)
++     {
++        logLevel = LOG_LEVEL_NOTICE;
++     }
++     else
++     {
++        logLevel = LOG_LEVEL_DEBUG;
++     }
++     cmsLog_setLevel(logLevel);
++     break;
++     }
++  }
++
++#if 0 //brcm
++  int daemonize = 0;  
++  int on = 1;
++  int fd = 0;
++  int opt;  
++  char directory[256];      /* default directory "/tftpboot/" */
++  memset (directory, 0, sizeof (directory));
++  strcpy (directory, "/tftpboot/");
++
++  while ((opt = getopt (argc, argv, "sp:a:d:h")) != -1)
++    {
++      switch (opt)
++   {
++   case 'p':
++     port = atoi (optarg);
++     break;
++   case 'a':
++     address = optarg;
++     break;
++   case 's':
++     daemonize = (1 == 1);
++     break;
++   case 'd':
++     safe_strncpy (directory, optarg, sizeof (directory));
++     break;
++   case 'h':
++     show_usage ();
++     break;
++   }
++    }
++  if (chdir (directory))
++    perror_msg_and_die ("Invalid Directory");
++
++  if (ioctl (fd, FIONBIO, &on) < 0)
++    perror_msg_and_die ("ioctl(FIONBIO)");
++
++  /* daemonize this process */
++  if (daemonize)
++    {
++      pid_t f = FORK ();
++      if (f > 0) {
++        FILE *pid_fp;
++        if (!(pid_fp = fopen("/var/run/tftpd_pid", "w"))) 
++        {
++            printf("Error open /var/run/tftpd_pid");
++            exit(0);
++        }
++        fprintf(pid_fp, "%d\n", f);
++        fclose(pid_fp);
++       exit (0);
++      }
++      if (f < 0)
++       perror_msg_and_die ("cannot fork");
++      close (0);
++      close (1);
++      close (2);
++    }
++#endif /* 0 */ /* brcm */
++
++  cmsMsg_init(EID_TFTPD, &msgHandle);
++
++  result = tftpd_daemon (NULL, address, port);
++  
++  cmsMsg_cleanup(&msgHandle);
++  
++  return (result);
++}
++
+diff -rupN orig_busybox-1.27.2/networking/traceroute.c busybox-1.27.2/networking/traceroute.c
+--- orig_busybox-1.27.2/networking/traceroute.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/networking/traceroute.c	2017-08-30 09:50:59.955725979 +0800
+@@ -316,6 +316,14 @@
+ #include "libbb.h"
+ #include "inet_common.h"
+ 
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++#include "cms_msg.h"
++#include "cms_util.h"
++#include "cms_log.h"
++#endif
++// brcm end
++
+ #ifndef IPPROTO_ICMP
+ # define IPPROTO_ICMP 1
+ #endif
+@@ -323,9 +331,9 @@
+ # define IPPROTO_IP 0
+ #endif
+ 
+-
++// brcm
+ #define OPT_STRING \
+-	"FIlnrdvxt:i:m:p:q:s:w:z:f:" \
++	"FIlnrdvxt:i:m:p:q:s:w:z:f:T:R:M" \
+ 	"4" IF_TRACEROUTE6("6")
+ enum {
+ 	OPT_DONT_FRAGMNT = (1 << 0),    /* F */
+@@ -345,8 +353,11 @@ enum {
+ 	OPT_WAITTIME     = (1 << 14),   /* w */
+ 	OPT_PAUSE_MS     = (1 << 15),   /* z */
+ 	OPT_FIRST_TTL    = (1 << 16),   /* f */
+-	OPT_IPV4         = (1 << 17),   /* 4 */
+-	OPT_IPV6         = (1 << 18) * ENABLE_TRACEROUTE6, /* 6 */
++	OPT_T            = (1 << 17),   /* brcm, T omci test TCID */
++	OPT_R            = (1 << 18),   /* brcm, R requester id  */
++	OPT_M            = (1 << 19),   /* brcm, M create msg handler */
++	OPT_IPV4         = (1 << 20),   /* 4 */
++	OPT_IPV6         = (1 << 21) * ENABLE_TRACEROUTE6, /* 6 */
+ };
+ #define verbose (option_mask32 & OPT_VERBOSE)
+ 
+@@ -385,6 +396,8 @@ struct globals {
+ 	uint16_t port; // 33434;        /* start udp dest port # for probe packets */
+ 	int waittime; // 5;             /* time to wait for response (in seconds) */
+ 	unsigned char recv_pkt[512];    /* last inbound (icmp) packet */
++	char *str_T;  // brcm
++	char *str_R;  // brcm
+ };
+ 
+ #define G (*ptr_to_globals)
+@@ -398,6 +411,8 @@ struct globals {
+ #define waittime  (G.waittime )
+ #define recv_pkt  (G.recv_pkt )
+ #define gwlist    (G.gwlist   )
++#define str_T     (G.str_T    )  // brcm
++#define str_R     (G.str_R    )  // brcm
+ #define INIT_G() do { \
+ 	SET_PTR_TO_GLOBALS(xzalloc(sizeof(G))); \
+ 	port = 33434; \
+@@ -407,6 +422,168 @@ struct globals {
+ #define outicmp ((struct icmp *)(outip + 1))
+ #define outudp  ((struct udphdr *)(outip + 1))
+ 
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++
++#define TRACERT_IN_PROGRESS  0
++#define TRACERT_FINISHED     1
++#define TRACERT_EXCEEDED     2  /* traceroute process exits on error */
++#define TRACERT_UNKNOWN_HOST 3  /* traceroute unable to resolve host name */
++#define TRACERT_ERROR        4  /* traceroute process exits on error */
++
++#ifdef BRCM_OMCI
++static UINT16 tcID = 0;
++static OmciTracertDataMsgBody omciMsg;
++unsigned char icmpReply[30];
++#endif
++static void *msgHandle=NULL;
++static CmsEntityId requesterId=0;
++static TracertDataMsgBody tracertMsg;
++static unsigned totalResponseTime = 0, sampleCount = 0;
++static int hops = 0;
++#endif  /* BRCM_CMS_BUILD */
++// brcm end
++
++
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++/* this is call to send message back to SMD to relay to interested party about the
++ * statistic of the most recent completed or stopped PING test */
++
++#ifdef BRCM_OMCI
++static void sendOmciEventMessage(int finish)
++{
++	char buf[sizeof(CmsMsgHeader) + sizeof(OmciTracertDataMsgBody)]={0};
++	CmsMsgHeader *msg=(CmsMsgHeader *) buf;
++	OmciTracertDataMsgBody *tracertBody = (OmciTracertDataMsgBody*) (msg+1);
++	CmsRet ret;
++
++	if (finish == TRACERT_IN_PROGRESS)
++		return;
++
++	cmsLog_debug("finish %d", finish);
++
++	msg->type = CMS_MSG_TRACERT_STATE_CHANGED;
++	msg->src = MAKE_SPECIFIC_EID(getpid(), EID_TRACERT);
++	msg->dst = EID_OMCID;
++	msg->flags_event = 1;
++	msg->dataLength = sizeof(OmciTracertDataMsgBody);
++
++	omciMsg.tcid = tcID;
++	if ((finish == TRACERT_FINISHED && hops > 0) || hops > 0)
++	{
++		omciMsg.result = 2; /* time exceeded */
++		if (hops < sizeof(omciMsg.msg.neighbour)/sizeof(UINT32))
++			omciMsg.hops = hops;
++		else
++			omciMsg.hops = sizeof(omciMsg.msg.neighbour)/sizeof(UINT32);
++	}
++	else if (finish == TRACERT_ERROR)
++	{
++		omciMsg.result = 3; /* unexpected icmp reponse */
++	}
++	else //hops == 0
++	{
++		omciMsg.result = 0; /* no response */
++	}
++	memcpy(tracertBody, &omciMsg, sizeof(omciMsg));
++
++	if ((ret = cmsMsg_send(msgHandle, msg)) != CMSRET_SUCCESS)
++	{
++		cmsLog_error("could not send out CMS_MSG_TRACERT_STATE_CHANGED to OMCID, ret=%d", ret);
++	}
++	else
++	{
++		cmsLog_notice("sent out CMS_MSG_TRACERT_STATE_CHANGED (finish=%d) to OMCID", finish);
++	}
++}
++#endif
++
++#ifdef DMP_DEVICE2_TRACEROUTE_1
++static void sendEventMessage(int finish)
++{
++	char buf[sizeof(CmsMsgHeader) + sizeof(TracertDataMsgBody)]={0};
++	CmsMsgHeader *msg=(CmsMsgHeader *) buf;
++	TracertDataMsgBody *tracertBody = (TracertDataMsgBody*) (msg+1);
++	CmsRet ret;
++	
++	if (sampleCount)
++		tracertMsg.averageResponseTime = (totalResponseTime / sampleCount) / 1000;
++	else
++		tracertMsg.averageResponseTime = 0;
++	tracertMsg.routeHopIndex = hops;
++	
++	if (finish == TRACERT_FINISHED && hops > 0)
++	{
++		sprintf(tracertMsg.diagnosticsState, MDMVS_COMPLETE);
++	}
++	else if (finish == TRACERT_IN_PROGRESS)
++	{
++		sprintf(tracertMsg.diagnosticsState, MDMVS_REQUESTED);
++	}
++	else if (finish == TRACERT_EXCEEDED)
++	{
++		sprintf(tracertMsg.diagnosticsState, MDMVS_ERROR_MAXHOSCOUNTEXCEEDED);
++	}
++	else if (finish == TRACERT_UNKNOWN_HOST)
++	{
++		sprintf(tracertMsg.diagnosticsState, MDMVS_ERROR_CANNOTRESOLVEHOSTNAME);
++	}
++	
++	msg->type = CMS_MSG_TRACERT_STATE_CHANGED;
++	msg->src = MAKE_SPECIFIC_EID(getpid(), EID_TRACERT);
++	msg->dst = EID_SSK;
++	msg->flags_event = 1;
++	msg->dataLength = sizeof(TracertDataMsgBody);
++	
++	memcpy(tracertBody, &tracertMsg, sizeof(tracertMsg));
++	if ((ret = cmsMsg_send(msgHandle, msg)) != CMSRET_SUCCESS)
++	{
++		cmsLog_error("could not send out CMS_MSG_TRACERT_STATE_CHANGED to ssk, ret=%d", ret);
++	}
++	else
++	{
++		cmsLog_notice("sent out CMS_MSG_TRACERT_STATE_CHANGED (finish=%d) to ssk", finish);
++	}
++	
++	totalResponseTime = 0;
++	sampleCount = 0;
++	sprintf(tracertMsg.diagnosticsState, "");
++	sprintf(tracertMsg.rtTimes, "");
++	sprintf(tracertMsg.hostAddrOfRouteHop, "");
++	sprintf(tracertMsg.hostOfRouteHop, "");
++}
++#endif
++
++static void cmsCleanup(void)
++{
++	if (option_mask32 & OPT_M)
++	{
++		cmsMsg_cleanup(&msgHandle);
++	}
++	cmsLog_cleanup();
++}
++
++static void logStat(int finish)
++{
++	/* 
++	 * Only call sendEventMessage if msgHandle to smd was successfully initialized.
++	 */
++	if (msgHandle != NULL)
++	{
++#ifdef BRCM_OMCI
++		if (option_mask32 & OPT_T)
++			sendOmciEventMessage(finish);
++#endif
++#ifdef DMP_DEVICE2_TRACEROUTE_1
++		sendEventMessage(finish);
++#endif
++	}
++}
++#endif  /* BRCM_CMS_BUILD */
++// brcm end
++
++
+ 
+ static int
+ wait_for_reply(len_and_sockaddr *from_lsa, struct sockaddr *to, unsigned *timestamp_us, int *left_ms)
+@@ -581,6 +758,14 @@ packet4_ok(int read_len, const struct so
+ 	}
+ 	read_len -= hlen;
+ 	icp = (struct icmp *)(recv_pkt + hlen);
++#ifdef BRCM_CMS_BUILD
++#ifdef BRCM_OMCI
++    memset(icmpReply, 0, sizeof(icmpReply));
++    memcpy(icmpReply, (unsigned char *)icp, 
++        read_len > sizeof(icmpReply) ? sizeof(icmpReply) : read_len);
++#endif
++#endif
++
+ 	type = icp->icmp_type;
+ 	code = icp->icmp_code;
+ 	/* Path MTU Discovery (RFC1191) */
+@@ -792,6 +977,16 @@ print_delta_ms(unsigned t1p, unsigned t2
+ {
+ 	unsigned tt = t2p - t1p;
+ 	printf("  %u.%03u ms", tt / 1000, tt % 1000);
++
++#ifdef BRCM_CMS_BUILD
++	do {
++		char strRTTimes[64];
++		sprintf(strRTTimes, "%u,", tt/1000);
++		strcat(tracertMsg.rtTimes, strRTTimes);
++		totalResponseTime += tt;
++		sampleCount ++;
++	} while (0);
++#endif
+ }
+ 
+ /*
+@@ -838,6 +1033,7 @@ common_traceroute_main(int op, char **ar
+ 	op |= getopt32(argv, OPT_STRING
+ 		, &tos_str, &device, &max_ttl_str, &port_str, &nprobes_str
+ 		, &source, &waittime_str, &pausemsecs_str, &first_ttl_str
++                , &str_T, &str_R /* brcm */ 
+ 	);
+ 	argv += optind;
+ 
+@@ -878,21 +1074,43 @@ common_traceroute_main(int op, char **ar
+ 		minpacket = sizeof(struct ip)
+ 			+ sizeof(struct udphdr)
+ 			+ sizeof(struct outdata_t);
++// brcm begin
+ #if ENABLE_TRACEROUTE6
+ 	af = AF_UNSPEC;
+ 	if (op & OPT_IPV4)
+ 		af = AF_INET;
+ 	if (op & OPT_IPV6)
+ 		af = AF_INET6;
++#ifdef BRCM_CMS_BUILD
+ 	dest_lsa = xhost_and_af2sockaddr(argv[0], port, af);
++	if (dest_lsa == NULL)
++	{
++		logStat(TRACERT_UNKNOWN_HOST);
++		cmsCleanup();
++		return 1;
++	}
++#else
++	dest_lsa = xhost_and_af2sockaddr(argv[0], port, af);
++#endif /* BRCM_CMS_BUILD */
+ 	af = dest_lsa->u.sa.sa_family;
+ 	if (af == AF_INET6)
+ 		minpacket = sizeof(struct ip6_hdr)
+ 			+ sizeof(struct udphdr)
+ 			+ sizeof(struct outdata6_t);
+ #else
++#ifdef BRCM_CMS_BUILD
++	dest_lsa = host2sockaddr(argv[0], port);
++	if (dest_lsa == NULL)
++	{
++		logStat(TRACERT_UNKNOWN_HOST);
++		cmsCleanup();
++		return 1;
++	}
++#else
+ 	dest_lsa = xhost2sockaddr(argv[0], port);
++#endif /* BRCM_CMS_BUILD */
+ #endif
++// brcm end
+ 	packlen = minpacket;
+ 	if (argv[1])
+ 		packlen = xatoul_range(argv[1], minpacket, 32 * 1024);
+@@ -1101,6 +1319,9 @@ common_traceroute_main(int op, char **ar
+ 				if (icmp_code == -1)
+ 					break;
+ 				icmp_code--;
++#ifdef BRCM_CMS_BUILD
++				tracertMsg.errorCode = icmp_code;
++#endif
+ 				switch (icmp_code) {
+ #if ENABLE_TRACEROUTE6
+ 				case ICMP6_DST_UNREACH_NOPORT << 8:
+@@ -1190,10 +1411,52 @@ common_traceroute_main(int op, char **ar
+ 		if (got_there
+ 		 || (unreachable > 0 && unreachable >= nprobes - 1)
+ 		) {
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++#ifdef BRCM_OMCI
++			if (unreachable > 0 && unreachable >= nprobes - 1 && hops <= 1)
++			{
++				//if hops <= 1, and unreachable, send content of icmp packet
++				hops = 0;
++				memcpy(omciMsg.msg.icmpReply, icmpReply, sizeof(icmpReply));
++				logStat(TRACERT_ERROR);
++				cmsCleanup();
++				return 0;
++			}
++			else
++				 break;
++#else
++			if (unreachable > 0 && unreachable >= nprobes - 1 && hops <= 1)
++			{
++				//if hops <= 1, and unreachable, send content of icmp packet
++				hops = 0;
++				logStat(TRACERT_UNKNOWN_HOST);
++				cmsCleanup();
++				return 0;
++			}
++			else
++				break;
++#endif /* BRCM_OMCI*/
++#else
+ 			break;
++#endif /* BRCM_CMS_BUILD */
++// brcm end
+ 		}
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++		logStat(TRACERT_IN_PROGRESS);
++#endif /* endif */
++// brcm end
+ 	}
+ 
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++	if (ttl <= max_ttl)
++		logStat(TRACERT_FINISHED);
++	else
++		logStat(TRACERT_EXCEEDED);
++	cmsCleanup();
++#endif
+ 	if (ENABLE_FEATURE_CLEAN_UP) {
+ 		free(to);
+ 		free(lastaddr);
+diff -rupN orig_busybox-1.27.2/networking/vconfig.c busybox-1.27.2/networking/vconfig.c
+--- orig_busybox-1.27.2/networking/vconfig.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/networking/vconfig.c	2017-08-30 09:50:59.955725979 +0800
+@@ -43,7 +43,10 @@ enum vlan_ioctl_cmds {
+ 	GET_VLAN_INGRESS_PRIORITY_CMD,
+ 	GET_VLAN_EGRESS_PRIORITY_CMD,
+ 	SET_VLAN_NAME_TYPE_CMD,
+-	SET_VLAN_FLAG_CMD
++	SET_VLAN_FLAG_CMD,
++// brcm begin
++        SET_VLAN_NFMARK_TO_PRIORITY_CMD
++// brcm end
+ };
+ enum vlan_name_types {
+ 	VLAN_NAME_TYPE_PLUS_VID, /* Name will look like:  vlan0005 */
+@@ -64,6 +67,7 @@ struct vlan_ioctl_args {
+ 		unsigned int name_type;
+ 		unsigned int bind_type;
+ 		unsigned int flag; /* Matches vlan_dev_info flags */
++		int nfmark_to_priority;  // brcm
+ 	} u;
+ 
+ 	short vlan_qos;
+@@ -98,6 +102,10 @@ static const char cmds[] ALIGN1 = {
+ 	's','e','t','_','e','g','r','e','s','s','_','m','a','p',0,
+ 	5, SET_VLAN_INGRESS_PRIORITY_CMD, 0,
+ 	's','e','t','_','i','n','g','r','e','s','s','_','m','a','p',0,
++// brcm begin   
++	4, SET_VLAN_NFMARK_TO_PRIORITY_CMD, 19,
++	'n', 'f', 'm', 'a', 'r', 'k', '_', 't', 'o', '_', 'p', 'r', 'i', 'o', 'r', 'i', 't', 'y', 0,
++// brcm end
+ };
+ 
+ static const char name_types[] ALIGN1 = {
+@@ -149,6 +157,10 @@ int vconfig_main(int argc, char **argv)
+ 		} else if (ifr.cmd == ADD_VLAN_CMD) {
+ 			/* add */
+ 			ifr.u.VID = xatou_range(p, 0, VLAN_GROUP_ARRAY_LEN - 1);
++// brcm begin   
++		} else if (ifr.cmd == SET_VLAN_NFMARK_TO_PRIORITY_CMD) {
++			ifr.u.nfmark_to_priority = xatoul_range(p, 0, 29);
++// brcm end  
+ 		} else if (ifr.cmd != DEL_VLAN_CMD) {
+ 			/* set_{egress|ingress}_map */
+ 			ifr.u.skb_priority = xatou(p);
+diff -rupN orig_busybox-1.27.2/networking/wget.c busybox-1.27.2/networking/wget.c
+--- orig_busybox-1.27.2/networking/wget.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/networking/wget.c	2017-08-30 09:50:59.955725979 +0800
+@@ -865,6 +865,9 @@ static void NOINLINE retrieve_file_data(
+ 			n = fread(G.wget_buf, 1, rdsz, dfp);
+ 
+ 			if (n > 0) {
++#ifdef CONFIG_BCM_SPEEDYGET
++            if(G.output_fd!=-1)
++#endif
+ 				xwrite(G.output_fd, G.wget_buf, n);
+ #if ENABLE_FEATURE_WGET_STATUSBAR
+ 				G.transferred += n;
+@@ -1309,10 +1312,33 @@ However, in real world it was observed t
+ 
+ 	if (!(option_mask32 & WGET_OPT_SPIDER)) {
+ 		if (G.output_fd < 0)
++#ifdef CONFIG_BCM_SPEEDYGET
++        if(strncmp(G.fname_out,"/dev/null",9))
++#endif
+ 			G.output_fd = xopen(G.fname_out, G.o_flags);
++#ifdef CONFIG_BCM_SPEEDYGET
++        if(G.output_fd == -1)
++        {
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <netinet/tcp.h>         
++            /* 
++             * Normally, TCP_NOCOPY value will be available through the libc toolchain headers
++             * when recompiled against the kernel header file. However, we want to avoid
++             * changing the toolchain, so this value is redefined here
++             */
++#define TCP_NOCOPY 27 
++            int optval=1; 
++
++            if(setsockopt(fileno(dfp),SOL_TCP,TCP_NOCOPY,&optval,sizeof(optval)))
++                perror("setting setsockopt\n");
++        }
++#endif
+ 		retrieve_file_data(dfp);
+ 		if (!(option_mask32 & WGET_OPT_OUTNAME)) {
++#ifdef CONFIG_BCM_SPEEDGET
+ 			xclose(G.output_fd);
++#endif
+ 			G.output_fd = -1;
+ 		}
+ 	}
+diff -rupN orig_busybox-1.27.2/procps/top.c busybox-1.27.2/procps/top.c
+--- orig_busybox-1.27.2/procps/top.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/procps/top.c	2017-08-30 09:50:59.955725979 +0800
+@@ -115,6 +115,9 @@
+ 
+ //kbuild:lib-$(CONFIG_TOP) += top.o
+ 
++#ifdef BRCM_CMS_BUILD
++#include <sched.h>
++#endif
+ #include "libbb.h"
+ #include "common_bufsiz.h"
+ 
+@@ -132,6 +135,11 @@ typedef struct top_status_t {
+ #if ENABLE_FEATURE_TOP_SMP_PROCESS
+ 	int last_seen_on_cpu;
+ #endif
++#ifdef BRCM_CMS_BUILD
++	int cpu_affinity;
++	int priority;
++	int sched_policy;
++#endif
+ } top_status_t;
+ 
+ typedef struct jiffy_counts_t {
+@@ -193,7 +201,7 @@ struct globals {
+ 	char kbd_input[KEYCODE_BUFFER_SIZE];
+ #endif
+ 	char line_buf[80];
+-}; //FIX_ALIASING; - large code growth
++} FIX_ALIASING;
+ enum { LINE_BUF_SIZE = COMMON_BUFSIZE - offsetof(struct globals, line_buf) };
+ #define G (*(struct globals*)bb_common_bufsiz1)
+ #define top              (G.top               )
+@@ -218,6 +226,21 @@ enum { LINE_BUF_SIZE = COMMON_BUFSIZE -
+ 	BUILD_BUG_ON(LINE_BUF_SIZE <= 80); \
+ } while (0)
+ 
++
++#ifdef BRCM_CMS_BUILD
++int cpufilter=-1;
++int altdisplay=0;
++enum {
++	OPT_d = (1 << 0),
++	OPT_n = (1 << 1),
++	OPT_c = (1 << 2),
++	OPT_l = (1 << 3),
++	OPT_a = (1 << 4),
++	OPT_b = (1 << 5),
++	OPT_m = (1 << 6),
++	OPT_EOF = (1 << 7), /* pseudo: "we saw EOF in stdin" */
++};
++#else
+ enum {
+ 	OPT_d = (1 << 0),
+ 	OPT_n = (1 << 1),
+@@ -225,8 +248,20 @@ enum {
+ 	OPT_m = (1 << 3),
+ 	OPT_EOF = (1 << 4), /* pseudo: "we saw EOF in stdin" */
+ };
++#endif /* BRCM_CMS_BUILD */
+ #define OPT_BATCH_MODE (option_mask32 & OPT_b)
+ 
++#ifdef BRCM_CMS_BUILD
++static int prio_sort(top_status_t *P, top_status_t *Q)
++{
++	return (P->priority - Q->priority);
++}
++
++static int affinity_sort(top_status_t *P, top_status_t *Q)
++{
++	return (Q->cpu_affinity - P->cpu_affinity);
++}
++#endif  /* BRCM_CMS_BUILD */
+ 
+ #if ENABLE_FEATURE_TOP_INTERACTIVE
+ static int pid_sort(top_status_t *P, top_status_t *Q)
+@@ -619,6 +654,16 @@ static NOINLINE void display_process_lis
+ #endif
+ 
+ 	/* what info of the processes is shown */
++#ifdef BRCM_CMS_BUILD
++	int local_ntops;
++	if (altdisplay)
++		printf(OPT_BATCH_MODE ? "%.*s" : "\033[7m%.*s\033[0m", scr_width,
++			"  PID  PPID USER     STAT  INFO PRIO"
++			IF_FEATURE_TOP_SMP_PROCESS(" CPU")
++			IF_FEATURE_TOP_CPU_USAGE_PERCENTAGE(" %CPU")
++			" COMMAND");
++	else
++#endif
+ 	printf(OPT_BATCH_MODE ? "%.*s" : "\033[7m%.*s\033[0m", scr_width,
+ 		"  PID  PPID USER     STAT   VSZ %VSZ"
+ 		IF_FEATURE_TOP_SMP_PROCESS(" CPU")
+@@ -687,18 +732,56 @@ static NOINLINE void display_process_lis
+ 	if (lines_rem > ntop - G_scroll_ofs)
+ 		lines_rem = ntop - G_scroll_ofs;
+ 	s = top + G_scroll_ofs;
++#ifdef BRCM_CMS_BUILD
++	if (altdisplay && cpufilter >= 0)
++		pcpu_shift--;
++
++	local_ntops = ntop;
++	while (lines_rem > 0 && local_ntops > 0) {
++#else
+ 	while (--lines_rem >= 0) {
++#endif
+ 		unsigned col;
+ 		CALC_STAT(pmem, (s->vsz*pmem_scale + pmem_half) >> pmem_shift);
+ #if ENABLE_FEATURE_TOP_CPU_USAGE_PERCENTAGE
+ 		CALC_STAT(pcpu, (s->pcpu*pcpu_scale + pcpu_half) >> pcpu_shift);
+ #endif
+-
++#ifdef BRCM_CMS_BUILD
++		local_ntops--;
++		if (cpufilter >= 0 && cpufilter != s->last_seen_on_cpu) {
++			s++;
++			continue;
++		}
++		lines_rem--;
++#endif
+ 		if (s->vsz >= 100000)
+ 			sprintf(vsz_str_buf, "%6ldm", s->vsz/1024);
+ 		else
+ 			sprintf(vsz_str_buf, "%7lu", s->vsz);
+ 		/* PID PPID USER STAT VSZ %VSZ [%CPU] COMMAND */
++#ifdef BRCM_CMS_BUILD
++		if (altdisplay) {
++			sprintf(vsz_str_buf, "       ");
++			if (SCHED_OTHER == s->sched_policy)
++				vsz_str_buf[6] = 'O';
++			else if (SCHED_FIFO == s->sched_policy)
++				vsz_str_buf[6] = 'F';
++			else if (SCHED_RR == s->sched_policy)
++				vsz_str_buf[6] = 'R';
++			else
++				vsz_str_buf[6] = '?';
++			col = snprintf(line_buf, scr_width,
++					"\n" "%5u%6u %-8.8s %s%s" "%5d %d:%d"
++					IF_FEATURE_TOP_CPU_USAGE_PERCENTAGE(FMT)
++					" ",
++					s->pid, s->ppid, get_cached_username(s->uid),
++					s->state, vsz_str_buf,
++					s->priority, s->cpu_affinity, s->last_seen_on_cpu
++					IF_FEATURE_TOP_CPU_USAGE_PERCENTAGE(, SHOW_STAT(pcpu))
++				);
++		}
++		else
++#endif
+ 		col = snprintf(line_buf, scr_width,
+ 				"\n" "%5u%6u %-8.8s %s%s" FMT
+ 				IF_FEATURE_TOP_SMP_PROCESS(" %3d")
+@@ -731,6 +814,7 @@ static void clearmems(void)
+ 	clear_username_cache();
+ 	free(top);
+ 	top = NULL;
++	ntop = 0;
+ }
+ 
+ #if ENABLE_FEATURE_TOP_INTERACTIVE
+@@ -958,6 +1042,13 @@ static unsigned handle_input(unsigned sc
+ 		c |= 0x20; /* lowercase */
+ 		if (c == 'q')
+ 			return EXIT_MASK;
++#ifdef BRCM_CMS_BUILD
++		if (c == 'y') {
++			sort_function[0] = prio_sort;
++			sort_function[1] = affinity_sort;
++			sort_function[2] = pid_sort;
++		}
++#endif /* BRCM_CMS_BUILD */
+ 
+ 		if (c == 'n') {
+ 			IF_FEATURE_TOPMEM(scan_mask = TOP_MASK;)
+@@ -1077,6 +1168,14 @@ static unsigned handle_input(unsigned sc
+ //usage:	IF_FEATURE_TOPMEM(
+ //usage:   "\n""	-m	Same as 's' key"
+ //usage:	)
++//usage:   "\n""	BCM options:"
++//usage:   "\n""	  -a enable alt display mode"
++//usage:   "\n""	  -c0|1 filter output by CPU"
++//usage:   "\n""	  -lNUM set max lines for output (default is 24)"
++//usage:   "\n""	While top is running:"
++//usage:   "\n""	--press c to toggle between per-cpu and aggregate CPU modes."
++//usage:   "\n""	--press p to sort by cpu percentage."
++//usage:   "\n""	--press y to sort by priority (BCM)."
+ 
+ /* Interactive testing:
+  * echo sss | ./busybox top
+@@ -1096,6 +1195,10 @@ int top_main(int argc UNUSED_PARAM, char
+ 	unsigned col;
+ 	unsigned interval;
+ 	char *str_interval, *str_iterations;
++#ifdef BRCM_CMS_BUILD
++	char *str_cpufilter, *str_xlines;
++	int xlines=0;
++#endif
+ 	unsigned scan_mask = TOP_MASK;
+ 
+ 	INIT_G();
+@@ -1111,7 +1214,11 @@ int top_main(int argc UNUSED_PARAM, char
+ 
+ 	/* all args are options; -n NUM */
+ 	opt_complementary = "-"; /* options can be specified w/o dash */
++#ifdef BRCM_CMS_BUILD
++	col = getopt32(argv, "d:n:c:l:ab"IF_FEATURE_TOPMEM("m"), &str_interval, &str_iterations, &str_cpufilter, &str_xlines);
++#else
+ 	col = getopt32(argv, "d:n:b"IF_FEATURE_TOPMEM("m"), &str_interval, &str_iterations);
++#endif
+ #if ENABLE_FEATURE_TOPMEM
+ 	if (col & OPT_m) /* -m (busybox specific) */
+ 		scan_mask = TOPMEM_MASK;
+@@ -1130,6 +1237,20 @@ int top_main(int argc UNUSED_PARAM, char
+ 		iterations = xatou(str_iterations);
+ 	}
+ 
++#ifdef BRCM_CMS_BUILD
++	if (col & OPT_c) {
++		cpufilter = xatou(str_cpufilter);
++		if (cpufilter != 0 && cpufilter != 1) {
++			printf("cpufilter must be 0 or 1\n");
++			exit(0);
++		}
++	}
++	if (col & OPT_l)
++		xlines = xatou(str_xlines);
++	if (col & OPT_a)
++		altdisplay = 1;;
++#endif
++
+ 	/* change to /proc */
+ 	xchdir("/proc");
+ 
+@@ -1174,6 +1295,12 @@ int top_main(int argc UNUSED_PARAM, char
+ 			if (col > LINE_BUF_SIZE - 2)
+ 				col = LINE_BUF_SIZE - 2;
+ 		}
++#ifdef BRCM_CMS_BUILD
++		if (xlines > 0)
++			G.lines = xlines;
++#endif
++		if (col > LINE_BUF_SIZE-2) /* +2 bytes for '\n', NUL, */
++			col = LINE_BUF_SIZE-2;
+ 
+ 		/* read process IDs & status for all the processes */
+ 		ntop = 0;
+@@ -1195,6 +1322,11 @@ int top_main(int argc UNUSED_PARAM, char
+ #if ENABLE_FEATURE_TOP_SMP_PROCESS
+ 				top[n].last_seen_on_cpu = p->last_seen_on_cpu;
+ #endif
++#ifdef BRCM_CMS_BUILD
++				top[n].priority = p->priority;
++				top[n].cpu_affinity = p->cpu_affinity;
++				top[n].sched_policy = p->sched_policy;
++#endif
+ 			}
+ #if ENABLE_FEATURE_TOPMEM
+ 			else { /* TOPMEM */
+diff -rupN orig_busybox-1.27.2/scripts/gen_build_files.sh busybox-1.27.2/scripts/gen_build_files.sh
+--- orig_busybox-1.27.2/scripts/gen_build_files.sh	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/scripts/gen_build_files.sh	2017-08-30 09:50:59.955725979 +0800
+@@ -11,7 +11,9 @@ cd -- "$2" || { echo "Syntax: $0 SRCTREE
+ # In separate objtree build, include/ might not exist yet
+ mkdir include 2>/dev/null
+ 
+-srctree="$1"
++# brcm: avoid sed argument too long error with some linux hosts.
++#srctree="$1"
++srctree="."
+ 
+ status() { printf '  %-8s%s\n' "$1" "$2"; }
+ gen() { status "GEN" "$@"; }
+diff -rupN orig_busybox-1.27.2/sysklogd/klogd.c busybox-1.27.2/sysklogd/klogd.c
+--- orig_busybox-1.27.2/sysklogd/klogd.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/sysklogd/klogd.c	2017-08-30 09:50:59.955725979 +0800
+@@ -70,6 +70,11 @@
+ 
+ # include <sys/klog.h>
+ 
++// brcm begin
++#include "cms_util.h"
++#include "cms_msg.h"
++// brcm end
++
+ static void klogd_open(void)
+ {
+ 	/* "Open the log. Currently a NOP" */
+@@ -225,6 +230,23 @@ int klogd_main(int argc UNUSED_PARAM, ch
+ 		klogd_setloglevel(i);
+ 
+ 	signal(SIGHUP, SIG_IGN);
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++	if (setsid() == -1)
++	{
++		cmsLog_error("Could not detach from terminal");
++	}
++	else
++	{
++		cmsLog_debug("detached from terminal");
++	}
++	/* In CMS, daemons should ignore SIGINT */
++	signal(SIGINT, SIG_IGN);
++	/* set signal masks */
++	signal(SIGPIPE, SIG_IGN); /* Ignore SIGPIPE signals */
++#endif
++// brcm end
++
+ 	/* We want klogd_read to not be restarted, thus _norestart: */
+ 	bb_signals_recursive_norestart(BB_FATAL_SIGS, record_signo);
+ 
+diff -rupN orig_busybox-1.27.2/sysklogd/syslogd.c busybox-1.27.2/sysklogd/syslogd.c
+--- orig_busybox-1.27.2/sysklogd/syslogd.c	2017-07-06 23:14:57.000000000 +0800
++++ busybox-1.27.2/sysklogd/syslogd.c	2017-08-30 09:50:59.955725979 +0800
+@@ -176,6 +176,10 @@
+ #include <sys/shm.h>
+ #endif
+ 
++// brcm begin
++#include "cms_util.h"
++#include "cms_msg.h"
++// brcm end
+ 
+ #define DEBUG 0
+ 
+@@ -187,6 +191,12 @@
+ /* Write locking does not seem to be useful either */
+ #undef SYSLOGD_WRLOCK
+ 
++// brcm begin
++/* All the access to /dev/log will be redirected to /var/log/log
++ *  * which is TMPFS, memory file system.
++ **/
++#define BRCM_PATH_LOG "/var/log/log"
++// brcm end
+ enum {
+ 	MAX_READ = CONFIG_FEATURE_SYSLOGD_READ_BUFFER_SIZE,
+ 	DNS_WAIT_SEC = 2 * 60,
+@@ -233,6 +243,7 @@ typedef struct logRule_t {
+ 	/*int markInterval;*/                   \
+ 	/* level of messages to be logged */    \
+ 	int logLevel;                           \
++	int remotelogLevel;                     \
+ IF_FEATURE_ROTATE_LOGFILE( \
+ 	/* max size of file before rotation */  \
+ 	unsigned logFileSize;                   \
+@@ -287,9 +298,10 @@ static const struct init_globals init_da
+ 		.fd = -1,
+ 	},
+ #ifdef SYSLOGD_MARK
+-	.markInterval = 20 * 60,
++	.markInterval = 60 * 60, // brcm
+ #endif
+ 	.logLevel = 8,
++        .remotelogLevel = -1, // brcm
+ #if ENABLE_FEATURE_ROTATE_LOGFILE
+ 	.logFileSize = 200 * 1024,
+ 	.logFileRotate = 1,
+@@ -315,6 +327,7 @@ enum {
+ 	OPTBIT_nofork, // -n
+ 	OPTBIT_outfile, // -O
+ 	OPTBIT_loglevel, // -l
++        OPTBIT_remoteloglevel, // -r  // brcm
+ 	OPTBIT_small, // -S
+ 	IF_FEATURE_ROTATE_LOGFILE(OPTBIT_filesize   ,)	// -s
+ 	IF_FEATURE_ROTATE_LOGFILE(OPTBIT_rotatecnt  ,)	// -b
+@@ -329,6 +342,7 @@ enum {
+ 	OPT_nofork      = 1 << OPTBIT_nofork  ,
+ 	OPT_outfile     = 1 << OPTBIT_outfile ,
+ 	OPT_loglevel    = 1 << OPTBIT_loglevel,
++        OPT_remoteloglevel    = 1 << OPTBIT_remoteloglevel, // brcm
+ 	OPT_small       = 1 << OPTBIT_small   ,
+ 	OPT_filesize    = IF_FEATURE_ROTATE_LOGFILE((1 << OPTBIT_filesize   )) + 0,
+ 	OPT_rotatecnt   = IF_FEATURE_ROTATE_LOGFILE((1 << OPTBIT_rotatecnt  )) + 0,
+@@ -339,7 +353,7 @@ enum {
+ 	OPT_cfg         = IF_FEATURE_SYSLOGD_CFG(   (1 << OPTBIT_cfg        )) + 0,
+ 	OPT_kmsg        = IF_FEATURE_KMSG_SYSLOG(   (1 << OPTBIT_kmsg       )) + 0,
+ };
+-#define OPTION_STR "m:nO:l:S" \
++#define OPTION_STR "m:nO:l:r:S" \
+ 	IF_FEATURE_ROTATE_LOGFILE("s:" ) \
+ 	IF_FEATURE_ROTATE_LOGFILE("b:" ) \
+ 	IF_FEATURE_REMOTE_LOG(    "R:*") \
+@@ -348,12 +362,12 @@ enum {
+ 	IF_FEATURE_SYSLOGD_DUP(   "D"  ) \
+ 	IF_FEATURE_SYSLOGD_CFG(   "f:" ) \
+ 	IF_FEATURE_KMSG_SYSLOG(   "K"  )
+-#define OPTION_DECL *opt_m, *opt_l \
++#define OPTION_DECL *opt_m, *opt_l, *opt_r \
+ 	IF_FEATURE_ROTATE_LOGFILE(,*opt_s) \
+ 	IF_FEATURE_ROTATE_LOGFILE(,*opt_b) \
+ 	IF_FEATURE_IPC_SYSLOG(    ,*opt_C = NULL) \
+ 	IF_FEATURE_SYSLOGD_CFG(   ,*opt_f = NULL)
+-#define OPTION_PARAM &opt_m, &(G.logFile.path), &opt_l \
++#define OPTION_PARAM &opt_m, &(G.logFile.path), &opt_l , &opt_r\
+ 	IF_FEATURE_ROTATE_LOGFILE(,&opt_s) \
+ 	IF_FEATURE_ROTATE_LOGFILE(,&opt_b) \
+ 	IF_FEATURE_REMOTE_LOG(    ,&remoteAddrList) \
+@@ -793,19 +807,40 @@ static void log_locally(time_t now, char
+ #endif
+ }
+ 
+-static void parse_fac_prio_20(int pri, char *res20)
++static int parse_fac_prio_20(int pri, char *res20)
+ {
+ 	const CODE *c_pri, *c_fac;
++// brcm begin
++        int localLog=1;
++        int remoteLog=1;
++// brcm end
+ 
+ 	c_fac = find_by_val(LOG_FAC(pri) << 3, facilitynames);
+ 	if (c_fac) {
+ 		c_pri = find_by_val(LOG_PRI(pri), prioritynames);
++// brcm begin
++		if (c_pri->c_val > G.logLevel)
++			localLog = 0;
++		if (c_pri->c_val > G.remotelogLevel)
++			remoteLog = 0;
++// brcm end
+ 		if (c_pri) {
+ 			snprintf(res20, 20, "%s.%s", c_fac->c_name, c_pri->c_name);
+-			return;
++// brcm begin
++			if (!localLog && !remoteLog)
++				return 1;
++			else
++				return 0;
++// brcm end
+ 		}
+ 	}
+ 	snprintf(res20, 20, "<%d>", pri);
++// brcm begin
++	if (!localLog && !remoteLog)
++		return 1;
++	else
++		return 0;
++// brcm end
+ }
+ 
+ /* len parameter is used only for "is there a timestamp?" check.
+@@ -838,9 +873,12 @@ static void timestamp_and_log(int pri, c
+ 	if (option_mask32 & OPT_small)
+ 		sprintf(G.printbuf, "%s %s\n", timestamp, msg);
+ 	else {
+-		char res[20];
+-		parse_fac_prio_20(pri, res);
+-		sprintf(G.printbuf, "%s %.64s %s %s\n", timestamp, G.hostname, res, msg);
++                char res[20];
++                int length; // brcm
++                if( parse_fac_prio_20(pri, res) )
++                    return;
++                length = (strlen(timestamp)+strlen(G.hostname)+strlen(res)+strlen(msg)+9);
++                sprintf(G.printbuf, "%s %.64s %s %s %3i\n", timestamp, G.hostname, res, msg, length); // brcm
+ 	}
+ 
+ 	/* Log message locally (to file or shared mem) */
+@@ -941,8 +979,8 @@ static NOINLINE int create_socket(void)
+ 
+ 	/* Unlink old /dev/log or object it points to. */
+ 	/* (if it exists, bind will fail) */
+-	strcpy(sunx.sun_path, _PATH_LOG);
+-	dev_log_name = xmalloc_follow_symlinks(_PATH_LOG);
++	strcpy(sunx.sun_path, BRCM_PATH_LOG); // brcm
++	dev_log_name = xmalloc_follow_symlinks(BRCM_PATH_LOG); // brcm
+ 	if (dev_log_name) {
+ 		safe_strncpy(sunx.sun_path, dev_log_name, sizeof(sunx.sun_path));
+ 		free(dev_log_name);
+@@ -951,7 +989,7 @@ static NOINLINE int create_socket(void)
+ 
+ 	sock_fd = xsocket(AF_UNIX, SOCK_DGRAM, 0);
+ 	xbind(sock_fd, (struct sockaddr *) &sunx, sizeof(sunx));
+-	chmod(_PATH_LOG, 0666);
++	chmod(BRCM_PATH_LOG, 0666); // brcm
+ 
+ 	return sock_fd;
+ }
+@@ -993,6 +1031,12 @@ static void do_syslogd(void)
+ 	signal_no_SA_RESTART_empty_mask(SIGINT, record_signo);
+ 	//signal_no_SA_RESTART_empty_mask(SIGQUIT, record_signo);
+ 	signal(SIGHUP, SIG_IGN);
++// brcm begin
++#ifdef BRCM_CMS_BUILD
++        /* In CMS, daemons should ignore SIGINT */
++        signal(SIGINT, SIG_IGN);
++#endif
++// brcm end
+ #ifdef SYSLOGD_MARK
+ 	signal(SIGALRM, do_mark);
+ 	alarm(G.markInterval);
+@@ -1021,7 +1065,7 @@ static void do_syslogd(void)
+ 		sz = read(STDIN_FILENO, recvbuf, MAX_READ - 1);
+ 		if (sz < 0) {
+ 			if (!bb_got_signal)
+-				bb_perror_msg("read from %s", _PATH_LOG);
++				bb_perror_msg("read from %s", BRCM_PATH_LOG); // brcm
+ 			break;
+ 		}
+ 
+@@ -1088,7 +1132,8 @@ static void do_syslogd(void)
+ 		}
+ 	} /* while (!bb_got_signal) */
+ 
+-	timestamp_and_log_internal("syslogd exiting");
++	// timestamp_and_log_internal("syslogd exiting"); // brcm
++	timestamp_and_log(LOG_SYSLOG | LOG_EMERG, "syslogd exiting", 0); // brcm
+ 	remove_pidfile(CONFIG_PID_FILE_PATH "/syslogd.pid");
+ 	ipcsyslog_cleanup();
+ 	if (option_mask32 & OPT_kmsg)
+@@ -1112,6 +1157,11 @@ int syslogd_main(int argc UNUSED_PARAM,
+ 	opt_complementary = "=0";
+ 	opts = getopt32(argv, OPTION_STR, OPTION_PARAM);
+ #if ENABLE_FEATURE_REMOTE_LOG
++        if (opts & OPT_remoteloglevel){ // -r  // brcm
++                G.remotelogLevel = xatou_range(opt_r, 0, 7);
++                if (G.remotelogLevel < LOG_EMERG)
++                     G.remotelogLevel = LOG_ERR;
++        }
+ 	while (remoteAddrList) {
+ 		remoteHost_t *rh = xzalloc(sizeof(*rh));
+ 		rh->remoteHostname = llist_pop(&remoteAddrList);
+@@ -1127,8 +1177,11 @@ int syslogd_main(int argc UNUSED_PARAM,
+ #endif
+ 	//if (opts & OPT_nofork) // -n
+ 	//if (opts & OPT_outfile) // -O
+-	if (opts & OPT_loglevel) // -l
+-		G.logLevel = xatou_range(opt_l, 1, 8);
++	if (opts & OPT_loglevel) { // -l // brcm begin
++		G.logLevel = xatou_range(opt_l, 0, 7);
++		if (G.logLevel < LOG_EMERG)
++			G.logLevel = LOG_DEBUG;
++	} // brcm end
+ 	//if (opts & OPT_small) // -S
+ #if ENABLE_FEATURE_ROTATE_LOGFILE
+ 	if (opts & OPT_filesize) // -s
+@@ -1137,6 +1190,7 @@ int syslogd_main(int argc UNUSED_PARAM,
+ 		G.logFileRotate = xatou_range(opt_b, 0, 99);
+ #endif
+ #if ENABLE_FEATURE_IPC_SYSLOG
++	option_mask32 |= OPT_circularlog;
+ 	if (opt_C) // -Cn
+ 		G.shm_size = xatoul_range(opt_C, 4, INT_MAX/1024) * 1024;
+ #endif

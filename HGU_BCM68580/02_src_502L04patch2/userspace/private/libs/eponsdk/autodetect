@@ -1,0 +1,4 @@
+
+dependson: $(SWMDK_BASE) bridgeutil bcmmcast
+condition: ifneq ($(strip $(BUILD_EPON_SDK)),)
+

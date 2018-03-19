@@ -1,0 +1,674 @@
+diff -Naur ipsec-tools-0.6.6.orig/src/libipsec/libpfkey.h ipsec-tools-0.6.6/src/libipsec/libpfkey.h
+--- ipsec-tools-0.6.6.orig/src/libipsec/libpfkey.h	2005-12-04 21:41:47.000000000 +0100
++++ ipsec-tools-0.6.6/src/libipsec/libpfkey.h	2006-10-19 20:00:15.000000000 +0200
+@@ -89,20 +89,38 @@
+ 	struct sockaddr *, u_int32_t, u_int32_t, u_int,
+ 	caddr_t, u_int, u_int, u_int, u_int, u_int, u_int32_t, u_int64_t,
+ 	u_int64_t, u_int64_t, u_int32_t));
++int pfkey_send_update_proxy __P((int, u_int, u_int, struct sockaddr *,
++	struct sockaddr *, struct sockaddr *, u_int8_t, u_int16_t,
++	u_int32_t, u_int32_t, u_int, caddr_t, u_int, u_int, u_int, u_int,
++	u_int, u_int32_t, u_int64_t, u_int64_t, u_int64_t, u_int32_t));
+ int pfkey_send_update_nat __P((int, u_int, u_int, struct sockaddr *,
+ 	struct sockaddr *, u_int32_t, u_int32_t, u_int,
+ 	caddr_t, u_int, u_int, u_int, u_int, u_int, u_int32_t, u_int64_t,
+ 	u_int64_t, u_int64_t, u_int32_t,
+ 	u_int8_t, u_int16_t, u_int16_t, struct sockaddr *, u_int16_t));
++int pfkey_send_update_nat_proxy __P((int, u_int, u_int, struct sockaddr *,
++	struct sockaddr *, struct sockaddr *, u_int8_t, u_int16_t,
++	u_int32_t, u_int32_t, u_int, caddr_t, u_int, u_int, u_int, u_int,
++	u_int, u_int32_t, u_int64_t, u_int64_t, u_int64_t, u_int32_t,
++	u_int8_t, u_int16_t, u_int16_t, struct sockaddr *, u_int16_t));
+ int pfkey_send_add __P((int, u_int, u_int, struct sockaddr *,
+ 	struct sockaddr *, u_int32_t, u_int32_t, u_int,
+ 	caddr_t, u_int, u_int, u_int, u_int, u_int, u_int32_t, u_int64_t,
+ 	u_int64_t, u_int64_t, u_int32_t));
++int pfkey_send_add_proxy __P((int, u_int, u_int, struct sockaddr *,
++	struct sockaddr *, struct sockaddr *, u_int8_t, u_int16_t,
++	u_int32_t, u_int32_t, u_int, caddr_t, u_int, u_int, u_int, u_int,
++	u_int, u_int32_t, u_int64_t, u_int64_t, u_int64_t, u_int32_t));
+ int pfkey_send_add_nat __P((int, u_int, u_int, struct sockaddr *,
+ 	struct sockaddr *, u_int32_t, u_int32_t, u_int,
+ 	caddr_t, u_int, u_int, u_int, u_int, u_int, u_int32_t, u_int64_t,
+ 	u_int64_t, u_int64_t, u_int32_t,
+ 	u_int8_t, u_int16_t, u_int16_t, struct sockaddr *, u_int16_t));
++int pfkey_send_add_nat_proxy __P((int, u_int, u_int, struct sockaddr *,
++	struct sockaddr *, struct sockaddr *, u_int8_t, u_int16_t,
++	u_int32_t, u_int32_t, u_int, caddr_t, u_int, u_int, u_int, u_int,
++	u_int, u_int32_t, u_int64_t, u_int64_t, u_int64_t, u_int32_t,
++	u_int8_t, u_int16_t, u_int16_t, struct sockaddr *, u_int16_t));
+ int pfkey_send_delete __P((int, u_int, u_int,
+ 	struct sockaddr *, struct sockaddr *, u_int32_t));
+ int pfkey_send_delete_all __P((int, u_int, u_int,
+diff -Naur ipsec-tools-0.6.6.orig/src/libipsec/pfkey.c ipsec-tools-0.6.6/src/libipsec/pfkey.c
+--- ipsec-tools-0.6.6.orig/src/libipsec/pfkey.c	2005-10-14 15:49:29.000000000 +0200
++++ ipsec-tools-0.6.6/src/libipsec/pfkey.c	2006-10-19 20:00:15.000000000 +0200
+@@ -59,9 +59,9 @@
+ static int setsupportedmap __P((struct sadb_supported *));
+ static struct sadb_alg *findsupportedalg __P((u_int, u_int));
+ static int pfkey_send_x1 __P((int, u_int, u_int, u_int, struct sockaddr *,
+-	struct sockaddr *, u_int32_t, u_int32_t, u_int, caddr_t,
+-	u_int, u_int, u_int, u_int, u_int, u_int32_t, u_int32_t,
+-	u_int32_t, u_int32_t, u_int32_t,
++	struct sockaddr *, struct sockaddr *, u_int8_t, u_int16_t,
++	u_int32_t, u_int32_t, u_int, caddr_t, u_int, u_int, u_int, u_int,
++	u_int, u_int32_t, u_int32_t, u_int32_t, u_int32_t, u_int32_t,
+ 	u_int8_t, u_int16_t, u_int16_t, struct sockaddr *, u_int16_t));
+ static int pfkey_send_x2 __P((int, u_int, u_int, u_int,
+ 	struct sockaddr *, struct sockaddr *, u_int32_t));
+@@ -506,8 +506,35 @@
+ 	u_int32_t seq;
+ {
+ 	int len;
+-	if ((len = pfkey_send_x1(so, SADB_UPDATE, satype, mode, src, dst, spi,
+-			reqid, wsize,
++	if ((len = pfkey_send_x1(so, SADB_UPDATE, satype, mode, src, dst,
++			NULL, 0, IPSEC_ULPROTO_ANY, spi, reqid, wsize,
++			keymat, e_type, e_keylen, a_type, a_keylen, flags,
++			l_alloc, (u_int)l_bytes, (u_int)l_addtime, 
++			(u_int)l_usetime, seq, 0, 0, 0, NULL, 0)) < 0)
++		return -1;
++
++	return len;
++}
++
++int
++pfkey_send_update_proxy(so, satype, mode, src, dst, id, plen, proto, spi,
++		reqid, wsize, keymat, e_type, e_keylen, a_type, a_keylen,
++		flags, l_alloc, l_bytes, l_addtime, l_usetime, seq)
++	int so;
++	u_int satype, mode, wsize;
++	struct sockaddr *src, *dst, *id;
++	u_int8_t plen;
++	u_int16_t proto;
++	u_int32_t spi, reqid;
++	caddr_t keymat;
++	u_int e_type, e_keylen, a_type, a_keylen, flags;
++	u_int32_t l_alloc;
++	u_int64_t l_bytes, l_addtime, l_usetime;
++	u_int32_t seq;
++{
++	int len;
++	if ((len = pfkey_send_x1(so, SADB_UPDATE, satype, mode, src, dst,
++			id, plen, proto, spi, reqid, wsize,
+ 			keymat, e_type, e_keylen, a_type, a_keylen, flags,
+ 			l_alloc, (u_int)l_bytes, (u_int)l_addtime, 
+ 			(u_int)l_usetime, seq, 0, 0, 0, NULL, 0)) < 0)
+@@ -538,8 +565,42 @@
+ 	u_int16_t l_natt_frag;
+ {
+ 	int len;
+-	if ((len = pfkey_send_x1(so, SADB_UPDATE, satype, mode, src, dst, spi,
+-			reqid, wsize,
++	if ((len = pfkey_send_x1(so, SADB_UPDATE, satype, mode, src, dst,
++			NULL, 0, IPSEC_ULPROTO_ANY, spi, reqid, wsize,
++			keymat, e_type, e_keylen, a_type, a_keylen, flags,
++			l_alloc, (u_int)l_bytes, (u_int)l_addtime, 
++			(u_int)l_usetime, seq, l_natt_type, l_natt_sport, 
++			l_natt_dport, l_natt_oa, l_natt_frag)) < 0)
++		return -1;
++
++	return len;
++}
++
++int
++pfkey_send_update_nat_proxy(so, satype, mode, src, dst, id, plen, proto, spi,
++		      reqid, wsize, keymat, e_type, e_keylen, a_type, a_keylen,
++		      flags, l_alloc, l_bytes, l_addtime, l_usetime, seq,
++		      l_natt_type, l_natt_sport, l_natt_dport, l_natt_oa,
++		      l_natt_frag)
++	int so;
++	u_int satype, mode, wsize;
++	struct sockaddr *src, *dst, *id;
++	u_int8_t plen;
++	u_int16_t proto;
++	u_int32_t spi, reqid;
++	caddr_t keymat;
++	u_int e_type, e_keylen, a_type, a_keylen, flags;
++	u_int32_t l_alloc;
++	u_int64_t l_bytes, l_addtime, l_usetime;
++	u_int32_t seq;
++	u_int8_t l_natt_type;
++	u_int16_t l_natt_sport, l_natt_dport;
++	struct sockaddr *l_natt_oa;
++	u_int16_t l_natt_frag;
++{
++	int len;
++	if ((len = pfkey_send_x1(so, SADB_UPDATE, satype, mode, src, dst,
++			id, plen, proto, spi, reqid, wsize,
+ 			keymat, e_type, e_keylen, a_type, a_keylen, flags,
+ 			l_alloc, (u_int)l_bytes, (u_int)l_addtime, 
+ 			(u_int)l_usetime, seq, l_natt_type, l_natt_sport, 
+@@ -572,8 +633,35 @@
+ 	u_int32_t seq;
+ {
+ 	int len;
+-	if ((len = pfkey_send_x1(so, SADB_ADD, satype, mode, src, dst, spi,
+-			reqid, wsize,
++	if ((len = pfkey_send_x1(so, SADB_ADD, satype, mode, src, dst,
++			NULL, 0, IPSEC_ULPROTO_ANY, spi, reqid, wsize,
++			keymat, e_type, e_keylen, a_type, a_keylen, flags,
++			l_alloc, (u_int)l_bytes, (u_int)l_addtime, 
++			(u_int)l_usetime, seq, 0, 0, 0, NULL, 0)) < 0)
++		return -1;
++
++	return len;
++}
++
++int
++pfkey_send_add_proxy(so, satype, mode, src, dst, id, plen, proto, spi, reqid,
++		wsize, keymat, e_type, e_keylen, a_type, a_keylen, flags,
++		l_alloc, l_bytes, l_addtime, l_usetime, seq)
++	int so;
++	u_int satype, mode, wsize;
++	struct sockaddr *src, *dst, *id;
++	u_int8_t plen;
++	u_int16_t proto;
++	u_int32_t spi, reqid;
++	caddr_t keymat;
++	u_int e_type, e_keylen, a_type, a_keylen, flags;
++	u_int32_t l_alloc;
++	u_int64_t l_bytes, l_addtime, l_usetime;
++	u_int32_t seq;
++{
++	int len;
++	if ((len = pfkey_send_x1(so, SADB_ADD, satype, mode, src, dst,
++			id, plen, proto, spi, reqid, wsize,
+ 			keymat, e_type, e_keylen, a_type, a_keylen, flags,
+ 			l_alloc, (u_int)l_bytes, (u_int)l_addtime, 
+ 			(u_int)l_usetime, seq, 0, 0, 0, NULL, 0)) < 0)
+@@ -604,8 +692,42 @@
+ 	u_int16_t l_natt_frag;
+ {
+ 	int len;
+-	if ((len = pfkey_send_x1(so, SADB_ADD, satype, mode, src, dst, spi,
+-			reqid, wsize,
++	if ((len = pfkey_send_x1(so, SADB_ADD, satype, mode, src, dst,
++			NULL, 0, IPSEC_ULPROTO_ANY, spi, reqid, wsize,
++			keymat, e_type, e_keylen, a_type, a_keylen, flags,
++			l_alloc, (u_int)l_bytes, (u_int)l_addtime, 
++			(u_int)l_usetime, seq, l_natt_type, l_natt_sport, 
++			l_natt_dport, l_natt_oa, l_natt_frag)) < 0)
++		return -1;
++
++	return len;
++}
++
++int
++pfkey_send_add_nat_proxy(so, satype, mode, src, dst, id, plen, proto, spi,
++		   reqid, wsize, keymat, e_type, e_keylen, a_type, a_keylen,
++		   flags, l_alloc, l_bytes, l_addtime, l_usetime, seq,
++		   l_natt_type, l_natt_sport, l_natt_dport, l_natt_oa,
++		   l_natt_frag)
++	int so;
++	u_int satype, mode, wsize;
++	struct sockaddr *src, *dst, *id;
++	u_int8_t plen;
++	u_int16_t proto;
++	u_int32_t spi, reqid;
++	caddr_t keymat;
++	u_int e_type, e_keylen, a_type, a_keylen, flags;
++	u_int32_t l_alloc;
++	u_int64_t l_bytes, l_addtime, l_usetime;
++	u_int32_t seq;
++	u_int8_t l_natt_type;
++	u_int16_t l_natt_sport, l_natt_dport;
++	struct sockaddr *l_natt_oa;
++	u_int16_t l_natt_frag;
++{
++	int len;
++	if ((len = pfkey_send_x1(so, SADB_ADD, satype, mode, src, dst,
++			id, plen, proto, spi, reqid, wsize,
+ 			keymat, e_type, e_keylen, a_type, a_keylen, flags,
+ 			l_alloc, (u_int)l_bytes, (u_int)l_addtime, 
+ 			(u_int)l_usetime, seq, l_natt_type, l_natt_sport, 
+@@ -1198,14 +1320,16 @@
+ 
+ /* sending SADB_ADD or SADB_UPDATE message to the kernel */
+ static int
+-pfkey_send_x1(so, type, satype, mode, src, dst, spi, reqid, wsize,
+-		keymat, e_type, e_keylen, a_type, a_keylen, flags,
++pfkey_send_x1(so, type, satype, mode, src, dst, id, plen, proto, spi, reqid,
++		wsize, keymat, e_type, e_keylen, a_type, a_keylen, flags,
+ 		l_alloc, l_bytes, l_addtime, l_usetime, seq,
+ 	        l_natt_type, l_natt_sport, l_natt_dport, l_natt_oa, 
+ 		l_natt_frag)
+ 	int so;
+ 	u_int type, satype, mode;
+-	struct sockaddr *src, *dst, *l_natt_oa;
++	struct sockaddr *src, *dst, *id, *l_natt_oa;
++	u_int8_t plen;
++	u_int16_t proto;
+ 	u_int32_t spi, reqid;
+ 	u_int wsize;
+ 	caddr_t keymat;
+@@ -1218,7 +1342,7 @@
+ 	struct sadb_msg *newmsg;
+ 	int len;
+ 	caddr_t p;
+-	int plen;
++	int aplen;
+ 	caddr_t ep;
+ 
+ 	/* validity check */
+@@ -1232,10 +1356,10 @@
+ 	}
+ 	switch (src->sa_family) {
+ 	case AF_INET:
+-		plen = sizeof(struct in_addr) << 3;
++		aplen = sizeof(struct in_addr) << 3;
+ 		break;
+ 	case AF_INET6:
+-		plen = sizeof(struct in6_addr) << 3;
++		aplen = sizeof(struct in6_addr) << 3;
+ 		break;
+ 	default:
+ 		__ipsec_errcode = EIPSEC_INVAL_FAMILY;
+@@ -1297,6 +1421,9 @@
+ 		+ sizeof(struct sadb_lifetime)
+ 		+ sizeof(struct sadb_lifetime);
+ 
++	if (id != NULL)
++		len += sizeof(struct sadb_address)
++			+ PFKEY_ALIGN8(sysdep_sa_len(id));
+ 	if (e_type != SADB_EALG_NONE && satype != SADB_X_SATYPE_IPCOMP)
+ 		len += (sizeof(struct sadb_key) + PFKEY_ALIGN8(e_keylen));
+ 	if (a_type != SADB_AALG_NONE)
+@@ -1349,18 +1476,26 @@
+ 		free(newmsg);
+ 		return -1;
+ 	}
+-	p = pfkey_setsadbaddr(p, ep, SADB_EXT_ADDRESS_SRC, src, (u_int)plen,
++	p = pfkey_setsadbaddr(p, ep, SADB_EXT_ADDRESS_SRC, src, (u_int)aplen,
+ 	    IPSEC_ULPROTO_ANY);
+ 	if (!p) {
+ 		free(newmsg);
+ 		return -1;
+ 	}
+-	p = pfkey_setsadbaddr(p, ep, SADB_EXT_ADDRESS_DST, dst, (u_int)plen,
++	p = pfkey_setsadbaddr(p, ep, SADB_EXT_ADDRESS_DST, dst, (u_int)aplen,
+ 	    IPSEC_ULPROTO_ANY);
+ 	if (!p) {
+ 		free(newmsg);
+ 		return -1;
+ 	}
++	if (id != NULL) {
++		p = pfkey_setsadbaddr(p, ep, SADB_EXT_ADDRESS_PROXY, id,
++		    (u_int)plen, (u_int)proto);
++		if (!p) {
++			free(newmsg);
++			return -1;
++		}
++	}
+ 
+ 	if (e_type != SADB_EALG_NONE && satype != SADB_X_SATYPE_IPCOMP) {
+ 		p = pfkey_setsadbkey(p, ep, SADB_EXT_KEY_ENCRYPT,
+diff -Naur ipsec-tools-0.6.6.orig/src/racoon/backupsa.c ipsec-tools-0.6.6/src/racoon/backupsa.c
+--- ipsec-tools-0.6.6.orig/src/racoon/backupsa.c	2006-10-19 19:04:46.000000000 +0200
++++ ipsec-tools-0.6.6/src/racoon/backupsa.c	2006-10-19 20:01:09.000000000 +0200
+@@ -71,6 +71,8 @@
+ #include "backupsa.h"
+ #include "libpfkey.h"
+ 
++#define IPSEC_PREFIXLEN_IGNORE ((u_int8_t)~0)
++
+ /*
+  * (time string)%(sa parameter)
+  * (time string) := ex. Nov 24 18:22:48 1986
+@@ -92,11 +94,13 @@
+  * output the sa parameter.
+  */
+ int
+-backupsa_to_file(satype, mode, src, dst, spi, reqid, wsize,
+-                keymat, e_type, e_keylen, a_type, a_keylen, flags,
++backupsa_to_file(satype, mode, src, dst, id, plen, proto, spi, reqid,
++		wsize, keymat, e_type, e_keylen, a_type, a_keylen, flags,
+                 l_alloc, l_bytes, l_addtime, l_usetime, seq)
+         u_int satype, mode, wsize;
+-        struct sockaddr *src, *dst;
++        struct sockaddr *src, *dst, *id;
++        u_int8_t plen;
++        u_int16_t proto;
+         u_int32_t spi, reqid;
+         caddr_t keymat;
+         u_int e_type, e_keylen, a_type, a_keylen, flags;
+@@ -105,6 +109,7 @@
+         u_int32_t seq;
+ {
+ 	char buf[1024];
++	struct sockaddr ignoreid;
+ 	struct tm *tm;
+ 	time_t t;
+ 	char *p, *k;
+@@ -156,12 +161,43 @@
+ 	if (len < 0)
+ 		goto err;
+ 
++	l = snprintf(p, len, " ");
++	if (l < 0 || l >= len)
++		goto err;
++	p += l;
++	len -= l;
++	if (len < 0)
++		goto err;
++
++	if (id == NULL) {
++		/* initialize the address to something reasonable */
++		memset(&ignoreid, 0, sizeof(ignoreid));
++#ifndef __linux__
++		ignoreid.a_len = sizeof(struct sockaddr_in);
++#endif
++		ignoreid.sa_family = AF_INET;
++		((struct sockaddr_in *)&ignoreid)->sin_port = IPSEC_PORT_ANY;
++
++		id = &ignoreid;
++		plen = IPSEC_PREFIXLEN_IGNORE; /* special value */
++		proto = IPSEC_ULPROTO_ANY;
++	}
++
++        i = getnameinfo(id, sysdep_sa_len(id), p, len, NULL, 0, NIFLAGS);
++	if (i != 0)
++		goto err;
++	l = strlen(p);
++	p += l;
++	len -= l;
++	if (len < 0)
++		goto err;
++
+ 	l = snprintf(p, len,
+-		" %u %lu %u %u %u "
+-		"%u %u %u %u %u "
++		" %u %u %u %lu %u %u "
++		"%u %u %u %u %u %u "
+ 		"%u %llu %llu %llu %u",
+-		satype, (unsigned long)ntohl(spi), mode, reqid, wsize,
+-		e_type, e_keylen, a_type, a_keylen, flags,
++		plen, proto, satype, (unsigned long)ntohl(spi), mode, reqid,
++		wsize, e_type, e_keylen, a_type, a_keylen, flags,
+ 		l_alloc, (unsigned long long)l_bytes,
+ 		(unsigned long long)l_addtime, (unsigned long long)l_usetime,
+ 		seq);
+@@ -210,7 +246,9 @@
+ 	time_t created, current;
+ 	char *p, *q;
+         u_int satype, mode;
+-        struct sockaddr *src, *dst;
++        struct sockaddr *src, *dst, *id, *rid;
++        u_int8_t plen;
++        u_int16_t proto;
+         u_int32_t spi, reqid;
+         caddr_t keymat;
+ 	size_t keymatlen;
+@@ -268,6 +306,18 @@
+ 		}
+ 		p = q + 1;
+ 
++		for (q = p; *q != '\0' && !isspace((int)*q); q++)
++			;
++		*q = '\0';
++		id = str2saddr(p, NULL);
++		if (id == NULL) {
++			racoon_free(src);
++			racoon_free(dst);
++			goto err;
++		}
++		p = q + 1;
++
++
+ #define GETNEXTNUM(value, function) \
+ do { \
+ 	char *y; \
+@@ -275,11 +325,17 @@
+ 		; \
+ 	*q = '\0'; \
+ 	(value) = function(p, &y, 10); \
+-	if ((value) == 0 && *y != '\0') \
++	if ((value) == 0 && *y != '\0') {\
++		racoon_free(src); \
++		racoon_free(dst); \
++		racoon_free(id); \
+ 		goto err; \
++	} \
+ 	p = q + 1; \
+ } while (0);
+ 
++		GETNEXTNUM(plen, strtoul);
++		GETNEXTNUM(proto, strtoul);
+ 		GETNEXTNUM(satype, strtoul);
+ 		GETNEXTNUM(spi, strtoul);
+ 		spi = ntohl(spi);
+@@ -306,6 +362,7 @@
+ 				line, lcconf->pathinfo[LC_PATHTYPE_BACKUPSA], buf);
+ 			racoon_free(src);
+ 			racoon_free(dst);
++			racoon_free(id);
+ 			continue;
+ 		}
+ 
+@@ -315,17 +372,28 @@
+ 				line, lcconf->pathinfo[LC_PATHTYPE_BACKUPSA]);
+ 			racoon_free(src);
+ 			racoon_free(dst);
++			racoon_free(id);
+ 			racoon_free(keymat);
+ 			continue;
+ 		}
+ 		l_addtime -= current - created;
+ 
+-		if (pfkey_send_add(
++		if (plen == IPSEC_PREFIXLEN_IGNORE) {
++			/* ignore this id */
++			rid = NULL;
++			plen = 0;
++		} else
++			rid = id;
++
++		if (pfkey_send_add_proxy(
+ 				lcconf->sock_pfkey,
+ 				satype,
+ 				mode,
+ 				src,
+ 				dst,
++				rid,
++				plen,
++				proto,
+ 				spi,
+ 				reqid,
+ 				wsize,
+@@ -338,6 +406,7 @@
+ 		}
+ 		racoon_free(src);
+ 		racoon_free(dst);
++		racoon_free(id);
+ 		racoon_free(keymat);
+ 	}
+ 
+diff -Naur ipsec-tools-0.6.6.orig/src/racoon/backupsa.h ipsec-tools-0.6.6/src/racoon/backupsa.h
+--- ipsec-tools-0.6.6.orig/src/racoon/backupsa.h	2004-06-11 18:00:15.000000000 +0200
++++ ipsec-tools-0.6.6/src/racoon/backupsa.h	2006-10-19 20:00:15.000000000 +0200
+@@ -33,7 +33,8 @@
+ #define _BACKUPSA_H
+ 
+ extern int backupsa_to_file __P((u_int, u_int,
+-	struct sockaddr *, struct sockaddr *, u_int32_t, u_int32_t, u_int,
++	struct sockaddr *, struct sockaddr *, struct sockaddr *,
++	u_int8_t, u_int16_t, u_int32_t, u_int32_t, u_int,
+ 	caddr_t, u_int, u_int, u_int, u_int, u_int,
+ 	u_int32_t, u_int64_t, u_int64_t, u_int64_t, u_int32_t));
+ extern int backupsa_from_file __P((void));
+diff -Naur ipsec-tools-0.6.6.orig/src/racoon/pfkey.c ipsec-tools-0.6.6/src/racoon/pfkey.c
+--- ipsec-tools-0.6.6.orig/src/racoon/pfkey.c	2006-05-05 11:09:03.000000000 +0200
++++ ipsec-tools-0.6.6/src/racoon/pfkey.c	2006-10-19 20:00:15.000000000 +0200
+@@ -1013,6 +1013,9 @@
+ {
+ 	struct saproto *pr;
+ 	struct sockaddr *src = NULL, *dst = NULL;
++	struct sockaddr *id_p, idbuf;
++	u_int8_t plen_p;
++	u_int16_t proto_p;
+ 	u_int e_type, e_keylen, a_type, a_keylen, flags;
+ 	u_int satype, mode;
+ 	u_int64_t lifebyte = 0;
+@@ -1041,6 +1044,31 @@
+ 		dst = iph2->dst;
+ 	}
+ 
++	/*
++	 * send peer's ID as a proxy address to the kernel 
++	 * (to be used as a packet selector)
++	 */
++	if (iph2->id_p) {
++		switch (ipsecdoi_id2sockaddr(iph2->id_p, &idbuf, &plen_p,
++		                             &proto_p)) {
++		case 0:
++			id_p = &idbuf;
++			break;
++		case ISAKMP_NTYPE_INVALID_ID_INFORMATION:
++			/* ignore the ID if it is not address or subnet */
++			goto noid;
++		default:
++			plog(LLV_ERROR, LOCATION, NULL,
++				"failed to convert id to address\n");
++			return -1;
++		}
++	} else {
++	noid:
++		id_p = NULL;
++		plen_p = 0;
++		proto_p = IPSEC_ULPROTO_ANY;
++	}
++
+ 	for (pr = iph2->approval->head; pr != NULL; pr = pr->next) {
+ 		/* validity check */
+ 		satype = ipsecdoi2pfkey_proto(pr->proto_id);
+@@ -1097,12 +1125,15 @@
+ 			set_port(dst, 0);
+ 		}
+ 
+-		if (pfkey_send_update_nat(
++		if (pfkey_send_update_nat_proxy(
+ 				lcconf->sock_pfkey,
+ 				satype,
+ 				mode,
+ 				dst,
+ 				src,
++				id_p,
++				plen_p,
++				proto_p,
+ 				pr->spi,
+ 				pr->reqid_in,
+ 				wsize,	
+@@ -1119,12 +1150,15 @@
+ 		}
+ #else
+ 		plog(LLV_DEBUG, LOCATION, NULL, "call pfkey_send_update\n");
+-		if (pfkey_send_update(
++		if (pfkey_send_update_proxy(
+ 				lcconf->sock_pfkey,
+ 				satype,
+ 				mode,
+ 				dst,
+ 				src,
++				id_p,
++				plen_p,
++				proto_p,
+ 				pr->spi,
+ 				pr->reqid_in,
+ 				wsize,	
+@@ -1148,8 +1182,8 @@
+ 		 * But it is impossible because there is not key in the
+ 		 * information from the kernel.
+ 		 */
+-		if (backupsa_to_file(satype, mode, dst, src,
+-				pr->spi, pr->reqid_in, 4,
++		if (backupsa_to_file(satype, mode, dst, src, id_p, plen_p,
++				proto_p, pr->spi, pr->reqid_in, 4,
+ 				pr->keymat->v,
+ 				e_type, e_keylen, a_type, a_keylen, flags,
+ 				0, iph2->approval->lifebyte * 1024,
+@@ -1309,6 +1343,9 @@
+ {
+ 	struct saproto *pr;
+ 	struct sockaddr *src = NULL, *dst = NULL;
++	struct sockaddr *id, idbuf;
++	u_int8_t plen;
++	u_int16_t proto;
+ 	u_int e_type, e_keylen, a_type, a_keylen, flags;
+ 	u_int satype, mode;
+ 	u_int64_t lifebyte = 0;
+@@ -1337,6 +1374,30 @@
+ 		dst = iph2->dst;
+ 	}
+ 
++	/*
++	 * send our ID as a proxy address to the kernel 
++	 * (to be used as a packet selector)
++	 */
++	if (iph2->id) {
++		switch (ipsecdoi_id2sockaddr(iph2->id, &idbuf, &plen, &proto)) {
++		case 0:
++			id = &idbuf;
++			break;
++		case ISAKMP_NTYPE_INVALID_ID_INFORMATION:
++			/* ignore the ID if it is not address or subnet */
++			goto noid;
++		default:
++			plog(LLV_ERROR, LOCATION, NULL,
++				"failed to convert id to address\n");
++			return -1;
++		}
++	} else {
++	noid:
++		id = NULL;
++		plen = 0;
++		proto = IPSEC_ULPROTO_ANY;
++	}
++
+ 	for (pr = iph2->approval->head; pr != NULL; pr = pr->next) {
+ 		/* validity check */
+ 		satype = ipsecdoi2pfkey_proto(pr->proto_id);
+@@ -1394,12 +1455,15 @@
+ 			set_port(dst, 0);
+ 		}
+ 
+-		if (pfkey_send_add_nat(
++		if (pfkey_send_add_nat_proxy(
+ 				lcconf->sock_pfkey,
+ 				satype,
+ 				mode,
+ 				src,
+ 				dst,
++				id,
++				plen,
++				proto,
+ 				pr->spi_p,
+ 				pr->reqid_out,
+ 				wsize,	
+@@ -1421,12 +1485,15 @@
+ 		set_port(src, 0);
+ 		set_port(dst, 0);
+ 
+-		if (pfkey_send_add(
++		if (pfkey_send_add_proxy(
+ 				lcconf->sock_pfkey,
+ 				satype,
+ 				mode,
+ 				src,
+ 				dst,
++				id,
++				plen,
++				proto,
+ 				pr->spi_p,
+ 				pr->reqid_out,
+ 				wsize,
+@@ -1450,8 +1517,8 @@
+ 		 * But it is impossible because there is not key in the
+ 		 * information from the kernel.
+ 		 */
+-		if (backupsa_to_file(satype, mode, src, dst,
+-				pr->spi_p, pr->reqid_out, 4,
++		if (backupsa_to_file(satype, mode, src, dst, id, plen,
++				proto, pr->spi_p, pr->reqid_out, 4,
+ 				pr->keymat_p->v,
+ 				e_type, e_keylen, a_type, a_keylen, flags,
+ 				0, iph2->approval->lifebyte * 1024,

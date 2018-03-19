@@ -1,0 +1,65 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript">
+<!-- hide
+
+var seltState;
+var maxSeltT;
+var maxSeltPsd;
+var CID;
+var line;
+var runSelt;
+
+function frmLoad() {
+   with ( document.forms[0] ) {
+      seltState='<%ejGetSelt(seltState)%>';
+      maxSeltT.value = '<%ejGetSelt(seltMaxT)%>';
+      maxSeltF.value = '<%ejGetSelt(seltMaxF)%>';
+      maxSeltPsd.value = '<%ejGetSelt(seltMaxPsd)%>';
+      CID.value = '<%ejGetSelt(seltCid)%>';
+      line.value = '<%ejGetSelt(seltLine)%>';
+   }
+}
+
+// done hiding -->
+</script>
+   </head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form>
+            <b>Current CPE SELT Configuration<br>
+            </b>
+            <br>
+            <br>Current SELT State is <b><%ejGetSelt(seltState)%></b><br>
+            <br>
+            <br>
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="240">Measurement Duration in seconds:</td>
+                  <td><input type='text' name='maxSeltT' size="30" maxlength="8"></td>
+               </tr>
+               <tr>
+                  <td width="240">Max SELT PSD:</td>
+                  <td><input type='text' name='maxSeltPsd' size="30" maxlength="7"></td>
+               </tr>
+               <tr>
+                  <td width="240">Max SELT F:</td>
+                  <td><input type='text' name='maxSeltF' size="30" maxlength="10"></td>
+               </tr>
+               <tr>
+                  <td>CID:</td>
+                  <td><input type='text' name='CID' size="30" maxlength="10"></td>
+               </tr>
+               <tr>
+                  <td width="240">Line Number to perform test on (0 or 1):</td>
+                  <td><input type='text' name='line' size="30" maxlength="256"></td>
+               </tr>
+            </table>
+         </form>
+      </blockquote>
+   </body>
+</html>

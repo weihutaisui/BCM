@@ -1,0 +1,6 @@
+BEGIN
+  eid         = EID_PERIODICSTAT
+  name        = periodicstat
+  flags       = EIF_MDM|EIF_MESSAGING_CAPABLE
+END
+

@@ -1,0 +1,5 @@
+condition: ifneq ($(strip $(BUILD_BRCM_CMS)),)
+dependson: private/libs/cms_core public/libs/cms_msg public/libs/cms_util private/libs/tmctl private/libs/bcmmcast public/libs/expat private/libs/nanoxml public/libs/strophe private/libs/xdslctl private/libs/vlanctl private/libs/pwrctl public/libs/expat public/libs/openssl
+
+
+

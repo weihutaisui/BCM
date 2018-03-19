@@ -1,0 +1,127 @@
+/**************************************************************/
+//This script create 3 kinds of servicesw with CLI commands.
+//Every veip0.x represents 1 kind of service. 
+/**************************************************************/
+
+//////////////////////////////////////////////////////////////
+//IPv4 IPOE service set up commands.
+//veip0.1, no vlan, ipv4.
+//wan ip: 10.10.10.10.
+//netmask: 255.255.254.0.
+//gateway: 10.10.10.11.
+//dns: 1.1.1.1, 2.2.2.2.
+//my ONU's start mac address is 00:10:18:00:00:00.
+//so route mac veip0.1 is 00:10:18:00:00:04.
+//////////////////////////////////////////////////////////////
+
+vlanctl --mcast --if-create-name veip0 veip0.1
+
+vlanctl --if veip0 --set-if-mode-rg
+
+ifconfig veip0.1 10.10.10.10 hw ether 00:10:18:00:00:04 netmask 255.255.254.0 broadcast 10.10.11.255
+
+ifconfig veip0.1 up
+
+vlanctl --if veip0 --tx --tags 0 --default-miss-drop
+
+vlanctl --if veip0 --tx --tags 1 --default-miss-drop
+
+vlanctl --if veip0 --tx --tags 2 --default-miss-drop
+
+vlanctl --if veip0 --rx --tags 0 --default-miss-drop
+
+vlanctl --if veip0 --rx --tags 1 --default-miss-drop
+
+vlanctl --if veip0 --rx --tags 2 --default-miss-drop
+
+vlanctl --if epon0 --rx --tags 0 --filter-skb-mark-port 0x0 --set-rxif veip0 --rule-append
+
+vlanctl --if epon0 --rx --tags 0 --filter-skb-mark-port 16 --set-rxif veip0 --rule-append
+
+vlanctl --if epon0 --tags 0 --tx --filter-skb-mark-port 0 --rule-append
+
+vlanctl --if veip0 --tx --tags 0 --filter-txif veip0.1 --set-skb-mark-port 0 --set-skb-mark-queue 0 --rule-append --rule-type 0
+
+vlanctl --if veip0 --rx --tags 0 --filter-vlan-dev-mac-addr 1 --set-rxif veip0.1 --rule-append --rule-type 0
+
+iptables -t nat -D PREROUTING -i br0 -d 192.168.1.1 -p udp --dport 53 -j DNAT --to 128.9.0.107
+
+iptables -t nat -A PREROUTING -i br0 -d 192.168.1.1 -p udp --dport 53 -j DNAT --to 128.9.0.107
+
+iptables -t nat -D PREROUTING -i br0 -d 192.168.1.1 -p udp --dport 53 -j DNAT --to 128.9.0.107
+
+iptables -t nat -D POSTROUTING -o veip0.1 -s 192.168.1.0/255.255.255.0 -j MASQUERADE
+
+iptables -t nat -A POSTROUTING -o veip0.1 -s 192.168.1.0/255.255.255.0 -j MASQUERADE
+
+iptables -D FORWARD -i veip0.1 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+
+iptables -D FORWARD -o veip0.1 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+
+iptables -I FORWARD -i veip0.1 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+
+iptables -I FORWARD -o veip0.1 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+
+route del default
+
+route add default gw 10.10.10.100 dev veip0.1
+
+////////////////////////////////////////////////////////////////////
+//IPv6 bridge service set up commands.
+//veip0.2, no tag, ipv6 only. 
+//This bridge should include 3 UNI, lan-0, lan-1 and lan-2 only.
+////////////////////////////////////////////////////////////////////
+
+vlanctl --mcast --if-create-name veip0 veip0.2
+
+ifconfig veip0.2 up
+
+brctl addif br0 veip0.2
+
+brctl delif br0 eth3.0
+
+vlanctl --if veip0 --rx --tags 0 --filter-ethertype 0x86dd --set-rxif veip0.2 --rule-append
+
+vlanctl --if veip0 --tags 0 --tx --filter-txif veip0.2 --filter-ethertype 0x86dd --set-skb-mark-port 0 --set-skb-mark-queue 0 --rule-append
+
+////////////////////////////////////////////////////////////////////
+//The 2nd bridge service simulating VOIP binding with lan-3.
+//veip0.3, do not care vlan, only care link and UNI index.
+//This bridge should include lan-3 only.
+////////////////////////////////////////////////////////////////////
+
+vlanctl --mcast --if-create-name veip0 veip0.3
+
+ifconfig veip0.3 up
+
+brctl addbr br1
+
+ifconfig br1 up
+
+brctl addif br1 veip0.3
+
+brctl addif br1 eth3.0
+
+vlanctl --if veip0 --tx --tags 0 --filter-txif veip0.3 --set-skb-mark-port 1 --set-skb-mark-queue 0 --rule-append --rule-type 0
+
+vlanctl --if veip0 --tx --tags 1 --filter-txif veip0.3 --set-skb-mark-port 1 --set-skb-mark-queue 0 --rule-append --rule-type 0
+
+vlanctl --if veip0 --tx --tags 2 --filter-txif veip0.3 --set-skb-mark-port 1 --set-skb-mark-queue 0 --rule-append --rule-type 0
+
+vlanctl --if epon0 --tx --tags 0 --filter-skb-mark-port 1 --rule-append
+
+vlanctl --if epon0 --tx --tags 1 --filter-skb-mark-port 1 --rule-append
+
+vlanctl --if epon0 --tx --tags 2 --filter-skb-mark-port 1 --rule-append
+
+vlanctl --if veip0 --rx --tags 0 --filter-skb-mark-port 1 --set-rxif veip0.3 --rule-append --rule-type 0
+
+vlanctl --if veip0 --rx --tags 1 --filter-skb-mark-port 1 --set-rxif veip0.3 --rule-append --rule-type 0
+
+vlanctl --if veip0 --rx --tags 2 --filter-skb-mark-port 1 --set-rxif veip0.3 --rule-append --rule-type 0
+
+vlanctl --if epon0 --rx --tags 0 --filter-skb-mark-port 1 --set-rxif veip0 --rule-append
+
+vlanctl --if epon0 --rx --tags 1 --filter-skb-mark-port 1 --set-rxif veip0 --rule-append
+
+vlanctl --if epon0 --rx --tags 2 --filter-skb-mark-port 1 --set-rxif veip0 --rule-append

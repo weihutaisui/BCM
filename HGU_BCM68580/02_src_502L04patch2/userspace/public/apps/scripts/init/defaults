@@ -1,0 +1,116 @@
+#!/bin/bash
+
+dvolsize='___BRCM_DEFAULTS_VOLSIZE___'
+lvolsize='___BRCM_LOCAL_VOLSIZE___'
+if [ -z "$dvolsize$lvolsize" ]
+then
+  exit 0
+fi
+
+misc=`grep -l misc1 /sys/class/mtd/mtd*/name`
+if [ -z "$misc" ]
+then
+  if [ -n "$lvolsize" ]
+  then
+    echo "***** WARNING: LOCAL volume is required but misc1 device is not allocated *****"
+  fi
+  exit 0
+else
+  misc=`grep DEVNAME ${misc%name}uevent`
+  misc=${misc#DEVNAME=}
+fi
+
+prev=$PWD
+dloc="/proc/brcm/blxparms/"
+cd $dloc
+for i in defaults_*
+do
+  if [ -e "$i" ] 
+  then
+    defaults=1
+  fi
+done
+
+mkdir -p /mnt/defaults
+miscnum=${misc#mtd}
+ubiattach -p /dev/$misc
+miscubisys=`grep -l "^$miscnum$" /sys/class/ubi/ubi*/mtd_num`
+miscubisys=${miscubisys%/mtd_num}
+miscubidev=${miscubisys##*/}
+vc=`cat $miscubisys/volumes_count`
+if [ "x$vc" == "x" ]; then
+vc=0
+fi 
+
+if [ -n "$defaults$lvolsize" ]
+then
+   if [ "$vc" -eq 0 ]
+   then
+     ubidetach -p /dev/$misc
+     ubiformat -y /dev/$misc
+     ubiattach -p /dev/$misc 
+     miscubisys=`grep -l "^$miscnum$" /sys/class/ubi/ubi*/mtd_num`
+     miscubisys=${miscubisys%/mtd_num}
+     miscubidev=${miscubisys##*/}
+
+   fi
+fi
+
+if [ -n "$lvolsize" ]
+then
+  lvol=`grep -l '^local$' /sys/class/ubi/*_*/name`
+  if [ -z "$lvol" ]
+  then
+    if [ "$lvolsize" -gt 0 ]
+    then
+      lvolsize="-s ${lvolsize}MiB" 
+    else
+      lvolsize="-m"
+    fi
+    ubimkvol /dev/$miscubidev -N local $lvolsize
+  fi
+  mount -t ubifs $miscubidev:local /local
+fi
+
+if [ -n "$defaults" ]; then
+   dvol=`grep -l '^defaults$' /sys/class/ubi/*_*/name`
+   if [ -z "$dvol" ]
+   then
+     if [ "$dvolsize" -gt 0 ]
+     then
+       dvolsize="-s ${dvolsize}MiB" 
+     else
+       dvolsize="-m"
+     fi
+     ubimkvol /dev/$miscubidev -N defaults $dvolsize
+   fi
+   dvol=`grep -l '^defaults$' /sys/class/ubi/*_*/name`
+   mount -t ubifs $miscubidev:defaults /mnt/defaults
+
+   ### now populate it
+   >>/mnt/defaults/defaults.txt
+   cp /mnt/defaults/defaults.txt /tmp/
+   for i in defaults_*
+   do
+     j=${i#defaults_}
+     # echo "remove $j"
+     grep -v "^$j=" /tmp/defaults.txt > /tmp/d2.txt
+     # echo "------"
+     # cat /tmp/d2.txt
+     # echo "------"
+     cp /tmp/d2.txt /tmp/defaults.txt
+     echo "$j="`cat $i` >> /tmp/defaults.txt
+   done
+   cp /tmp/defaults.txt /mnt/defaults/
+   rm /tmp/defaults.txt
+   cat /mnt/defaults/defaults.txt
+
+   mount -t ubifs $miscubidev:defaults /mnt/defaults -oremount,ro
+else
+   if [ $vc -gt 0 ]; then
+     mount -t ubifs $miscubidev:defaults /mnt/defaults -oro 
+   fi
+fi
+
+cd $prev
+

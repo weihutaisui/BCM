@@ -1,0 +1,20 @@
+--- sqlite_org/sqlite3.c	2016-04-14 11:59:34.186764475 -0700
++++ sqlite/sqlite3.c	2016-04-14 12:12:13.000000000 -0700
+@@ -78599,7 +78599,7 @@
+ ** the height is greater than the maximum allowed expression depth,
+ ** leave an error in pParse.
+ */
+-SQLITE_PRIVATE void sqlite3ExprSetHeight(Parse *pParse, Expr *p){
++SQLITE_PRIVATE void __attribute__((optimize("O2")))sqlite3ExprSetHeight(Parse *pParse, Expr *p){
+   exprSetHeight(p);
+   sqlite3ExprCheckHeight(pParse, p->nHeight);
+ }
+@@ -143608,7 +143608,7 @@
+       */
+       for(iRead=0; iRead<pTab->nColumn; iRead++){
+         SnippetFragment sF = {0, 0, 0, 0};
+-        int iS;
++        int iS=0;
+         if( iCol>=0 && iRead!=iCol ) continue;
+ 
+         /* Find the best snippet of nFToken tokens in column iRead. */

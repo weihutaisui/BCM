@@ -1,0 +1,361 @@
+diff -Naur orig_lxc-2.0.4/src/lxc/cgroups/cgfs.c lxc-2.0.4/src/lxc/cgroups/cgfs.c
+--- orig_lxc-2.0.4/src/lxc/cgroups/cgfs.c	2016-08-15 19:37:55.000000000 -0700
++++ lxc-2.0.4/src/lxc/cgroups/cgfs.c	2017-09-21 14:13:42.803568765 -0700
+@@ -1396,12 +1396,15 @@
+ 	struct cgroup_process_info *info, *base_info;
+ 	int r, saved_errno = 0;
+ 
++#ifndef BUILD_DESKTOP_BEEP
+ 	if (cgns_supported())
+ 		return true;
++#endif
+ 
+ 	cgfs_d = hdata;
+ 	if (!cgfs_d)
+ 		return false;
++
+ 	base_info = cgfs_d->info;
+ 
+ 	/* If we get passed the _NOSPEC types, we default to _MIXED, since we don't
+@@ -1665,6 +1668,9 @@
+ 		/* file format: hierarchy:subsystems:group */
+ 		char *colon1;
+ 		char *colon2;
++#ifdef BUILD_DESKTOP_BEEP
++		const char *a;
++#endif
+ 		char *endptr;
+ 		int hierarchy_number;
+ 		struct cgroup_hierarchy *h = NULL;
+@@ -1718,6 +1724,25 @@
+ 
+ 		entry->meta_ref = lxc_cgroup_get_meta(meta);
+ 		entry->hierarchy = h;
++#ifdef BUILD_DESKTOP_BEEP
++		// Remove the ${DESKTOP_CGROUP_ROOT} string from colon2
++		a = getenv("DESKTOP_CGROUP_ROOT");
++		if (a != NULL)
++		{
++			if (strncmp(colon2, a, strlen(a)) == 0)
++			{
++				memmove(colon2, colon2 + strlen(a), 1 + strlen(colon2) - strlen(a));
++			}
++
++			//If after the prefix removal, we got an empty string, 
++			//we put colon2 to be "/"
++			if (colon2[0] == '\0')
++			{
++				colon2 = "/";
++			}
++			INFO("cgroup root is %s", colon2);
++		}
++#endif
+ 		entry->cgroup_path = strdup(colon2);
+ 		if (!entry->cgroup_path)
+ 			goto out_error;
+@@ -1983,6 +2008,10 @@
+ 			if (strcmp(cg->subsystem, "devices.allow") == 0 &&
+ 					cgroup_devices_has_allow_or_deny(d, cg->value, true))
+ 				continue;
++#ifdef BUILD_DESKTOP_BEEP
++			if (strncmp(cg->subsystem, "blkio", strlen("blkio")) == 0)
++				continue;
++#endif
+ 			if (lxc_cgroup_set_data(cg->subsystem, cg->value, d)) {
+ 				if (do_devices && (errno == EACCES || errno == EPERM)) {
+ 					WARN("Error setting %s to %s for %s",
+diff -Naur orig_lxc-2.0.4/src/lxc/cgroups/cgfsng.c lxc-2.0.4/src/lxc/cgroups/cgfsng.c
+--- orig_lxc-2.0.4/src/lxc/cgroups/cgfsng.c	2016-08-15 19:37:55.000000000 -0700
++++ lxc-2.0.4/src/lxc/cgroups/cgfsng.c	2017-09-21 14:13:42.812582302 -0700
+@@ -1641,6 +1641,10 @@
+ 		cg = iterator->elem;
+ 
+ 		if (do_devices == !strncmp("devices", cg->subsystem, 7)) {
++#ifdef BUILD_DESKTOP_BEEP
++			if (strncmp(cg->subsystem, "blkio", strlen("blkio")) == 0)
++				continue;
++#endif
+ 			if (lxc_cgroup_set_data(cg->subsystem, cg->value, d)) {
+ 				if (do_devices && (errno == EACCES || errno == EPERM)) {
+ 					WARN("Error setting %s to %s for %s",
+diff -Naur orig_lxc-2.0.4/src/lxc/conf.c lxc-2.0.4/src/lxc/conf.c
+--- orig_lxc-2.0.4/src/lxc/conf.c	2016-08-15 19:37:55.000000000 -0700
++++ lxc-2.0.4/src/lxc/conf.c	2017-09-21 14:13:42.755467133 -0700
+@@ -1167,7 +1167,7 @@
+ 
+ 			// Unprivileged containers cannot create devices, so
+ 			// bind mount the device from the host
+-			ret = snprintf(hostpath, MAXPATHLEN, "/dev/%s", d->name);
++			ret = snprintf(hostpath, MAXPATHLEN, "%s/dev/%s", rootfs->path ? rootfs->mount : "", d->name);
+ 			if (ret < 0 || ret >= MAXPATHLEN)
+ 				return -1;
+ 			pathfile = fopen(path, "wb");
+@@ -1178,8 +1178,8 @@
+ 			fclose(pathfile);
+ 			if (safe_mount(hostpath, path, 0, MS_BIND, NULL,
+ 						rootfs->path ? rootfs->mount : NULL) != 0) {
+-				SYSERROR("Failed bind mounting device %s from host into container",
+-					d->name);
++				SYSERROR("Failed bind mounting device %s from host %s into container",
++					d->name, rootfs->path ? rootfs->mount : "");
+ 				return -1;
+ 			}
+ 		}
+diff -Naur orig_lxc-2.0.4/src/lxc/initutils.c lxc-2.0.4/src/lxc/initutils.c
+--- orig_lxc-2.0.4/src/lxc/initutils.c	2016-08-15 19:37:55.000000000 -0700
++++ lxc-2.0.4/src/lxc/initutils.c	2017-09-21 14:13:42.766562872 -0700
+@@ -33,7 +33,7 @@
+ 		WARN("failed to unmount %s : %s", target, strerror(errno));
+ 
+ 	if (mount(source, target, type, 0, NULL)) {
+-		ERROR("failed to mount %s : %s", target, strerror(errno));
++		WARN("failed to mount %s : %s", target, strerror(errno));
+ 		return -1;
+ 	}
+ 
+diff -Naur orig_lxc-2.0.4/src/lxc/start.c lxc-2.0.4/src/lxc/start.c
+--- orig_lxc-2.0.4/src/lxc/start.c	2016-08-15 19:37:55.000000000 -0700
++++ lxc-2.0.4/src/lxc/start.c	2017-09-21 14:13:42.774172765 -0700
+@@ -811,6 +811,13 @@
+ 		goto out_warn_father;
+ 	}
+ 
++
++	/* Setup the container, ip, names, utsname, ... */
++	if (lxc_setup(handler)) {
++		ERROR("failed to setup the container");
++		goto out_warn_father;
++	}
++
+ 	/* In order to checkpoint restore, we need to have everything in the
+ 	 * same mount namespace. However, some containers may not have a
+ 	 * reasonable /dev (in particular, they may not have /dev/null), so we
+@@ -829,12 +836,6 @@
+ 		WARN("using host's /dev/null for container init's std fds, migraiton won't work");
+ 	}
+ 
+-	/* Setup the container, ip, names, utsname, ... */
+-	if (lxc_setup(handler)) {
+-		ERROR("failed to setup the container");
+-		goto out_warn_father;
+-	}
+-
+ 	/* ask father to setup cgroups and wait for him to finish */
+ 	if (lxc_sync_barrier_parent(handler, LXC_SYNC_CGROUP))
+ 		goto out_error;
+diff -Naur orig_lxc-2.0.4/src/lxc/tools/lxc_attach.c lxc-2.0.4/src/lxc/tools/lxc_attach.c
+--- orig_lxc-2.0.4/src/lxc/tools/lxc_attach.c	2016-08-15 19:37:55.000000000 -0700
++++ lxc-2.0.4/src/lxc/tools/lxc_attach.c	2017-09-21 14:15:31.325185375 -0700
+@@ -321,7 +321,7 @@
+ err3:
+ 	lxc_mainloop_close(&descr);
+ err2:
+-	if (ts->sigfd != -1)
++	if (ts && ts->sigfd != -1)
+ 		lxc_console_sigwinch_fini(ts);
+ err1:
+ 	lxc_console_delete(&conf->console);
+diff -Naur orig_lxc-2.0.4/src/lxc/tools/lxc_execute.c lxc-2.0.4/src/lxc/tools/lxc_execute.c
+--- orig_lxc-2.0.4/src/lxc/tools/lxc_execute.c	2016-08-15 19:37:55.000000000 -0700
++++ lxc-2.0.4/src/lxc/tools/lxc_execute.c	2017-09-21 14:13:42.783613285 -0700
+@@ -31,6 +31,8 @@
+ #include <sys/stat.h>
+ #include <sys/param.h>
+ 
++#include <lxc/lxccontainer.h>
++
+ #include "caps.h"
+ #include "lxc.h"
+ #include "log.h"
+@@ -45,6 +47,10 @@
+ 
+ static struct lxc_list defines;
+ 
++#define OPT_SHARE_NET OPT_USAGE+1
++#define OPT_SHARE_IPC OPT_USAGE+2
++#define OPT_SHARE_UTS OPT_USAGE+3
++
+ static int my_checker(const struct lxc_arguments* args)
+ {
+ 	if (!args->argc) {
+@@ -60,6 +66,9 @@
+ 	switch (c) {
+ 	case 'f': args->rcfile = arg; break;
+ 	case 's': return lxc_config_define_add(&defines, arg); break;
++    case OPT_SHARE_NET: args->share_ns[LXC_NS_NET] = arg; break;
++	case OPT_SHARE_IPC: args->share_ns[LXC_NS_IPC] = arg; break;
++    case OPT_SHARE_UTS: args->share_ns[LXC_NS_UTS] = arg; break;
+ 	case 'u': args->uid = atoi(arg); break;
+ 	case 'g': args->gid = atoi(arg);
+ 	}
+@@ -71,6 +80,9 @@
+ 	{"define", required_argument, 0, 's'},
+ 	{"uid", required_argument, 0, 'u'},
+ 	{"gid", required_argument, 0, 'g'},
++	{"share-net", required_argument, 0, OPT_SHARE_NET},
++	{"share-ipc", required_argument, 0, OPT_SHARE_IPC},
++	{"share-uts", required_argument, 0, OPT_SHARE_UTS},
+ 	LXC_COMMON_OPTIONS
+ };
+ 
+@@ -93,11 +105,58 @@
+ 	.checker  = my_checker,
+ };
+ 
++static int pid_from_lxcname(const char *lxcname_or_pid, const char *lxcpath) {
++	char *eptr;
++	int pid = strtol(lxcname_or_pid, &eptr, 10);
++	if (*eptr != '\0' || pid < 1) {
++		struct lxc_container *s;
++		s = lxc_container_new(lxcname_or_pid, lxcpath);
++		if (!s) {
++			SYSERROR("'%s' is not a valid pid nor a container name", lxcname_or_pid);
++			return -1;
++		}
++
++		if (!s->may_control(s)) {
++			SYSERROR("Insufficient privileges to control container '%s'", s->name);
++			lxc_container_put(s);
++			return -1;
++		}
++
++		pid = s->init_pid(s);
++		if (pid < 1) {
++			SYSERROR("Is container '%s' running?", s->name);
++			lxc_container_put(s);
++			return -1;
++		}
++
++		lxc_container_put(s);
++	}
++	if (kill(pid, 0) < 0) {
++		SYSERROR("Can't send signal to pid %d", pid);
++		return -1;
++	}
++
++	return pid;
++}
++
++static int open_ns(int pid, const char *ns_proc_name) {
++	int fd;
++	char path[MAXPATHLEN];
++	snprintf(path, MAXPATHLEN, "/proc/%d/ns/%s", pid, ns_proc_name);
++
++	fd = open(path, O_RDONLY);
++	if (fd < 0) {
++		SYSERROR("failed to open %s", path);
++		return -1;
++	}
++	return fd;
++}
++
+ int main(int argc, char *argv[])
+ {
+ 	char *rcfile;
+ 	struct lxc_conf *conf;
+-	int ret;
++	int ret=-1;
+ 
+ 	lxc_list_init(&defines);
+ 
+@@ -151,8 +210,24 @@
+ 	if (my_args.gid)
+ 		conf->init_gid = my_args.gid;
+ 
++	int i;
++	for (i = 0; i < LXC_NS_MAX; i++) {
++		if (my_args.share_ns[i] == NULL)
++			continue;
++
++		int pid = pid_from_lxcname(my_args.share_ns[i], my_args.lxcpath[0]);
++		if (pid < 1)
++			goto out;
++
++		int fd = open_ns(pid, ns_info[i].proc_name);
++		if (fd < 0)
++			goto out;
++		conf->inherit_ns_fd[i] = fd;
++	}
++
+ 	ret = lxc_execute(my_args.name, my_args.argv, my_args.quiet, conf, my_args.lxcpath[0], false);
+ 
++out:
+ 	lxc_conf_free(conf);
+ 
+ 	if (ret < 0)
+diff -Naur orig_lxc-2.0.4/src/lxc/tools/lxc_monitor.c lxc-2.0.4/src/lxc/tools/lxc_monitor.c
+--- orig_lxc-2.0.4/src/lxc/tools/lxc_monitor.c	2016-08-15 19:37:55.000000000 -0700
++++ lxc-2.0.4/src/lxc/tools/lxc_monitor.c	2017-09-21 14:13:42.794362565 -0700
+@@ -35,10 +35,12 @@
+ #include "log.h"
+ #include "monitor.h"
+ #include "arguments.h"
++#include "cms_msg.h"
+ 
+ lxc_log_define(lxc_monitor_ui, lxc);
+ 
+ static bool quit_monitord;
++void *msgHandle=NULL;
+ 
+ static int my_parser(struct lxc_arguments* args, int c, char* arg)
+ {
+@@ -83,6 +85,30 @@
+ 	}
+ }
+ 
++static void sendLxcContainerExitMsg(const char *name, lxc_state_t state)
++{
++	char buf[sizeof(CmsMsgHeader) + sizeof(LxcContainerStatusMsgBody)]={0};
++	CmsMsgHeader *msg=(CmsMsgHeader *) buf;
++	LxcContainerStatusMsgBody *body = (LxcContainerStatusMsgBody *) (msg+1);
++	CmsRet ret;
++
++	msg->type = CMS_MSG_LXC_STATUS_INFO;
++	msg->src = MAKE_SPECIFIC_EID(getpid(), EID_LXC_MONITOR);
++	msg->dst = EID_SPD;
++	msg->flags_event = 1;
++	msg->dataLength = sizeof(LxcContainerStatusMsgBody);
++
++	memcpy(&body->name[0], name, BUFLEN_32);
++	body->state = state;
++
++	if ((ret = cmsMsg_send(msgHandle, msg)) != CMSRET_SUCCESS)
++	{
++		ERROR("could not send out CMS_MSG_LXC_STATUS_INFO, ret=%d", ret);
++	}
++
++	return;
++}
++
+ int main(int argc, char *argv[])
+ {
+ 	char *regexp;
+@@ -105,6 +131,9 @@
+ 		return 1;
+ 	lxc_log_options_no_override();
+ 
++	if (cmsMsg_initWithFlags(EID_LXC_MONITOR, 0, &msgHandle) != CMSRET_SUCCESS)
++        return 1;
++
+ 	if (quit_monitord) {
+ 		int ret = EXIT_SUCCESS;
+ 		for (i = 0; i < my_args.lxcpath_cnt; i++) {
+@@ -184,12 +213,14 @@
+ 
+ 		switch (msg.type) {
+ 		case lxc_msg_state:
+-			printf("'%s' changed state to [%s]\n",
+-			       msg.name, lxc_state2str(msg.value));
++			sendLxcContainerExitMsg(msg.name, msg.value);
++//			printf("'%s' changed state to [%s]\n",
++//			       msg.name, lxc_state2str(msg.value));
+ 			break;
+ 		case lxc_msg_exit_code:
+-			printf("'%s' exited with status [%d]\n",
+-			       msg.name, WEXITSTATUS(msg.value));
++			sendLxcContainerExitMsg(msg.name, msg.value);
++//			printf("'%s' exited with status [%d]\n",
++//			       msg.name, WEXITSTATUS(msg.value));
+ 			break;
+ 		default:
+ 			/* ignore garbage */

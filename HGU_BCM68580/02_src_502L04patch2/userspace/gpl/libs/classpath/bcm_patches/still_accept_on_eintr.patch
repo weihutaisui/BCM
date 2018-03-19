@@ -1,0 +1,22 @@
+diff -u -r classpath-0.98.orig/native/jni/java-net/local.c classpath-0.98/native/jni/java-net/local.c
+--- classpath-0.98.orig/native/jni/java-net/local.c	2008-08-12 04:14:45.000000000 -0700
++++ classpath-0.98/native/jni/java-net/local.c	2012-09-26 11:06:14.392561573 -0700
+@@ -103,6 +103,7 @@
+   struct sockaddr_un addr;
+   socklen_t sz = SUN_LEN(&addr);
+ 
++  for(;;){
+   newfd = accept (fd, (struct sockaddr *) &addr, &sz);
+   if (newfd >= 0)
+     {
+@@ -111,6 +112,10 @@
+       int n = sizeof (addr.sun_path);
+       strncpy (path, addr.sun_path, n);
+       path[n] = '\0';
++         break;
++      }
++      else if(errno == EINTR)
++         continue;
+     }
+   return newfd;
+ }

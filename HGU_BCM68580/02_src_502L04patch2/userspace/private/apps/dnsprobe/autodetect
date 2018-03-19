@@ -1,0 +1,4 @@
+
+condition: ifneq ($(strip $(BUILD_DNSPROBE)),)
+makeflags: $(BUILD_DNSPROBE)
+

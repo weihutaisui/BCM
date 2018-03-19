@@ -1,0 +1,38 @@
+--- openssl-1.0.2a.orig/Makefile.org	2015-03-19 15:30:36.000000000 +0200
++++ openssl-1.0.2a.orig/Makefile.org.merge	2015-10-28 10:33:08.937740369 +0200
+@@ -274,17 +274,17 @@
+ build_libs: build_crypto build_ssl build_engines
+ 
+ build_crypto:
+-	@dir=crypto; target=all; $(BUILD_ONE_CMD)
+-build_ssl:
+-	@dir=ssl; target=all; $(BUILD_ONE_CMD)
+-build_engines:
+-	@dir=engines; target=all; $(BUILD_ONE_CMD)
+-build_apps:
+-	@dir=apps; target=all; $(BUILD_ONE_CMD)
++	+@dir=crypto; target=all; $(BUILD_ONE_CMD)
++build_ssl: build_crypto
++	+@dir=ssl; target=all; $(BUILD_ONE_CMD)
++build_engines: build_crypto
++	+@dir=engines; target=all; $(BUILD_ONE_CMD)
++build_apps: build_libs
++	+@dir=apps; target=all; $(BUILD_ONE_CMD)
+ build_tests:
+ 	@dir=test; target=all; $(BUILD_ONE_CMD)
+-build_tools:
+-	@dir=tools; target=all; $(BUILD_ONE_CMD)
++build_tools: build_libs
++	+@dir=tools; target=all; $(BUILD_ONE_CMD)
+ 
+ all_testapps: build_libs build_testapps
+ build_testapps:
+@@ -458,7 +458,7 @@
+ 	@$(PERL) util/selftest.pl
+ 
+ depend:
+-	@set -e; target=depend; $(RECURSIVE_BUILD_CMD)
++	+@set -e; target=depend; $(RECURSIVE_BUILD_CMD)
+ 
+ lint:
+ 	@set -e; target=lint; $(RECURSIVE_BUILD_CMD)

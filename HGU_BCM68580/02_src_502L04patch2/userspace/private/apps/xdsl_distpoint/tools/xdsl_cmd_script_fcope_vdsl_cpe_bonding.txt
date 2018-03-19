@@ -1,0 +1,4 @@
+api stop all
+bcm createSuperBondingCore 11
+api createBondingGrps 2 0,1 1
+api start 0,1

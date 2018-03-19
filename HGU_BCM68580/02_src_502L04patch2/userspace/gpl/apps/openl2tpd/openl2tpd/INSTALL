@@ -1,0 +1,252 @@
+Installation Instructions
+=========================
+
+OpenL2TP requires a kernel driver (pppol2tp) which was integrated into
+the kernel mainline in 2.6.23. If you are using an earlier kernel
+version, please use openl2tp-0.19 with the pppol2tp-kmod package.
+
+Binary Install
+--------------
+
+Install the binary package with your distro's package manager.
+
+To have OpenL2TP start automatically at boot, do
+
+chkconfig openl2tpd on
+
+Manual Install
+--------------
+
+1. Edit configurable build options at the top of l2tp_private.h,
+   if required. This won't usually be necessary.
+
+2. Edit configurable settings in Makefile if needed, or simply
+   override the defaults when invoking make. The compile-time options
+   are described in more detail below.
+
+3. Build and install the software.
+
+   make
+   make install
+
+   This installs the following files:
+   /usr/bin/l2tpconfig
+   /usr/sbin/openl2tpd
+   /usr/lib/openl2tp/ppp_unix.so
+   /usr/share/man/man1/l2tpconfig.1.gz
+   /usr/share/man/man4/openl2tp_rpc.4.gz
+   /usr/share/man/man7/openl2tp.7.gz
+   /usr/share/man/man8/openl2tpd.8.gz
+
+   To install under a different root directory, say /tmp, use
+
+   make install DESTDIR=/tmp
+
+   To cross-compile, define CROSS_COMPILE to be the tool prefix, i.e.
+
+   make CROSS_COMPILE=ppc_7xx-
+
+   You might need to also define READLINE_DIR if readline is not installed
+   in the cross compiler tree.
+
+4. Ensure that there are entries for l2tp in /etc/services. There should be
+   lines that look like
+
+   l2tp		1701/tcp	l2f
+   l2tp		1701/udp	l2f
+
+Test the installation. 
+---------------------
+
+1. Load the kernel module (unless it is built statically into the kernel).
+
+   modprobe pppol2tp
+
+   If you don't have modprobe (some embedded platforms), some PPP modules
+   must be loaded first.
+
+   insmod drivers/net/slhc.ko
+   insmod drivers/net/ppp_generic.ko
+   insmod drivers/net/pppox.ko
+   insmod drivers/net/pppol2tp.ko
+
+2. If pppd is being used, test that it can load the pppol2tp plugin.
+
+   /usr/sbin/pppd debug nodetach noauth plugin pppol2tp.so pppol2tp 42
+
+   should output something like:
+
+   Plugin pppol2tp.so loaded.
+   Given FD for PPPoL2TP socket invalid (Bad file descriptor)
+
+3. Start openl2tpd and create a tunnel to itself.
+
+   /usr/sbin/openl2tpd
+
+   /usr/bin/l2tpconfig
+   l2tp> system show version
+   l2tp> tunnel create tunnel_name=one dest_ipaddr=127.0.0.1
+   l2tp> tunnel list
+   l2tp> ppp profile create profile_name=one local_ipaddr=10.3.1.1 remote_ipaddr=10.3.1.2
+   l2tp> ppp profile modify profile_name=default auth_none=yes
+   l2tp> session create tunnel_name=one session_name=one ppp_profile_name=one
+   l2tp> session list tunnel_name=one
+   l2tp> session show tunnel_name=one session_name=one
+
+   If everything has been installed correctly, there should be two
+   new PPP interfaces with the IP addresses given above.
+
+   Note that openl2tpd invokes pppd at /usr/sbin/pppd. If an
+   alternative location is required for pppd, openl2tpd must be
+   reconfigured and rebuilt as described above.
+
+Compile-time Options
+====================
+
+A number of features of OpenL2TP may be compiled out, if desired. Each
+feature is controlled by a preprocessor directive, named
+L2TP_FEATURE_XXX. Enabled features are written to l2tp_options.h by
+the top-level makefile. To change the feature settings, either edit
+the makefile in this directory or override the settings when invoking
+make, e.g.
+
+make L2TP_FEATURE_LNS_SUPPORT=n
+
+Unless memory or filesystem space is very limited, most users should
+use the default settings.
+
+The compile=time options are:-
+
+L2TP_FEATURE_LAC_SUPPORT
+
+	Enable LAC support. For simple L2TP clients (connecting to an
+	enterprise VPN, for example), LAC support should be enabled.
+
+L2TP_FEATURE_LAIC_SUPPORT
+
+	LAIC are LAC Incoming Calls. The name can be confusing because
+	"incoming" is from the perspective of the LNS. Thus, if you
+	are connecting to a remote LNS as a client, LAIC support is
+	required. This is enabled by default if LAC_SUPPORT is
+	enabled.
+
+L2TP_FEATURE_LAOC_SUPPORT
+
+	LAOC are LAC Outgoing Calls. These are sessions initiated from
+	the LNS. LAOC support is enabled by default when LAC_SUPPORT
+	is enabled.
+
+L2TP_FEATURE_LNS_SUPPORT
+
+	Enable LNS support. If OpenL2TP is being used as an L2TP VPN
+	server where one or more clients such as Microsoft L2TP VPN
+	users are connecting, LNS support is required.
+
+L2TP_FEATURE_LNIC_SUPPORT
+
+	LNIC are LNS Incoming Calls. If OpenL2TP is being used as a
+	VPN server, LNIC support is required. This is enabled by
+	default if LNS_SUPPORT is enabled.
+
+L2TP_FEATURE_LNOC_SUPPORT
+
+	LNOC are LNS Outgoing Calls, i.e. are initiated from the
+	LNS. This is enabled by default if LNS_SUPPORT is enabled.
+
+L2TP_FEATURE_RPC_MANAGEMENT
+
+	By design, OpenL2TP supports a standard network facility
+	called RPC or Remote Procedure Call. This allows a possibly
+	remote application to make requests to OpenL2TP to control or
+	query it. However, in some environments, especially in some
+	custom embedded boxes, RPC isn't readily available because of
+	resource constraints. In such environments, RPC can be
+	disabled. Note that when RPC is disabled, the l2tpconfig
+	application is not available - OpenL2TP should be configured
+	using a local config file (see below).
+
+L2TP_FEATURE_LOCAL_CONF_FILE
+
+	OpenL2TP supports configuration through a local config file
+	(/etc/openl2tpd.conf unless specified using the -c
+	command-line option). Note that the equivalent operation can
+	be done using l2tpconfig's "config restore" command when RPC
+	management is available. When this feature is enabled, the
+	openl2tpd daemon may be sent a SIGHUP signal to have it
+	re-read its config file. By default, this feature is disabled
+	because it increases the size of openl2tpd by about 15% and
+	RPC is the preferred way to manage an application. When RPC is
+	available, the "config restore" mechanism is the preferred
+	method for restoring config. An example of its use is in the
+	startup scripts in the etc/ subdirectory. See below.
+
+L2TP_FEATURE_LOCAL_STAT_FILE
+
+	With this feature, OpenL2TP will write status files under
+	/var/run/openl2tpd/ for every profile, peer, tunnel and
+	session. Shell commands such as ls and cat may therefore be
+	used to obtain configuration and status information from
+	OpenL2TP. Tunnels and sessions are stored using their L2TP
+	tunnel-id and session-id numbers. When this feature is
+	enabled, the size of openl2tpd increases by about 10% because
+	code to pretty-print each context is included in the
+	daemon. (The same code is present in the command line utility,
+	l2tpconfig.) There is also a run-time overhead because the
+	files are written on every management or network create,
+	modify or delete request. By default, this feature is
+	disabled. Most administrators should not enable this feature -
+	it is provided for environments that do not have RPC
+	available. When it is compiled in, it must be enabled using
+	the -S option when starting openl2tpd.
+
+Startup
+=======
+
+RedHat Fedora users may install the startup scripts in /etc to control
+OpenL2TP. To install them, copy them into /etc, e.g.:
+
+tar cf - etc | (cd /; tar xpf -)
+
+service openl2tpd start
+service openl2tpd status
+service openl2tpd stop
+
+To have OpenL2TP automatically start at boot time, use chkconfig to
+set it up, e.g.
+
+chkconfig --add openl2tpd
+
+The startup script will apply saved configuration from a file if
+desired. Use the l2tpconfig utility to configure OpenL2TP, then use
+the following l2tpconfig command to save it to a file:
+
+l2tp> config save file=<my-config-file>
+
+Copy the file to somewhere suitable (/usr/lib/openl2tp is recommended)
+and then edit /etc/sysconfig/openl2tpd to have OPENL2TPD_CONFIG_FILE
+point to your file.
+
+L2TP/IPSec
+==========
+
+OpenL2TP can be used with the ipsec-tools package (racoon/setkey) to
+serve L2TP/IPSec clients such as Windows XP clients. The IPSec
+Security Policy Database must first be configured using the setkey(8)
+utility from ipsec-tools. The racoon(8) daemon provides IKE protocol
+support. Then, start openl2tpd with "-p ipsec.so" arguments to have it
+set up IPSec rules on demand as L2TP tunnel requests are handled, e.g.
+
+bash# openl2tpd -p ipsec.so
+
+For configurations where there are multiple L2TP/IPSec clients behind
+a NAT gateway at one or more remote sites, additional kernel and
+ipsec-tools patches are needed. See the README in the ipsec
+subdirectory for details.
+
+Reporting problems
+==================
+
+Please report problems to openl2tp-users@lists.sourceforge.net or
+raise a bug at sourceforge.net/projects/openl2tp.
+
+

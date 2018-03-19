@@ -1,0 +1,4 @@
+
+dependson: private/libs/gponif
+condition: ifneq ($(strip $(BUILD_GPONIF)),)
+

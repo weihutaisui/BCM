@@ -1,0 +1,61 @@
+{
+  "app-name": "dsldiagd",
+  "vendor": "Broadcom Ltd.",
+  "version": "1.0",
+  "description": "dslDiag daemon",
+  "linux":
+  {
+    "resources":
+    {
+      "cpu": {
+          "quota":10,
+      },
+      "memory": {
+          "limit":1048576,
+      },
+      "flash-size": "32KB",
+      "network-setup": {"mode":"Primary"},
+      "devices": [
+          {
+            "allow": false
+          },
+          {
+            "allow": true,
+            "major": 3033,
+            "minor": 0,
+            "type": "c",
+            "access": "rw"
+          },
+          {
+            "allow": true,
+            "major": 3033,
+            "minor": 1,
+            "type": "c",
+            "access": "rw"
+          },
+      ],
+    },
+    "devices": [
+      {
+          "path": "/dev/bcmadsl0",
+          "type": "c",
+          "major": 3033,
+          "minor": 0,
+      },
+      {
+          "path": "/dev/bcmadsl1",
+          "type": "c",
+          "major": 3033,
+          "minor": 1,
+      },
+    ],
+  },
+  "config":
+  {
+    "ExposedPorts":"5098/udp,5099/udp,5100/udp"
+  },
+  "dependency":
+  {
+    "libraries": ""
+  }
+}

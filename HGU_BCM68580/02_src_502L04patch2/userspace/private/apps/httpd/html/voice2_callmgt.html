@@ -1,0 +1,782 @@
+<html>
+   <head>
+   
+      <style type="text/css">
+      ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }
+      ul#tabs li { display: inline; }
+      ul#tabs li a { color: #42454a; background-color: #dedbde; border: 1px solid #c9c3ba; border-bottom: none; padding: 0.3em; text-decoration: none; }
+      ul#tabs li a:hover { background-color: #f1f0ee; }
+      ul#tabs li a.selected { color: #000; background-color: #f1f0ee; font-weight: bold; padding: 0.7em 0.3em 0.38em 0.3em; }
+      div.tabContent { border: 1px solid #c9c3ba; padding: 0.5em; background-color: #f1f0ee; }
+      div.tabContent.hide { display: none; }
+      </style>
+      
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+      <link rel="stylesheet" href='colors.css' type='text/css'>
+      <script language="javascript" src="util.js"></script>
+<script language="javascript">
+
+var voiceRunning = '<%ejGetVoice(voiceStatus)%>';
+var selTab = '<%ejGetVoice(selectedCallMgtTab)%>';
+
+var numFxs = '<%ejGetVoice(numFxs)%>';
+var numFxo = '<%ejGetVoice(numFxo)%>';
+var numCcLines = '<%ejGetVoice(numCcLines)%>';
+var numCcExt = '<%ejGetVoice(numCcExt)%>';
+var numFeatureSets = '<%ejGetVoice(numFeatSets)%>';
+
+var numVoiceButtonSets = 2;
+
+for (var i = 0; i < numCcLines; i++)
+{
+   for (var j = 0; j < numCcExt; j++)
+   {   
+      eval( "var rm" + i + "_" + j + " \= \"\" " );
+   }
+}
+
+for (var i = 0; i < numCcLines; i++)
+{   
+   eval( "var prov" + i + " \= \"\" " );
+}
+
+for (var i = 1; i <= numFeatureSets; i++)
+{
+   eval( "var clen" + i + " \= \"\" " );
+   eval( "var cne" + i + " \= \"\" " );
+   eval( "var cw" + i + " \= \"\" " );
+   eval( "var cfnum" + i + " \= \"\" " );
+   eval( "var cfbus" + i + " \= \"\" " );
+   eval( "var cfall" + i + " \= \"\" " );
+   eval( "var cfnoa" + i + " \= \"\" " );
+   eval( "var cb" + i + " \= \"\" " );
+   eval( "var cbpin" + i + " \= \"\" " );
+   eval( "var cbmap" + i + " \= \"\" " );
+   eval( "var mwi" + i + " \= \"\" " );
+   eval( "var cx" + i + " \= \"\" " );
+   eval( "var wle" + i + " \= \"\" " ); 
+   eval( "var wln" + i + " \= \"\" " );
+   eval( "var acb" + i + " \= \"\" " );
+   eval( "var anc" + i + " \= \"\" " );
+   eval( "var dnd" + i + " \= \"\" " );
+   eval( "var crn" + i + " \= \"\" " );
+   eval( "var crd" + i + " \= \"\" " );
+}
+
+var sessionKey= '<%ejGetOther(sessionKey)%>';
+var euflen = '<%ejGetVoice(euFlashEn)%>';
+
+var tmprm = '<%ejGetVoice(routingMap)%>';
+var tmppm = '<%ejGetVoice(providerMap)%>';
+
+var tmpce      = '<%ejGetVoice(clidEnable)%>';
+var tmpcne     = '<%ejGetVoice(clidNameEnable)%>';
+var tmpcw      = '<%ejGetVoice(callWait)%>';
+var tmpcfnum   = '<%ejGetVoice(callFwdNum)%>';
+var tmpcfbus   = '<%ejGetVoice(callFwdBusy)%>';
+var tmpcfall   = '<%ejGetVoice(callFwdAll)%>';
+var tmpcfnoa   = '<%ejGetVoice(callFwdNoAns)%>';
+var tmpcb      = '<%ejGetVoice(callBarringEn)%>';
+var tmpcbpin   = '<%ejGetVoice(callBarringPin)%>';
+var tmpcbmap   = '<%ejGetVoice(callBarringMap)%>';
+var tmpmwi     = '<%ejGetVoice(mwiEnable)%>';
+var tmpcx      = '<%ejGetVoice(callXfer)%>';
+var tmpwle     = '<%ejGetVoice(warmline)%>';
+var tmpwln     = '<%ejGetVoice(warmlineNum)%>';
+var tmpacb     = '<%ejGetVoice(anonCallBlock)%>';
+var tmpanc     = '<%ejGetVoice(anonCall)%>';
+var tmpdnd     = '<%ejGetVoice(doNotDisturb)%>';
+var tmpcrn     = '<%ejGetVoice(callReturn)%>';
+var tmpcrd     = '<%ejGetVoice(callRedial)%>';
+
+if ( tmprm.search("ejGetVoice") < 0 ) {
+   eval( tmprm );
+}
+if ( tmppm.search("ejGetVoice") < 0 ) {
+   eval( tmppm );
+}
+if ( tmpce.search("ejGetVoice") < 0 ) {
+   eval( tmpce );
+}
+if ( tmpcne.search("ejGetVoice") < 0 ) {
+   eval( tmpcne );
+}
+if ( tmpcw.search("ejGetVoice") < 0 ) {
+   eval( tmpcw );
+}
+if ( tmpcfnum.search("ejGetVoice") < 0 ) {
+   eval( tmpcfnum );
+}
+if ( tmpcfbus.search("ejGetVoice") < 0 ) {
+   eval( tmpcfbus );
+}
+if ( tmpcfall.search("ejGetVoice") < 0 ) {
+   eval( tmpcfall );
+}
+if ( tmpcfnoa.search("ejGetVoice") < 0 ) {
+   eval( tmpcfnoa );
+}
+if ( tmpcb.search("ejGetVoice") < 0 ) {
+   eval( tmpcb );
+}
+if ( tmpcbpin.search("ejGetVoice") < 0 ) {
+   eval( tmpcbpin );
+}
+if ( tmpcbmap.search("ejGetVoice") < 0 ) {
+   eval( tmpcbmap );
+}
+if ( tmpmwi.search("ejGetVoice") < 0 ) {
+   eval( tmpmwi );
+}
+if ( tmpcx.search("ejGetVoice") < 0 ) {
+   eval( tmpcx );
+}
+if ( tmpwle.search("ejGetVoice") < 0 ) {
+   eval( tmpwle );
+}
+if ( tmpwln.search("ejGetVoice") < 0 ) {
+   eval( tmpwln );
+}
+if ( tmpacb.search("ejGetVoice") < 0 ) {
+   eval( tmpacb );
+}
+if ( tmpanc.search("ejGetVoice") < 0 ) {
+   eval( tmpanc );
+}
+if ( tmpdnd.search("ejGetVoice") < 0 ) {
+   eval( tmpdnd );
+}
+if ( tmpcrn.search("ejGetVoice") < 0 ) {
+   eval( tmpcrn );
+}
+if ( tmpcrd.search("ejGetVoice") < 0 ) {
+   eval( tmpcrd );
+}
+
+function btnStartSip() {
+   var loc = 'voicesipstart.cmd?';
+
+   loc += addParamsToQuery( loc, "callmgt" );
+   
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+
+function btnStopSip() {
+   var loc = 'voicesipstop.cmd?';
+
+   loc += addParamsToQuery( loc, "callmgt" );
+   
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+      
+   eval(code);
+}
+
+function btnDefaultSip() {
+   var loc = 'voicesipsetdefault.cmd?';
+
+   loc += addParamsToQuery( loc, "callmgt" );
+   
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+   
+   eval(code);
+}
+
+function btnApplySip() {
+   var loc = 'voicesipapply.cmd?';
+
+   loc += addParamsToQuery( loc, "callmgt" );
+
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+// Adds parameters to the query passed to the C code
+function addParamsToQuery( loc_init, current_view) {
+   var loc = loc_init;
+
+   with ( document.forms[0] ) {
+      loc += 'currentview=' + current_view;
+	  for (var line = 0; line < numCcLines; line++) 
+      {  
+         for (var ext = 0; ext < numCcExt; ext++) 
+		 {  
+			loc += "\'&rm" + line + "_" + ext + "=\'" + document.getElementById("rmap" + line + "_" + ext + "").checked;  
+         }
+      }
+	  
+	  for (var i = 1; i <= numCcLines; i++)
+	  {
+	     loc += "\'&clen" + i + "=\'" + document.getElementById("clidEn"+i).checked;
+		 loc += "\'&clnen" + i + "=\'" + document.getElementById("clidNameEn"+i).checked;
+		 loc += "\'&cw" + i + "=\'" + document.getElementById("callWaitEn"+i).checked;
+		 loc += "\'&cfa" + i + "=\'" + document.getElementById("callFwdAllEn"+i).checked;
+		 loc += "\'&cfb" + i + "=\'" + document.getElementById("callFwdBusyEn"+i).checked;
+		 loc += "\'&cfna" + i + "=\'" + document.getElementById("callFwdNoAnsEn"+i).checked;
+		 loc += "\'&cfn" + i + "=\'" + document.getElementById("callFwdAllNum"+i).value;
+		 loc += "\'&cb" + i + "=\'" + document.getElementById("callBarrEn"+i).checked;
+         loc += "\'&cbpin" + i + "=\'" + document.getElementById("callBarrPin"+i).value;
+		 loc += "\'&cbmap" + i + "=\'" + document.getElementById("callBarrDmap"+i).value;
+		 loc += "\'&mwi" + i + "=\'" + document.getElementById("mwiEn"+i).checked;
+		 loc += "\'&cx" + i + "=\'" + document.getElementById("xferEn"+i).checked;
+		 loc += "\'&wlen" + i + "=\'" + document.getElementById("warmEn"+i).checked;
+		 loc += "\'&wln" + i + "=\'" + document.getElementById("warmNum"+i).value;
+		 loc += "\'&acb" + i + "=\'" + document.getElementById("anonBlkEn"+i).checked;
+		 loc += "\'&ac" + i + "=\'" + document.getElementById("anonEn"+i).checked;
+		 loc += "\'&dnd" + i + "=\'" + document.getElementById("dndEn"+i).checked;
+		 loc += "\'&crn" + i + "=\'" + document.getElementById("callRetEn"+i).checked;
+		 loc += "\'&crd" + i + "=\'" + document.getElementById("callRdlEn"+i).checked;
+	  }
+      loc += "\'&euFlashEn=\'" + document.getElementById("euFlashEn").checked;
+	  
+      loc += '&currentCallMgtTab=' + selectedTab;
+   }
+
+   return loc;
+}
+
+function frmLoad(current_view) {
+
+   init();										
+   
+   with ( document.forms[0] ) {
+         
+      /* Initialize global parameters */
+      for (var line = 0; line < numCcLines; line++) 
+      {  
+         for (var ext = 0; ext < numCcExt; ext++) 
+		 {
+		    if (eval("rm" + line + "_" + ext + ""))
+			{
+			   document.getElementById("rmap" + line + "_" + ext + "").checked = true;
+			}   
+         }
+      }
+
+	  for (var i = 1; i <= numFeatureSets; i++)
+	  {
+	     if (eval("clen" + i + "") == "Yes")
+		 {
+		    document.getElementById("clidEn" + i + "").checked = true;
+		 }
+		 if (eval("clnen" + i + "") == "Yes")
+		 {
+		    document.getElementById("clidNameEn" + i + "").checked = true;
+		 }
+		 if (eval("cw" + i + "") == "Yes")
+		 {
+		    document.getElementById("callWaitEn" + i + "").checked = true;
+		 }
+		 if (eval("cfa" + i + "") == "Yes")
+		 {
+		    document.getElementById("callFwdAllEn" + i + "").checked = true;
+		 }
+		 if (eval("cfb" + i + "") == "Yes")
+		 {
+		    document.getElementById("callFwdBusyEn" + i + "").checked = true;
+		 }
+		 if (eval("cfna" + i + "") == "Yes")
+		 {
+		    document.getElementById("callFwdNoAnsEn" + i + "").checked = true;
+		 }
+
+		 eval("callFwdAllNum" + i + ".value = cfn"+i);
+
+		 if (eval("cb" + i + "") == "Yes")
+		 {
+		    document.getElementById("callBarrEn" + i + "").checked = true;
+		 }
+
+		 eval("callBarrPin" + i + ".value = cbpin"+i);
+         eval("callBarrDmap" + i + ".value = cbmap"+i);
+		 
+		 if (eval("mwi" + i + "") == "Yes")
+		 {
+		    document.getElementById("mwiEn" + i + "").checked = true;
+		 }
+		 if (eval("cx" + i + "") == "Yes")
+		 {
+		    document.getElementById("xferEn" + i + "").checked = true;
+		 }
+		 if (eval("dnd" + i + "") == "Yes")
+		 {
+		    document.getElementById("dndEn" + i + "").checked = true;
+		 }
+		 if (eval("ac" + i + "") == "Yes")
+		 {
+		    document.getElementById("anonEn" + i + "").checked = true;
+		 }
+		 if (eval("acb" + i + "") == "Yes")
+		 {
+		    document.getElementById("anonBlkEn" + i + "").checked = true;
+		 }
+		 if (eval("wlen" + i + "") == "Yes")
+		 {
+		    document.getElementById("warmEn" + i + "").checked = true;
+		 }
+
+		 eval("warmNum" + i + ".value = wln"+i);
+		 
+		 if (eval("crn" + i + "") == "Yes")
+		 {
+		    document.getElementById("callRetEn" + i + "").checked = true;
+		 }
+		 if (eval("crd" + i + "") == "Yes")
+		 {
+		    document.getElementById("callRdlEn" + i + "").checked = true;
+		 }
+	  }  
+      if (eval("euflen") == "Yes")
+      {
+         document.getElementById("euFlashEn").checked = true;
+      }
+   }
+   showSelectedTab();
+}
+
+function enableVoiceButtons(index)
+{
+   var buttonStart = document.getElementById( "StartButton" + index );
+   var buttonStop = document.getElementById( "StopButton" + index );
+   var buttonApply = document.getElementById( "ApplyButton" + index );
+   var buttonDefault = document.getElementById( "DefaultButton" + index );
+
+   if ( voiceRunning == 1 ) {
+      buttonStart.disabled = true;
+      buttonStop.disabled = false;
+      buttonApply.disabled = false;
+      buttonDefault.disabled = false;
+   } else {
+      buttonStart.disabled = false;
+      buttonStop.disabled = true;
+      buttonApply.disabled = false;
+      buttonDefault.disabled = false;
+   }
+}
+
+var tabLinks = new Array();
+var contentDivs = new Array();
+var selectedTab;
+
+function init() {
+
+  // Grab the tab links and content divs from the page
+  var tabListItems = document.getElementById('tabs').childNodes;
+  for ( var i = 0; i < tabListItems.length; i++ ) {
+    if ( tabListItems[i].nodeName == "LI" ) {
+      var tabLink = getFirstChildWithTagName( tabListItems[i], 'A' );
+      var id = getHash( tabLink.getAttribute('href') );
+      tabLinks[id] = tabLink;
+      contentDivs[id] = document.getElementById( id );
+    }
+  }
+
+  // Assign onclick events to the tab links, and
+  // highlight the first tab
+  var i = 0;
+  selectedTab = selTab;
+
+  for ( var id in tabLinks ) {
+    tabLinks[id].onclick = showTab;
+    tabLinks[id].onfocus = function() { this.blur() };
+    if ( i == 0 ) tabLinks[id].className = 'selected';
+    i++;
+  }
+
+  // Hide all content divs except the first
+  var i = 0;
+  
+  for ( var id in contentDivs ) {
+    if ( i != 0 ) contentDivs[id].className = 'tabContent hide';
+    i++;
+  }
+}
+
+
+function showTab() {
+  var selectedId = getHash( this.getAttribute('href') );
+
+  // Highlight the selected tab, and dim all others.
+  // Also show the selected content div, and hide all others.
+  for ( var id in contentDivs ) {
+    if ( id == selectedId ) {
+      selectedTab = selectedId;
+      tabLinks[id].className = 'selected';
+      contentDivs[id].className = 'tabContent';
+    } else {
+      tabLinks[id].className = '';
+      contentDivs[id].className = 'tabContent hide';
+    }
+  }
+
+  // Stop the browser following the link
+  return false;
+}
+
+function showSelectedTab() {
+  // Highlight the selected tab, and dim all others.
+  // Also show the selected content div, and hide all others.
+  for ( var id in contentDivs ) {
+    if ( id == selTab ) {
+      tabLinks[id].className = 'selected';
+      contentDivs[id].className = 'tabContent active';
+    } else {
+      tabLinks[id].className = '';
+      contentDivs[id].className = 'tabContent hide';
+    }
+  }
+
+  // Stop the browser following the link
+  return false;
+}
+
+function getFirstChildWithTagName( element, tagName ) {
+  for ( var i = 0; i < element.childNodes.length; i++ ) {
+    if ( element.childNodes[i].nodeName == tagName ) return element.childNodes[i];
+  }
+}
+
+function getHash( url ) {
+  var hashPos = url.lastIndexOf ( '#' );
+  return url.substring( hashPos + 1 );
+}
+
+function createTabs() {
+  document.writeln("<ul id='tabs'>");
+  document.writeln("<li><a href='#" + 0 + "'>Terminals Map</a></li>");
+  document.writeln("<li><a href='#" + 1 + "'>Feature Profiles</a></li>");  
+}
+
+function createTerminalMap() {
+   document.writeln("<div class='tabContent' id='0'>");
+   document.writeln("<div>");
+   document.writeln("   <br>"); 
+   document.writeln("   <br>");
+   
+   document.writeln("   <table border='1' cellpadding='0' cellspacing='0'>");
+
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100' align=center>Line<\/td>");
+   for (var line = 0; line < numCcLines; line++) 
+   {
+      if(eval("prov" + line + "") == "SIP")
+	  {
+	     document.writeln("<td align=center>" + line + " (SIP)</td>");
+      }
+	  else if(eval("prov" + line + "") == "FXO")
+	  {
+	     document.writeln("<td align=center>" + line + " (FXO)</td>");
+      }
+	  else
+	  {
+	     document.writeln("<td align=center>" + line + "</td>");
+      }
+   }
+   
+   document.writeln("</tr>");
+   document.writeln("<tr>");
+   document.writeln("<td class='hd'><\/td>");
+   for (var line = 0; line < numCcLines; line++) 
+   {  
+      document.writeln("<td align='center'>");   
+	  document.writeln("<table border='0'>");
+      for (var ext = 0; ext < numCcExt; ext++) {
+	     // TODO: map ext to FXS ports 
+         document.writeln("<tr><td><input type='checkbox' size=10 id='rmap" + line + "_" + ext + "'></td><td> FXS " + ext + "</td></tr>");
+      }
+	  document.writeln("</table>");
+	  document.writeln("</td>");
+   }
+   
+   document.writeln("</tr>");
+   document.writeln("   </table>");
+   
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <center>");
+   document.writeln("       <input type='button' onClick='btnStartSip()' value='Start SIP client' id='StartButton" + 0 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnStopSip()' value='Stop SIP client' id='StopButton" + 0 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnDefaultSip()' value='Restore default setting' id='DefaultButton" + 0 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnApplySip()' value='Apply' id='ApplyButton" + 0 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("    </center>");
+   document.writeln("    <br>");
+   document.writeln("</div>");
+   document.writeln("</div>");
+}
+
+function createFeatures() {
+   document.writeln("<div class='tabContent' id='1'>");
+   document.writeln("<div>");
+   document.writeln("<br>"); 
+   document.writeln("<br>");
+   
+   document.writeln("<table border='1' cellpadding='0' cellspacing='0'>");
+  
+   document.writeln("<tr>");
+   document.writeln("<td></td>");
+   for (var line = 0; line < numCcLines; line++) 
+   {
+      if(eval("prov" + line + "") == "FXO")
+	  {
+	     document.writeln("<td align=center width='100'>" + line + " (FXO)</td>");
+      }
+	  else
+	  {
+	     document.writeln("<td align=center width='100'>" + line + "</td>");
+      }
+   }  
+   document.writeln("</tr>");
+   
+   document.writeln("<tr>");
+   document.writeln("<td>CallID enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='clidEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>");   
+ 
+   document.writeln("<tr>");
+   document.writeln("<td>CallID name enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='clidNameEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>");
+
+   document.writeln("<tr>");
+   document.writeln("<td>Call Waiting enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='callWaitEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>");  
+
+   document.writeln("<tr>");
+   document.writeln("<td>Call Forward-All enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='callFwdAllEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>"); 
+ 
+   document.writeln("<tr>");
+   document.writeln("<td>Call Forward number: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='text' size=10 name='callFwdAllNum" + line + "' id='callFwdAllNum" + line + "'></td>");
+   }   
+   document.writeln("</tr>"); 
+ 
+   document.writeln("<tr>");
+   document.writeln("<td>Call Forward-Busy enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='callFwdBusyEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>");  
+ 
+   document.writeln("<tr>");
+   document.writeln("<td>Call Forward-NoAnswer enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='callFwdNoAnsEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>"); 
+
+   document.writeln("<tr>");
+   document.writeln("<td>Call Barring enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='callBarrEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>"); 
+ 
+   document.writeln("<tr>");
+   document.writeln("<td>Call Barring PIN: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='text' size=10 name='callBarrPin" + line + "' id='callBarrPin" + line + "'></td>");
+   }   
+   document.writeln("</tr>");
+ 
+   document.writeln("<tr>");
+   document.writeln("<td>Call Barring Digitmap: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='text' size=10 name='callBarrDmap" + line + "' id='callBarrDmap" + line + "'></td>");
+   }   
+   document.writeln("</tr>");   
+   document.writeln("<tr>");
+   document.writeln("<td>MWI enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='mwiEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>");   
+
+   document.writeln("<tr>");
+   document.writeln("<td>Call Transfer enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='xferEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>");
+  
+   document.writeln("<tr>");
+   document.writeln("<td>DND enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='dndEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>"); 
+
+   document.writeln("<tr>");
+   document.writeln("<td>Anonymous Calling: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='anonEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>");
+
+   document.writeln("<tr>");
+   document.writeln("<td>Anonymous Call blocking: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='anonBlkEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>");    
+   
+   document.writeln("<tr>");
+   document.writeln("<td>Warmline enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='warmEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>"); 
+ 
+   document.writeln("<tr>");
+   document.writeln("<td>Warmline number: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='text' size=10 name='warmNum" + line + "' id='warmNum" + line + "'></td>");
+   }   
+   document.writeln("</tr>");
+   
+   document.writeln("<tr>");
+   document.writeln("<td>Call Return enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='callRetEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>");
+   
+   document.writeln("<tr>");
+   document.writeln("<td>Call Redial enabled: </td>");
+   for (var line = 1; line <= numCcLines; line++) 
+   {
+      document.writeln("<td align=center><input type='checkbox' size=10 id='callRdlEn" + line + "'></td>");
+   }   
+   document.writeln("</tr>");
+   document.writeln("</table>");
+   
+   document.writeln("<br>");
+   document.writeln("<table>");
+   document.writeln("  <td class='txt' valign='middle' align='center' colspan='2' width='30' height='30'><input type='checkbox' id='euFlashEn'></td>");
+   document.writeln("  <td class='txt' colspan='2'>Enable European flash</td>");
+   document.writeln("</table>");
+   document.writeln("<br>");
+
+   for (var i = 1; i <= numCcLines; i++) 
+   {
+      if(eval("prov" + (i-1) + "") == "FXO") 
+	  {
+         document.getElementById("clidEn" + i + "").disabled = true;
+         document.getElementById("clidNameEn" + i + "").disabled = true;
+		 document.getElementById("callWaitEn" + i + "").disabled = true;
+		 document.getElementById("callFwdAllEn" + i + "").disabled = true;
+         document.getElementById("callFwdBusyEn" + i + "").disabled = true;
+         document.getElementById("callFwdNoAnsEn" + i + "").disabled = true;
+         document.getElementById("callFwdAllNum" + i + "").disabled = true;
+         document.getElementById("callBarrEn" + i + "").disabled = true;
+		 document.getElementById("callBarrPin" + i + "").disabled = true;
+         document.getElementById("callBarrDmap" + i + "").disabled = true;		 
+         document.getElementById("mwiEn" + i + "").disabled = true;
+         document.getElementById("xferEn" + i + "").disabled = true;
+         document.getElementById("dndEn" + i + "").disabled = true;
+         document.getElementById("anonEn" + i + "").disabled = true;
+         document.getElementById("anonBlkEn" + i + "").disabled = true;
+         document.getElementById("warmEn" + i + "").disabled = true;
+         document.getElementById("warmNum" + i + "").disabled = true;
+         document.getElementById("callRetEn" + i + "").disabled = true;
+         document.getElementById("callRdlEn" + i + "").disabled = true;
+      }
+   }
+   
+   document.writeln("<div>");
+   document.writeln("<br>"); 
+   document.writeln("<br>");
+   document.writeln("   <center>");
+   document.writeln("       <input type='button' onClick='btnStartSip()' value='Start SIP client' id='StartButton" + 1 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnStopSip()' value='Stop SIP client' id='StopButton" + 1 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnDefaultSip()' value='Restore default setting' id='DefaultButton" + 1 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnApplySip()' value='Apply' id='ApplyButton" + 1 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("    </center>");
+   document.writeln("    <br>");
+   document.writeln("</div>");
+   document.writeln("</div>");
+}
+
+</script>
+</head>
+
+<body onLoad="frmLoad('callmgt')">
+   <blockquote>
+      <form> 
+      <script TYPE="text/javascript">
+        createTabs();
+        createTerminalMap();
+        createFeatures();
+
+	    for (var i = 0; i < numVoiceButtonSets; i++) {
+           enableVoiceButtons(i);
+        }
+
+     </script>     
+     
+      </form>
+   </blockquote>
+</body>
+</html>

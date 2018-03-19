@@ -1,0 +1,260 @@
+.ig \"-*- nroff -*-
+Copyright (c) 2004,2005,2006,2007,2008 Katalix Systems Ltd.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this
+manual into another language, under the above conditions for modified
+versions, except that this permission notice may be included in
+translations approved by Katalix Systems Ltd instead of in
+the original English.
+..
+.\"
+.\" MAN PAGE COMMENTS to openl2tp-docs@lists.sourceforge.net
+.\"
+.TH openl2tpd 8 "13 August 2007" "OpenL2TP" "OpenL2TP Manual"
+.PD
+.SH NAME
+openl2tpd \- L2TP protocol daemon
+.PD
+.SH SYNOPSIS
+.hy 0
+.na
+.B openl2tpd [\-f] [\-R] [\-D] [\-d debugmask] [\-L log-facility] [\-p plugin-file]
+.br
+.B \t [\-u udp-port] [\-c config-file] [\-S] [\-y ppp-throttle-rate]
+.ad b
+.hy 1
+.PD
+.SH DESCRIPTION
+.PP
+.B openl2tpd
+implements the control message protocols of L2TP version 2 as
+specified in RFC2661. It is required to setup, maintain and teardown
+L2TP tunnels and sessions.
+.PP
+For general information on the features of
+.B OpenL2TP
+refer to
+.BR openl2tp ( 7 ).
+.PD
+.SH OPTIONS
+.TP 8
+.B \-d \fIdebugmask\fP
+Set the system-wide debug trace message mask. The mask may be
+specified as a decimal or hexadecimal integer or as a comma-separated
+list of trace categories. Trace messages are categorized as SYSTEM,
+API, PROTOCOL, FSM (finite state machine), DATA, FUNC (functions),
+XPRT (transport), AVP, AVPHIDE and AVPDATA. Each category of message
+may be enabled/disabled when L2TP is first started using this
+option. See the
+.SM DEBUGGING
+section below.
+.TP
+.B \-D
+Enable debug messages from all created tunnels and sessions. By
+default, new tunnels and sessions do not cause trace messages to be
+output unless the tunnel or session trace_flags parameter is set,
+perhaps via their profile. This flag sets the default profiles'
+trace_flags to all-enabled. It is provided as a convenient shortcut to
+setting the trace_flags of all default profiles to all-enabled.
+.B \-f
+Run in the foreground. By default,
+.B openl2tpd
+forks itself and runs in the background. For debugging, it is
+sometimes useful to run the application in the foreground. Note that
+when run in the foreground, any trace messages are sent to the
+controlling terminal rather than to syslog.
+.TP
+.B \-L \fIlog-facility\fP
+By default,
+.B openl2tpd
+logs messages to the LOG_DAEMON syslog facility. This option may be used
+to log messages to one of the localN facilities instead (local0..local7)
+so that the logged messages can be directed via syslog configuration
+to a separate file or syslog server. See 
+.BR syslog.conf ( 5 )
+for how to configure syslog.
+.TP
+.B \-p \fIplugin-file\fP
+Loads the named L2TP PPP plugin (a shared library supporting the 
+.B OpenL2TP
+plugin interface). By default, the \fIppp_unix\fP plugin is loaded,
+which makes
+.B openl2tpd
+use the standard UNIX 
+.B pppd
+PPP daemon. The ability to load a different plugin allows 
+.B openl2tpd 
+to interface with other (possibly proprietary) PPP implementations
+without requiring internal changes to
+.B openl2tpd
+itself. Plugins are installed in \fI/usr/lib/openl2tp/\fP. More than
+one plugin may be loaded by specifying multiple
+.I \-p
+options.
+.TP
+.B \-R
+Enables remote management. 
+.B openl2tpd
+is controlled using Sun RPC requests. Sun RPC requests may be sent
+over a network so a control application implementing the
+.B OpenL2TP RPC API
+documented in
+.BR openl2tp_rpc ( 4 )
+may control
+.B openl2tpd
+remotely. In most environments, remote configuration isn't useful so is
+disabled by default. However, in closed cluster or chassis systems where
+several instances of
+.B openl2tpd
+may be running on different CPUs, the ability to control
+.B openl2tpd
+over a network using RPC is extremely useful.
+.TP
+.B \-u \fIudp-port\fP
+Tells
+.B openl2tpd
+to listen on the specified port rather than the default L2TP port (1701).
+.TP
+.B \-c \fIconfig-file\fP
+Read configuration commands from the specified file rather than the
+default \fI/etc/openl2tpd.conf\fP. This option may not be available in
+all environments since it is an installation option. If not available,
+use \fIl2tpconfig\fP's \fIconfig restore\fP command instead.
+.TP
+.B \-S
+Enable \fIopenl2tpd\fP system status files. When this option is given,
+\fIopenl2tpd\fP writes status information to files under
+\fI/var/run/openl2tpd\fP for each profile, peer, tunnel and
+session. These may be read using any standard file access mechanism to
+examine status of \fIopenl2tpd\fP. This option may not be available in
+all environments since it is an installation option. If not available,
+use \fIl2tpconfig\fP commands instead.
+.TP
+.B \-y \fIppp-throttle-rate\fP
+When starting or stopping ppp processes per session, this option will
+cause openl2tpd to limit the number of active processes to the
+specified value. PPP processes are deemed active when they are trying
+to connect to their peer or when they are being shut down. Note that
+this parameter does not limit the total number of pppd processes - it
+only limits the number of those processes that are created or deleted
+simultaneously by openl2tpd. Use this option when starting openl2tpd
+if the system becomes overloaded when lots of sessions are created or
+deleted simultaneously, for example when persistant tunnels
+recover. Most users are unlikely to need this option.
+.PD
+.SH CONFIGURATION
+Configuration is typically done using an
+application supporting 
+.B OpenL2TP's
+RPC interface documented in 
+.BR openl2tp_rpc ( 4 ).
+One such application is 
+.BR l2tpconfig ( 1 )
+which is bundled with 
+.B OpenL2TP
+and which provides an intuitive command line interface.
+.PP
+Since
+.B OpenL2TP
+uses Sun RPC which is available in most commercial operating systems
+including Microsoft Windows, Sun Solaris and even embedded RTOS such
+as WindRiver's VxWorks, custom management applications may be developed
+to control 
+.BR openl2tpd .
+.PP
+Where RPC is not available, the system administrator may install
+.B OpenL2TP
+with local config file support. If this feature is enabled, the config
+file is read at startup and when \fIopenl2tpd\fP receives a
+\fISIGHUP\fP signal. Most environments will use the \fIl2tpconfig\fP
+utility's \fIconfig restore\fP command to load a previously saved
+configuration..
+.PD
+.SH DEBUGGING
+Many problems can be debugged without enabling debug logging.
+.B openl2tpd
+maintains numerous counters that can help with problem diagnosis.  At
+the system level, the total number of good/bad L2TP control messages
+received of each message type are counted, as are the total number of
+illegal messages received, the number of vendor-specific AVPs
+received, tunnel authentication failures, session setup failures,
+resource allocation failures, sequence number errors and so on. Each
+tunnel keeps detailed status about the low-level L2TP transport such
+as next sequence number to be sent, sequence number expected next from
+peer, number of ZLB messages sent and received, number of HELLO
+messages sent and received and the number of data packets sent and
+received. Thus the first stage of problem diagnosis should always be
+to examine system status and statistics.
+.PP
+General status and statistics available will often point to where the
+problem lies, but it may also be necessary to obtain trace from the system.
+.B OpenL2TP
+allows very fine levels of control over system logging, right down to
+individual message categories of specific tunnel or session instances.
+A modifiable \fItrace_flags\fP
+parameter is a trace message mask. Each tunnel and session instance has
+a \fItrace_flags\fP parameter, the initial value of which is set from a 
+tunnel or session profile. 
+.PP
+\fItrace_flags\fP is defined as a 32-bit bitmask, where bits are defined
+as follows:-
+.LP
+.nf
+Type        Bitmask       Description
+PROTOCOL    1             L2TP control protocol messages
+FSM         2             State Machine events and state changes
+API         4             Management interface
+AVP         8             L2TP message attributes
+AVP_HIDE    16            AVP hiding mechanism
+AVP_DATA    32            AVP contents
+FUNC        64            Low level operations
+XPRT        128           Transport
+DATA        256           Protocol data
+SYSTEM      512           Internal system functions
+PPP         1024          PPP operations
+.fi
+.PP
+To debug a locally created tunnel creation, for example, create the
+tunnel as usual, but also specify a value for the tunnel's
+\fItrace_flags\fP parameter.
+.PP
+To debug incoming tunnels or sessions, identify or create a tunnel or
+session profile that will be used for the incoming request, then
+modify the tunnel or session profile's \fItrace_flags\fP parameter in
+the same way as described above.
+.PP
+The \fItrace_flags\fP parameter may be specified as an
+decimal/hexadecimal integer value or as a comma-separated list of
+trace options from the above list, e.g.
+.nf
+	trace_flags=protocol,fsm,avp
+.fi
+.PP
+Note that changing a profile's parameter value affects only new
+instances created using that profile; instances already created
+continue to use the parameter value that existed at the time of
+creation.
+.PP
+If \fIopenl2tpd\fP is started with the \-D command line flag, all
+tunnels and sessions are created with \fItrace_flags\fP set to trace
+all message categories, unless \fItrace_flags\fP is overridden using a
+specific \fItrace_flags\fP value as described above..
+.PD
+.SH "REPORTING BUGS"
+Please report bugs to <openl2tp-bugs@lists.sourceforge.net>.
+.PD
+.SH "SEE ALSO"
+.br
+.BR openl2tp ( 7 ),
+.BR openl2tpd ( 8 ),
+.BR openl2tpd.conf ( 5 ),
+.BR openl2tp_rpc ( 4 )

@@ -1,0 +1,3 @@
+
+condition: ifneq ($(strip $(BRCM_VOICE_SUPPORT)),)
+

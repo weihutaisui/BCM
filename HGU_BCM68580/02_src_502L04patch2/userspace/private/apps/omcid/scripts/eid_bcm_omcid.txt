@@ -1,0 +1,17 @@
+BEGIN
+  eid         = EID_OMCID
+  name        = omcid
+  runArgs     = "start"
+  flags = EIF_MDM|EIF_MESSAGING_CAPABLE|EIF_DESKTOP_LINUX_CAPABLE|EIF_SET_SCHED
+  schedPolicy = SCHED_RR
+  schedPriority = BCM_RTPRIO_DATA_CONTROL
+END
+
+BEGIN
+  eid         = EID_OMCIPMD
+  name        = omcipmd
+  flags = EIF_MDM|EIF_MESSAGING_CAPABLE|EIF_DESKTOP_LINUX_CAPABLE|EIF_SET_SCHED
+  schedPolicy = SCHED_RR
+  schedPriority = BCM_RTPRIO_DATA_CONTROL
+END
+

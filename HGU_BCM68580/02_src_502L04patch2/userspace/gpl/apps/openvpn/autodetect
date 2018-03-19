@@ -1,0 +1,3 @@
+
+dependson: public/libs/openssl gpl/libs/lzo
+

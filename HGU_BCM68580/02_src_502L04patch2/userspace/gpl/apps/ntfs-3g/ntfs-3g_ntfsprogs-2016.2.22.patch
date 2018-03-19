@@ -1,0 +1,18 @@
+--- orig_ntfs-3g_ntfsprogs-2016.2.22/src/ntfs-3g.c
++++ ntfs-3g_ntfsprogs-2016.2.22/src/ntfs-3g.c
+@@ -3691,12 +3691,14 @@
+ 	
+ 	if (fuse_opt_add_arg(&args, "") == -1)
+ 		goto err;
++#if 0 // brcm: no default option, all from command line. e.g. hotplug
+ #if !CACHEING
+ 	if (fuse_opt_add_arg(&args, "-ouse_ino,kernel_cache,attr_timeout=0") == -1)
+ 		goto err;
+ #else
+ 	if (fuse_opt_add_arg(&args, "-ouse_ino,kernel_cache,attr_timeout=1") == -1)
+ 		goto err;
++#endif
+ #endif
+ 	if (ctx->debug)
+ 		if (fuse_opt_add_arg(&args, "-odebug") == -1)
+

@@ -1,0 +1,80 @@
+.ig \"-*- nroff -*-
+Copyright (c) 2006,2007,2008 Katalix Systems Ltd.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this
+manual into another language, under the above conditions for modified
+versions, except that this permission notice may be included in
+translations approved by Katalix Systems Ltd instead of in
+the original English.
+..
+.\"
+.\" MAN PAGE COMMENTS to openl2tp-docs@lists.sourceforge.net
+.\"
+.TH openl2tpd.conf 5 "13 August 2007" "OpenL2TP" "OpenL2TP Manual"
+.PD
+.SH NAME
+openl2tpd.conf \- OpenL2TP configuration file
+.PD
+.SH SYNOPSIS
+This document describes the configuration file syntax of
+.B OpenL2TP.
+.PD
+.SH DESCRIPTION
+The configuration file syntax is the same as that written by
+\fIl2tpconfig\fP's \fIconfig save\fP command. The file contains a
+number of \fIl2tpconfig\fP \fIcreate\fP and \fImodify\fP commands,
+though the commands aren't processed by l2tpconfig - they are
+processed by \fIopenl2tpd\fP directly when it starts up and again if
+it receives a \fISIGHUP\fP signal.
+.PP
+The preferred way to save and restore \fIopenl2tpd\fP configuration
+information is to use the \fIl2tpconfig\fP utility's \fIconfig save\fP
+and \fIconfig restore\fP commands. The local configuration file
+support is usually enabled only when \fIl2tpconfig\fP is not
+available.
+.PP
+See
+.BR l2tpconfig ( 1 )
+for a list of all available \fIcreate\fP and \fImodify\fP commands.
+.PP
+A \fI#\fP character on the first line is used to begin a comment line.
+.PP
+A \fI\\\fP character at the end of a line is used to break a long
+command into multiple lines.
+.PP
+Commands are processed in order. If a \fItunnel create\fP command
+references a named peer profile, the profile must be created before
+the \fItunnel create\fP command.
+.PP
+A config file written by the \fIconfig save\fP command of the
+\fIl2tpconfig\fP utility may be copied to \fI/etc/openl2tpd.conf\fP if
+desired, in order to have the configuration automatically applied when
+\fIopenl2tpd\fP restarts. However, the preferred method to reload
+saved configuration is to use \fIl2tpconfig config restore
+file=xxx\fP.
+.PD
+.SH EXAMPLES
+.nf
+
+tunnel profile create profile_name=one \\
+	hello_timeout=30
+
+tunnel create tunnel_name=one dest_ipaddr=10.1.2.3 \\
+	profile_name=one
+
+.fi
+.PD
+.SH "SEE ALSO"
+.br
+.BR l2tpconfig ( 1 ),
+.BR openl2tp ( 7 ),
+.BR openl2tpd ( 8 ),

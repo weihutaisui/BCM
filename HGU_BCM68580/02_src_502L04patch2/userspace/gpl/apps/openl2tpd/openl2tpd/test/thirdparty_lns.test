@@ -1,0 +1,706 @@
+# -*- tcl -*-
+
+# For testing OpenL2TP with a third party LNS on a network
+
+source test_procs.tcl
+
+# Test variables, adjust to suit
+
+set LNS_ADDR 			192.168.0.253
+set LNS_SECRET			wibble
+
+set LNS_PPP_USER_1		cisco
+set LNS_PPP_PASSWD_1		cisco
+
+set LNS_PPP_OUR_ADDR_BASE	10.1.1.1
+set LNS_PPP_PEER_ADDR_BASE	10.2.1.1
+
+# Constants. Test output depends on these. If you change them, 
+# change the expected test output text accordingly.
+
+set LNS_MAX_TUNNELS		20
+set LNS_MAX_SESSIONS		20
+
+# Override default l2tpConfig to do things quietly
+
+proc l2tpConfig { args } {
+    global message
+    catch { exec ../l2tpconfig -q $args } msg
+    set message $message\n$msg
+    return $message\n
+}
+
+# Nifty way to get a tunnel_id from a named tunnel. Relies on
+# the output of "tunnel show" displaying the tunnel_id in the
+# second word of the output.
+
+proc getTunnelId { tunnelName } {
+    set tun [ exec ../l2tpconfig -q tunnel show tunnel_name=$tunnelName ]
+    return [lindex $tun 1]
+}
+
+############################################################################
+# Tests 1.*: basic test setup verification
+############################################################################
+
+test thirdpartylns-1.0 { Setup test environment } \
+    { l2tpdRunning && thirdpartylns } \
+    {
+	global LNS_MAX_SESSIONS
+	global LNS_PPP_OUR_ADDR_BASE
+	global LNS_PPP_PEER_ADDR_BASE
+	clearResult
+	l2tpConfig system modify reset_statistics
+	for { set i 0 } { $i < $LNS_MAX_SESSIONS } { incr i } {
+	    l2tpConfig ppp profile create profile_name=ppp$i \
+		local_ipaddr=[makeIpAddr $LNS_PPP_OUR_ADDR_BASE $i] \
+		remote_ipaddr=[makeIpAddr $LNS_PPP_PEER_ADDR_BASE $i]
+	}
+    } \
+    {}
+
+test thirdpartylns-1.1 { Test network connectivity to LNS... } \
+    { l2tpdRunning && thirdpartylns } \
+    {
+	global LNS_ADDR
+	clearResult
+	pingReachableTest $LNS_ADDR
+    } \
+    {
+pingReachableTest: OK
+}
+
+test thirdpartylns-1.2 { Setup a tunnel to LNS... } \
+    { l2tpdRunning && thirdpartylns } \
+    {
+	global LNS_ADDR
+	global LNS_SECRET
+
+	set secret ""
+	if { [ string compare $LNS_SECRET "" ] != 0 } {
+	    set secret "secret=$LNS_SECRET"
+	}
+	clearResult
+	l2tpConfig system modify reset_statistics
+	l2tpConfig tunnel create tunnel_name=one \
+	  dest_ipaddr=$LNS_ADDR \
+	  $secret
+	sleep 5
+	l2tpConfig system show status
+    } \
+    {
+
+
+L2TP service status:-
+  tunnels: 1, sessions: 0
+}
+
+test thirdpartylns-1.3 { Setup a session to LNS... } \
+    { l2tpdRunning && thirdpartylns && kernelModuleLoaded } \
+    {
+	global LNS_PPP_USER_1
+	global LNS_PPP_PASSWD_1
+	clearResult
+	l2tpConfig session create session_name=one tunnel_name=one \
+	  user_name=$LNS_PPP_USER_1 \
+	  user_password=$LNS_PPP_PASSWD_1 \
+	  ppp_profile_name=ppp0
+	sleep 5
+	l2tpConfig system show status
+    } \
+    {
+
+L2TP service status:-
+  tunnels: 1, sessions: 1
+}
+
+test thirdpartylns-1.4 { Ping over the PPP session... } \
+    { l2tpdRunning && thirdpartylns && kernelModuleLoaded } \
+    {
+	global LNS_PPP_PEER_ADDR_BASE
+	clearResult
+	set peerIpAddr [makeIpAddr $LNS_PPP_PEER_ADDR_BASE 0]
+	pingReachableTest $peerIpAddr
+	pingDataTest $peerIpAddr 1400 10
+	sleep 120
+	l2tpConfig system show status	
+    } \
+    {
+pingReachableTest: OK
+pingDataTest: OK
+L2TP service status:-
+  tunnels: 1, sessions: 1
+}
+
+test thirdpartylns-1.5 { L2TP control protocol transport window... } \
+    { l2tpdRunning && thirdpartylns && l2tpDebugVersion } \
+    {
+	global LNS_PPP_PEER_ADDR_BASE
+	clearResult
+	set tunnelId [getTunnelId one]
+	l2tpConfig test modify do_transport_test tunnel_id=$tunnelId
+	sleep 10
+	set peerIpAddr [makeIpAddr $LNS_PPP_PEER_ADDR_BASE 0]
+	pingReachableTest $peerIpAddr
+	pingDataTest $peerIpAddr 1400 10
+	sleep 120
+	l2tpConfig system show status	
+    } \
+    {
+
+pingReachableTest: OK
+pingDataTest: OK
+L2TP service status:-
+  tunnels: 1, sessions: 1
+}
+
+test thirdpartylns-1.6 { Create max sessions on one tunnel... } \
+    { l2tpdRunning && thirdpartylns && kernelModuleLoaded } \
+    {
+	global LNS_MAX_SESSIONS
+	global LNS_PPP_PEER_ADDR_BASE
+	global LNS_PPP_OUR_ADDR_BASE
+	global LNS_PPP_USER_1
+	global LNS_PPP_PASSWD_1
+
+	clearResult
+
+       	set tunnelId [getTunnelId one]
+	for { set i 1 } { $i < $LNS_MAX_SESSIONS } { incr i } {
+	    l2tpConfig session create tunnel_name=one \
+		session_name=$i \
+		ppp_profile_name=ppp$i \
+		user_name=$LNS_PPP_USER_1 \
+		user_password=$LNS_PPP_PASSWD_1
+	}
+	for { set i 1 } { $i < $LNS_MAX_SESSIONS } { incr i } {
+	    set peerIpAddr [makeIpAddr $LNS_PPP_PEER_ADDR_BASE $i]
+	    pingReachableTest $peerIpAddr
+	}
+	sleep 120
+	l2tpConfig system show status	
+	for { set i 1 } { $i < $LNS_MAX_SESSIONS } { incr i } {
+	    set peerIpAddr [makeIpAddr $LNS_PPP_PEER_ADDR_BASE $i]
+	    pingReachableTest $peerIpAddr
+	}
+	for { set i 1 } { $i < $LNS_MAX_SESSIONS } { incr i } {
+	    l2tpConfig session delete tunnel_name=one session_name=$i
+	}
+
+	sleep 10
+	l2tpConfig system show status	
+    } \
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+L2TP service status:-
+  tunnels: 1, sessions: 20
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+L2TP service status:-
+  tunnels: 1, sessions: 1
+}
+
+proc createDeleteTunnelSessions { tunnelName maxSessions show } {
+    global LNS_PPP_PEER_ADDR_BASE
+    global LNS_PPP_OUR_ADDR_BASE
+    global LNS_PPP_USER_1
+    global LNS_PPP_PASSWD_1
+
+    global LNS_ADDR
+    global LNS_SECRET
+    global message
+
+    set secret ""
+    if { [ string compare $LNS_SECRET "" ] != 0 } {
+	set secret "secret=$LNS_SECRET"
+    }
+    l2tpConfig tunnel create tunnel_name=$tunnelName \
+	dest_ipaddr=$LNS_ADDR \
+	$secret
+    sleep 5
+    l2tpConfig system show status
+
+    set tunnelId [getTunnelId $tunnelName]
+    for { set i 1 } { $i < $maxSessions } { incr i } {
+	l2tpConfig session create tunnel_name=$tunnelName \
+	    session_name=$i \
+	    ppp_profile_name=ppp$i \
+	    user_name=$LNS_PPP_USER_1 \
+	    user_password=$LNS_PPP_PASSWD_1
+    }
+    for { set i 1 } { $i < $maxSessions } { incr i } {
+	set peerIpAddr [makeIpAddr $LNS_PPP_PEER_ADDR_BASE $i]
+	pingReachableTest $peerIpAddr
+    }
+
+    l2tpConfig system show status	
+    l2tpConfig tunnel delete tunnel_name=$tunnelName
+
+    sleep 120
+    l2tpConfig system show status
+
+    return $message
+}
+
+proc createDeleteTunnels { maxTunnels lnsAddr secret show } {
+    global message
+
+    for { set i 1 } { $i < $maxTunnels } { incr i } {
+	l2tpConfig tunnel create tunnel_name=$i \
+	    dest_ipaddr=$lnsAddr \
+	    $secret
+    }
+
+    sleep 1
+    if { $show } {
+	sleep 10
+	l2tpConfig system show status
+    }
+
+    for { set i 1 } { $i < $maxTunnels } { incr i } {
+	l2tpConfig tunnel delete tunnel_name=$i
+    }
+
+    if { $show } {
+	sleep 10
+	l2tpConfig system show status
+    }
+
+    return $message
+}
+
+test thirdpartylns-1.7 { Stress test tunnel setup... } \
+    { l2tpdRunning && thirdpartylns } \
+    {
+	global LNS_MAX_TUNNELS
+	global LNS_ADDR
+	global LNS_SECRET
+	global message
+
+	clearResult
+
+	set secret ""
+	if { [ string compare $LNS_SECRET "" ] != 0 } {
+	    set secret "secret=$LNS_SECRET"
+	}
+
+	set pass 0
+	clearResult
+
+	set tmpfile /tmp/thirdpartylns-1.7
+	::tcltest::makeFile "Remove me" $tmpfile
+	puts stdout "Remove $tmpfile to finish test"
+
+	while { [file exists $tmpfile] } {
+	    clearResult
+	    incr pass
+	    createDeleteTunnels $LNS_MAX_TUNNELS $LNS_ADDR $secret 0
+	}
+
+	sleep 10
+	puts stdout "Test exited after $pass passes"
+	puts stdout "Check system status..."
+
+	clearResult
+	createDeleteTunnels 3 $LNS_ADDR $secret 1
+	addCrLf
+    } \
+    {
+
+
+L2TP service status:-
+  tunnels: 3, sessions: 1
+
+
+L2TP service status:-
+  tunnels: 1, sessions: 1
+}
+
+test thirdpartylns-1.8 { Delete a tunnel when it has lots of sessions... } \
+    { l2tpdRunning && thirdpartylns && kernelModuleLoaded } \
+    {
+	global LNS_MAX_SESSIONS
+
+	clearResult
+
+	createDeleteTunnelSessions two $LNS_MAX_SESSIONS 1
+	addCrLf
+    } \
+    {
+
+L2TP service status:-
+  tunnels: 2, sessions: 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+L2TP service status:-
+  tunnels: 2, sessions: 20
+
+L2TP service status:-
+  tunnels: 1, sessions: 1
+}
+
+test thirdpartylns-1.9 { Create/delete sessions until user aborts... } \
+    { l2tpdRunning && thirdpartylns && kernelModuleLoaded && interactive } \
+    {
+	global LNS_MAX_SESSIONS
+	
+	set pass 0
+	clearResult
+
+	set tmpfile /tmp/thirdpartylns-1.9
+	::tcltest::makeFile "Remove me" $tmpfile
+	puts stdout "Remove $tmpfile to finish test"
+
+	while { [file exists $tmpfile] } {
+	    incr pass
+	    clearResult
+	    createDeleteTunnelSessions two $LNS_MAX_SESSIONS 0
+	}
+	puts stdout "Test exited after $pass passes"
+
+	sleep 10
+	clearResult
+	createDeleteTunnelSessions two $LNS_MAX_SESSIONS 1
+	addCrLf
+    } \
+    {
+
+L2TP service status:-
+  tunnels: 2, sessions: 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+L2TP service status:-
+  tunnels: 2, sessions: 20
+
+L2TP service status:-
+  tunnels: 1, sessions: 1
+}
+
+proc createDeleteSessions { tunnelName maxSessions ping } {
+    global LNS_PPP_PEER_ADDR_BASE
+    global LNS_PPP_OUR_ADDR_BASE
+    global LNS_PPP_USER_1
+    global LNS_PPP_PASSWD_1
+    global message
+
+    for { set i 1 } { $i < $maxSessions } { incr i } {
+	l2tpConfig session create tunnel_name=$tunnelName \
+	    session_name=$i \
+	    ppp_profile_name=ppp$i \
+	    user_name=$LNS_PPP_USER_1 \
+	    user_password=$LNS_PPP_PASSWD_1
+    }
+
+    sleep 1
+    if { $ping != 0 } {
+	sleep 2
+	for { set i 1 } { $i < $maxSessions } { incr i } {
+	    set peerIpAddr [makeIpAddr $LNS_PPP_PEER_ADDR_BASE $i]
+	    pingReachableTest $peerIpAddr
+	}
+	sleep 124
+	l2tpConfig system show status	
+	for { set i 1 } { $i < $maxSessions } { incr i } {
+	    set peerIpAddr [makeIpAddr $LNS_PPP_PEER_ADDR_BASE $i]
+	    pingReachableTest $peerIpAddr
+	}
+    }
+
+    for { set i [expr ($maxSessions - 1)] } { $i > 0 } { incr i -1 } {
+	l2tpConfig session delete tunnel_name=$tunnelName session_name=$i
+    }
+    sleep 1
+    if { $ping != 0 } {
+	sleep 3
+    }
+
+    return $message
+}
+
+test thirdpartylns-1.10 { Stress test session setup until user aborts... } \
+    { l2tpdRunning && thirdpartylns && kernelModuleLoaded && interactive } \
+    {
+	global LNS_MAX_SESSIONS
+	
+	set pass 0
+	clearResult
+	l2tpConfig ppp profile modify profile_name=default \
+	    trace_flags=0 \
+	    lcp_echo_interval=2 \
+	    lcp_echo_failure_count=5
+	for { set i 0 } { $i < $LNS_MAX_SESSIONS } { incr i } {
+	    l2tpConfig ppp profile modify profile_name=ppp$i \
+		trace_flags=0 \
+		lcp_echo_interval=2 \
+		lcp_echo_failure_count=5
+	}
+
+	set tmpfile /tmp/thirdpartylns-1.10
+	::tcltest::makeFile "Remove me" $tmpfile
+	puts stdout "Remove $tmpfile to finish test"
+
+	# When in this loop, expect to see session create failures
+	# (session already exists) and delete failures (session 
+	# does not exist), since we create/delete sessions as 
+	# fast as possible. Once out of the loop, let things settle,
+	# then retry the test and enable ping for each session
+	# to test system operation.
+
+	while { [file exists $tmpfile] } {
+	    incr pass
+	    clearResult
+	    createDeleteSessions one $LNS_MAX_SESSIONS 0
+	}
+
+	puts stdout "Test exited after $pass passes"
+	puts stdout "Repeating again to check system status..."
+	
+	sleep 180
+	clearResult
+	createDeleteSessions one $LNS_MAX_SESSIONS 1
+    } \
+    {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+L2TP service status:-
+  tunnels: 1, sessions: 20
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+pingReachableTest: OK
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+}
+
+test thirdpartylns-1.99 { Cleanup tests } \
+    { l2tpdRunning && thirdpartylns } \
+    {
+	global LNS_MAX_SESSIONS
+	clearResult
+	l2tpConfig system modify reset_statistics
+	for { set i 0 } { $i < $LNS_MAX_SESSIONS } { incr i } {
+	    l2tpConfig ppp profile delete profile_name=ppp$i
+	}
+	clearResult
+	l2tpConfig tunnel delete tunnel_name=one
+	sleep 120
+	l2tpConfig system show status	
+    } \
+    {
+
+L2TP service status:-
+  tunnels: 0, sessions: 0
+}
+

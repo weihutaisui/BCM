@@ -1,0 +1,39 @@
+Source: openl2tp
+Section: net
+Priority: optional
+Maintainer: James Chapman <jchapman@katalix.com>
+Build-Depends: debhelper (>= 5), ppp-dev (>= 2.4.4), ppp-dev (<< 2.4.5), portmap, libreadline5-dev, flex, bison
+Standards-Version: 3.7.2
+
+Package: openl2tp
+Architecture: any
+Depends: ${shlibs:Depends}, ppp (>= 2.4.4), ppp (<< 2.4.5), portmap, libreadline5
+Description: A feature-rich L2TP client/server for VPN use
+ OpenL2TP is a complete implementation of RFC2661 - Layer Two Tunneling
+ Protocol Version 2, able to operate as both a server and a client. It
+ is ideal for use as an enterprise L2TP VPN server, supporting more
+ than 100 simultaneous connected users. It may also be used as a client
+ on a home PC or roadwarrior laptop. L2TP/IPSec is supported using
+ OpenSWAN or Racoon.
+ .
+ OpenL2TP has been designed and implemented specifically for Linux. It
+ consists of
+ .
+  - a daemon, openl2tpd, handling the L2TP control protocol exchanges
+   for all tunnels and sessions
+ .
+  - a plugin for pppd to allow its PPP connections to run over L2TP
+   sessions
+ .
+  - a Linux kernel driver for efficient datapath (integrated into the
+   standard kernel from 2.6.23)
+ .
+  - a command line application, l2tpconfig, for management.
+
+Package: openl2tp-dev
+Section: devel
+Architecture: all
+Priority: extra
+Depends: openl2tp, ppp-dev
+Description: This package contains support files for building plugins for OpenL2TP,
+ or applications that use the OpenL2TP APIs.

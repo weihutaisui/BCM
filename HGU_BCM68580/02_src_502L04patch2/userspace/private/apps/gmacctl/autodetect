@@ -1,0 +1,5 @@
+
+dependson: private/libs/gmacctl
+condition: ifneq ($(strip $(BUILD_GMACCTL)),)
+makeflags: $(BUILD_GMACCTL)
+

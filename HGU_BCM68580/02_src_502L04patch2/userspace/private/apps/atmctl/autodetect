@@ -1,0 +1,3 @@
+condition: ifneq ($(strip $(BUILD_XTMCTL)),)
+dependson: private/libs/atmctl public/libs/bcm_boardctl public/libs/cms_util
+

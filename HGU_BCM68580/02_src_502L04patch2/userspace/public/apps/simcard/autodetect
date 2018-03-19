@@ -1,0 +1,3 @@
+
+dependson: private/libs/simcardctl
+condition: ifneq ($(and $(strip $(BUILD_BRCM_CMS)),$(strip $(BRCM_DRIVER_SIM_CARD))),)

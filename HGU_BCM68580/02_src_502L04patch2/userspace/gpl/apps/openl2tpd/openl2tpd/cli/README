@@ -1,0 +1,15 @@
+Command Line Interface (CLI)
+============================
+
+The CLI library is written to enable its use in multiple
+applications. Right now, it is distributed with OpenL2TP but in the
+future it might be released under LGPL as a separate component.
+
+Future Work
+===========
+
+- Cleanup code for use as a shared library.
+
+- Documentation.
+
+

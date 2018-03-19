@@ -1,0 +1,1 @@
+condition: ifneq ($(and $(strip $(BRCM_PTP_1588)),$(strip $(BCM_PON_XRDP))),)

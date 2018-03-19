@@ -1,0 +1,3416 @@
+# -*- tcl -*-
+
+# L2TP config file tests.  These tests are run without openl2tpd
+# running. The tests start/stop the daemon during test operation to
+# check the daemon's correct handling of its local config file.
+
+source test_procs.tcl
+
+proc startOpenl2tpd { file } {
+    global message
+    set cmd [list exec ../openl2tpd -c [pwd]/$file -p ../plugins/ppp_null.so]
+    catch $cmd msg
+    set message $message\n$msg\n
+    return $message
+}
+
+# This is used to filter certain strings out of the test output.
+# The first text matching the regexp is replaced with 'repl'.
+
+proc filterOut { filterRegExp repl } {
+    global message
+
+    regsub -line -all $filterRegExp $message $repl message
+    return $message
+}
+
+############################################################################
+# Tests 1.* - system operations
+############################################################################
+
+set configfile-1.1 {
+
+# system
+system modify trace_flags=7
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.1 { Modify system config trace_flags= } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.1
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.1} configfile-1.1.cfg results
+	startOpenl2tpd results/configfile-1.1.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 0 (unlimited), max sessions: 0 (unlimited)
+  drain tunnels: NO
+  tunnel establish timeout: 120 seconds
+  session establish timeout: 120 seconds
+  tunnel persist pend timeout: 300 seconds
+  session persist pend timeout: 60 seconds
+  deny local tunnel creation: NO, deny remote tunnel creation: NO
+  trace flags: PROTOCOL FSM API
+}
+
+set configfile-1.2 {
+
+# system
+system modify max_tunnels=42
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.2 { Modify system config max_tunnels= } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.2
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.2} configfile-1.2.cfg results
+	startOpenl2tpd results/configfile-1.2.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 42, max sessions: 0 (unlimited)
+  drain tunnels: NO
+  tunnel establish timeout: 120 seconds
+  session establish timeout: 120 seconds
+  tunnel persist pend timeout: 300 seconds
+  session persist pend timeout: 60 seconds
+  deny local tunnel creation: NO, deny remote tunnel creation: NO
+  trace flags: NONE
+}
+
+set configfile-1.3 {
+
+# system
+system modify max_sessions=42
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.3 { Modify system config max_sessions= } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.3
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.3} configfile-1.3.cfg results
+	startOpenl2tpd results/configfile-1.3.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 0 (unlimited), max sessions: 42
+  drain tunnels: NO
+  tunnel establish timeout: 120 seconds
+  session establish timeout: 120 seconds
+  tunnel persist pend timeout: 300 seconds
+  session persist pend timeout: 60 seconds
+  deny local tunnel creation: NO, deny remote tunnel creation: NO
+  trace flags: NONE
+}
+
+set configfile-1.4 {
+
+# system
+system modify drain_tunnels=yes
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.4 { Modify system config drain_tunnels= } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.4
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.4} configfile-1.4.cfg results
+	startOpenl2tpd results/configfile-1.4.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 0 (unlimited), max sessions: 0 (unlimited)
+  drain tunnels: YES
+  tunnel establish timeout: 120 seconds
+  session establish timeout: 120 seconds
+  tunnel persist pend timeout: 300 seconds
+  session persist pend timeout: 60 seconds
+  deny local tunnel creation: NO, deny remote tunnel creation: NO
+  trace flags: NONE
+}
+
+set configfile-1.5 {
+
+# system
+system modify tunnel_establish_timeout=121
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.5 { Modify system config tunnel_establish_timeout= } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.5
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.5} configfile-1.5.cfg results
+	startOpenl2tpd results/configfile-1.5.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 0 (unlimited), max sessions: 0 (unlimited)
+  drain tunnels: NO
+  tunnel establish timeout: 121 seconds
+  session establish timeout: 120 seconds
+  tunnel persist pend timeout: 300 seconds
+  session persist pend timeout: 60 seconds
+  deny local tunnel creation: NO, deny remote tunnel creation: NO
+  trace flags: NONE
+}
+
+set configfile-1.6 {
+
+# system
+system modify session_establish_timeout=42
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.6 { Modify system config session_establish_timeout= } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.6
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.6} configfile-1.6.cfg results
+	startOpenl2tpd results/configfile-1.6.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 0 (unlimited), max sessions: 0 (unlimited)
+  drain tunnels: NO
+  tunnel establish timeout: 120 seconds
+  session establish timeout: 42 seconds
+  tunnel persist pend timeout: 300 seconds
+  session persist pend timeout: 60 seconds
+  deny local tunnel creation: NO, deny remote tunnel creation: NO
+  trace flags: NONE
+}
+
+set configfile-1.7 {
+
+# system
+system modify deny_local_tunnel_creates=yes
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.7 { Modify system config deny_local_tunnel_creates= } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.7
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.7} configfile-1.7.cfg results
+	startOpenl2tpd results/configfile-1.7.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 0 (unlimited), max sessions: 0 (unlimited)
+  drain tunnels: NO
+  tunnel establish timeout: 120 seconds
+  session establish timeout: 120 seconds
+  tunnel persist pend timeout: 300 seconds
+  session persist pend timeout: 60 seconds
+  deny local tunnel creation: YES, deny remote tunnel creation: NO
+  trace flags: NONE
+}
+
+set configfile-1.8 {
+
+# system
+system modify deny_remote_tunnel_creates=yes
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.8 { Modify system config deny_remote_tunnel_creates= } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.8
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.8} configfile-1.8.cfg results
+	startOpenl2tpd results/configfile-1.8.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 0 (unlimited), max sessions: 0 (unlimited)
+  drain tunnels: NO
+  tunnel establish timeout: 120 seconds
+  session establish timeout: 120 seconds
+  tunnel persist pend timeout: 300 seconds
+  session persist pend timeout: 60 seconds
+  deny local tunnel creation: NO, deny remote tunnel creation: YES
+  trace flags: NONE
+}
+
+set configfile-1.9 {
+
+# system
+system modify tunnel_persist_pend_timeout=301
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.9 { Modify system tunnel_persist_pend_timeout= } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.9
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.9} configfile-1.9.cfg results
+	startOpenl2tpd results/configfile-1.9.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 0 (unlimited), max sessions: 0 (unlimited)
+  drain tunnels: NO
+  tunnel establish timeout: 120 seconds
+  session establish timeout: 120 seconds
+  tunnel persist pend timeout: 301 seconds
+  session persist pend timeout: 60 seconds
+  deny local tunnel creation: NO, deny remote tunnel creation: NO
+  trace flags: NONE
+}
+
+set configfile-1.10 {
+
+# system
+system modify session_persist_pend_timeout=61
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.10 { Modify system session_persist_pend_timeout= } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.10
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.10} configfile-1.10.cfg results
+	startOpenl2tpd results/configfile-1.10.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 0 (unlimited), max sessions: 0 (unlimited)
+  drain tunnels: NO
+  tunnel establish timeout: 120 seconds
+  session establish timeout: 120 seconds
+  tunnel persist pend timeout: 300 seconds
+  session persist pend timeout: 61 seconds
+  deny local tunnel creation: NO, deny remote tunnel creation: NO
+  trace flags: NONE
+}
+
+set configfile-1.11 {
+
+# system
+system modify \
+trace_flags=7 \
+max_tunnels=42 \
+drain_tunnels=yes \
+max_sessions=43 \
+tunnel_establish_timeout=121 \
+session_establish_timeout=42 \
+deny_local_tunnel_creates=yes \
+deny_remote_tunnel_creates=yes \
+tunnel_persist_pend_timeout=301 \
+session_persist_pend_timeout=61 \
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-1.11 { Complex system modify with all args } \
+    { !l2tpdRunning && system } \
+    { \
+	global configfile-1.11
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-1.11} configfile-1.11.cfg results
+	startOpenl2tpd results/configfile-1.11.cfg
+	sleep 1
+	l2tpConfig system show configuration
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+	addCrLf
+    } \
+    {
+
+
+L2TP configuration:
+  UDP port: 1701
+  max tunnels: 42, max sessions: 43
+  drain tunnels: YES
+  tunnel establish timeout: 121 seconds
+  session establish timeout: 42 seconds
+  tunnel persist pend timeout: 301 seconds
+  session persist pend timeout: 61 seconds
+  deny local tunnel creation: YES, deny remote tunnel creation: YES
+  trace flags: PROTOCOL FSM API
+}
+
+############################################################################
+# Tests 2.* - peer profile operations
+############################################################################
+
+set configfile-2.1 {
+
+# system
+
+# peer profiles
+peer profile create profile_name=one
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-2.1 { } \
+    { !l2tpdRunning && peerProfile } \
+    { \
+	global configfile-2.1
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-2.1} configfile-2.1.cfg results
+	startOpenl2tpd results/configfile-2.1.cfg
+	sleep 1
+	l2tpConfig peer profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+}
+
+set configfile-2.2 {
+
+# system
+
+# peer profiles
+peer profile create profile_name=one
+peer profile modify profile_name=one \
+	lac_lns=lns \
+	tunnel_profile_name=one \
+	session_profile_name=two \
+	ppp_profile_name=three \
+	peer_ipaddr=10.1.2.3 \
+	peer_port=42 \
+	netmask=255.255.0.0 \
+
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-2.2 { } \
+    { !l2tpdRunning && peerProfile } \
+    { \
+	global configfile-2.2
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-2.2} configfile-2.2.cfg results
+	startOpenl2tpd results/configfile-2.2.cfg
+	sleep 1
+	l2tpConfig peer profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Peer profile one:-
+  address: 10.1.2.3, port 42
+  netmask: 255.255.0.0
+  mode -/LNS
+  default tunnel profile: one
+  default session profile: two
+  default ppp profile: three
+  use count: 0
+}
+
+set configfile-2.3 {
+
+# system
+
+# peer profiles
+peer profile create profile_name=one
+peer profile modify profile_name=one \
+	ppp_profile_name=three \
+	peer_ipaddr=10.1.2.3 \
+	peer_port=42 \
+
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-2.3 { } \
+    { !l2tpdRunning && peerProfile } \
+    { \
+	global configfile-2.3
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-2.3} configfile-2.3.cfg results
+	startOpenl2tpd results/configfile-2.3.cfg
+	sleep 1
+	l2tpConfig peer profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Peer profile one:-
+  address: 10.1.2.3, port 42
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: three
+  use count: 0
+}
+
+set configfile-2.4 {
+
+# system
+
+# peer profiles
+peer profile create profile_name=one
+peer profile modify profile_name=one \
+	lac_lns=lns \
+	tunnel_profile_name=one \
+	session_profile_name=two \
+	ppp_profile_name=three \
+	peer_ipaddr=10.1.2.3 \
+	peer_port=42 \
+	netmask=255.255.0.0 \
+
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-2.4 { } \
+    { !l2tpdRunning && peerProfile } \
+    { \
+	global configfile-2.4
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-2.4} configfile-2.4.cfg results
+	startOpenl2tpd results/configfile-2.4.cfg
+	sleep 1
+	l2tpConfig peer profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Peer profile one:-
+  address: 10.1.2.3, port 42
+  netmask: 255.255.0.0
+  mode -/LNS
+  default tunnel profile: one
+  default session profile: two
+  default ppp profile: three
+  use count: 0
+}
+
+set configfile-2.5 {
+
+# system
+
+# peer profiles
+peer profile create profile_name=one
+peer profile modify profile_name=one \
+	lac_lns=lns \
+
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-2.5 { } \
+    { !l2tpdRunning && peerProfile } \
+    { \
+	global configfile-2.5
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-2.5} configfile-2.5.cfg results
+	startOpenl2tpd results/configfile-2.5.cfg
+	sleep 1
+	l2tpConfig peer profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Peer profile one:-
+  address: ANY, port default
+  mode -/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+}
+
+set configfile-2.6 {
+
+# system
+
+# peer profiles
+peer profile create profile_name=three
+peer profile create profile_name=two
+peer profile create profile_name=one
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-2.6 { } \
+    { !l2tpdRunning && peerProfile } \
+    { \
+	global configfile-2.6
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-2.6} configfile-2.6.cfg results
+	startOpenl2tpd results/configfile-2.6.cfg
+	sleep 1
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile show profile_name=two
+	l2tpConfig peer profile show profile_name=three
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Peer profile one:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Peer profile two:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+
+Peer profile three:-
+  address: ANY, port default
+  mode LAC/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+}
+
+set configfile-2.7 {
+
+# system
+
+# peer profiles
+peer profile create profile_name=one
+peer profile modify profile_name=one \
+	lac_lns=lns \
+	tunnel_profile_name=one \
+	session_profile_name=two \
+	ppp_profile_name=three \
+	peer_ipaddr=10.1.2.3 \
+	peer_port=42 \
+	netmask=255.255.0.0 \
+
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-2.7 { } \
+    { !l2tpdRunning && peerProfile } \
+    { \
+	global configfile-2.7
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-2.7} configfile-2.7.cfg results
+	startOpenl2tpd results/configfile-2.7.cfg
+	sleep 1
+	l2tpConfig peer profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Peer profile one:-
+  address: 10.1.2.3, port 42
+  netmask: 255.255.0.0
+  mode -/LNS
+  default tunnel profile: one
+  default session profile: two
+  default ppp profile: three
+  use count: 0
+}
+
+set configfile-2.8 {
+
+# system
+
+# peer profiles
+peer profile create profile_name=three
+peer profile modify profile_name=three \
+	lac_lns=lac \
+	tunnel_profile_name=one \
+	netmask=255.255.0.0 \
+
+peer profile create profile_name=two
+peer profile modify profile_name=two \
+	lac_lns=lns \
+	ppp_profile_name=three \
+	netmask=255.255.0.0 \
+
+peer profile create profile_name=one
+peer profile modify profile_name=one \
+	lac_lns=lns \
+	tunnel_profile_name=one \
+	session_profile_name=two \
+	ppp_profile_name=three \
+	peer_ipaddr=10.1.2.3 \
+	peer_port=42 \
+	netmask=255.255.0.0 \
+
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-2.8 { } \
+    { !l2tpdRunning && peerProfile } \
+    { \
+	global configfile-2.8
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-2.8} configfile-2.8.cfg results
+	startOpenl2tpd results/configfile-2.8.cfg
+	sleep 1
+	l2tpConfig peer profile show profile_name=one
+	l2tpConfig peer profile show profile_name=two
+	l2tpConfig peer profile show profile_name=three
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Peer profile one:-
+  address: 10.1.2.3, port 42
+  netmask: 255.255.0.0
+  mode -/LNS
+  default tunnel profile: one
+  default session profile: two
+  default ppp profile: three
+  use count: 0
+
+Peer profile two:-
+  address: ANY, port default
+  netmask: 255.255.0.0
+  mode -/LNS
+  default tunnel profile: default
+  default session profile: default
+  default ppp profile: three
+  use count: 0
+
+Peer profile three:-
+  address: ANY, port default
+  netmask: 255.255.0.0
+  mode LAC/-
+  default tunnel profile: one
+  default session profile: default
+  default ppp profile: default
+  use count: 0
+}
+
+############################################################################
+# Tests 3.* - tunnel profile operations
+############################################################################
+
+set configfile-3.1 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+tunnel profile create profile_name=one
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-3.1 { } \
+    { !l2tpdRunning && tunnelProfile } \
+    { \
+	global configfile-3.1
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-3.1} configfile-3.1.cfg results
+	startOpenl2tpd results/configfile-3.1.cfg
+	sleep 1
+	l2tpConfig tunnel profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: NONE
+}
+
+set configfile-3.2 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+tunnel profile create profile_name=one
+tunnel profile modify profile_name=one \
+	hide_avps=yes \
+	auth_mode=simple \
+	framing_cap=async \
+	bearer_cap=analog \
+	use_tiebreaker=yes \
+	hello_timeout=42 \
+	max_retries=42 \
+	rx_window_size=42 \
+	tx_window_size=42 \
+	retry_timeout=42 \
+	idle_timeout=42 \
+	secret=wibble3 \
+	allow_ppp_proxy=yes \
+	trace_flags=15 \
+	use_udp_checksums=no \
+	host_name=wibble2 \
+	max_sessions=42 \
+	src_ipaddr=10.1.2.4 \
+	dest_ipaddr=10.1.2.3 \
+	peer_udp_port=42 \
+	peer_profile_name=wibble4 \
+	session_profile_name=wibble5 \
+	ppp_profile_name=wibble6 \
+	do_pmtu_discovery=yes \
+	mtu=1400 \
+
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-3.2 { } \
+    { !l2tpdRunning && tunnelProfile } \
+    { \
+	global configfile-3.2
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-3.2} configfile-3.2.cfg results
+	startOpenl2tpd results/configfile-3.2.cfg
+	sleep 1
+	l2tpConfig tunnel profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Tunnel profile one
+  l2tp host name: wibble2
+  local IP address: 10.1.2.4
+  peer IP address: 10.1.2.3
+  peer UDP port: 42
+  authorization mode SIMPLE, hide AVPs ON, allow PPP proxy ON
+  tunnel secret: 'wibble3'
+  hello timeout 42, retry timeout 42, idle timeout 42
+  rx window size 42, tx window size 42, max retries 42
+  use UDP checksums: OFF
+  do pmtu discovery: ON, mtu: 1400
+  framing capability: ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: ON
+  max sessions: 42
+  peer profile: wibble4
+  session profile: wibble5
+  ppp profile: wibble6
+  trace flags: PROTOCOL FSM API AVP
+}
+
+set configfile-3.3 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+tunnel profile create profile_name=one
+tunnel profile modify profile_name=one \
+	hide_avps=yes \
+	auth_mode=simple \
+	hello_timeout=42 \
+	secret=wibble3 \
+	host_name=wibble2 \
+
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-3.3 { } \
+    { !l2tpdRunning && tunnelProfile } \
+    { \
+	global configfile-3.3
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-3.3} configfile-3.3.cfg results
+	startOpenl2tpd results/configfile-3.3.cfg
+	sleep 1
+	l2tpConfig tunnel profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Tunnel profile one
+  l2tp host name: wibble2
+  authorization mode SIMPLE, hide AVPs ON, allow PPP proxy OFF
+  tunnel secret: 'wibble3'
+  hello timeout 42, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: NONE
+}
+
+set configfile-3.4 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+tunnel profile create profile_name=one
+tunnel profile modify profile_name=one \
+	hide_avps=yes \
+	auth_mode=simple \
+	framing_cap=async \
+	bearer_cap=analog \
+	use_tiebreaker=yes \
+	hello_timeout=42 \
+	max_retries=42 \
+	rx_window_size=42 \
+	tx_window_size=42 \
+	retry_timeout=42 \
+	idle_timeout=42 \
+	secret=wibble3 \
+	allow_ppp_proxy=yes \
+	trace_flags=15 \
+	use_udp_checksums=no \
+	host_name=wibble2 \
+	max_sessions=42 \
+	src_ipaddr=10.1.2.4 \
+	dest_ipaddr=10.1.2.3 \
+	peer_udp_port=42 \
+	peer_profile_name=wibble4 \
+	session_profile_name=wibble5 \
+	ppp_profile_name=wibble6 \
+	do_pmtu_discovery=yes \
+	mtu=1400 \
+
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-3.4 { } \
+    { !l2tpdRunning && tunnelProfile } \
+    { \
+	global configfile-3.4
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-3.4} configfile-3.4.cfg results
+	startOpenl2tpd results/configfile-3.4.cfg
+	sleep 1
+	l2tpConfig tunnel profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Tunnel profile one
+  l2tp host name: wibble2
+  local IP address: 10.1.2.4
+  peer IP address: 10.1.2.3
+  peer UDP port: 42
+  authorization mode SIMPLE, hide AVPs ON, allow PPP proxy ON
+  tunnel secret: 'wibble3'
+  hello timeout 42, retry timeout 42, idle timeout 42
+  rx window size 42, tx window size 42, max retries 42
+  use UDP checksums: OFF
+  do pmtu discovery: ON, mtu: 1400
+  framing capability: ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: ON
+  max sessions: 42
+  peer profile: wibble4
+  session profile: wibble5
+  ppp profile: wibble6
+  trace flags: PROTOCOL FSM API AVP
+}
+
+set configfile-3.5 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+tunnel profile create profile_name=one
+tunnel profile modify profile_name=one \
+	trace_flags=15 \
+	mtu=1400 \
+
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-3.5 { } \
+    { !l2tpdRunning && tunnelProfile } \
+    { \
+	global configfile-3.5
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-3.5} configfile-3.5.cfg results
+	startOpenl2tpd results/configfile-3.5.cfg
+	sleep 1
+	l2tpConfig tunnel profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1400
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP
+}
+
+set configfile-3.6 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+tunnel profile create profile_name=three
+tunnel profile create profile_name=two
+tunnel profile create profile_name=one
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-3.6 { } \
+    { !l2tpdRunning && tunnelProfile } \
+    { \
+	global configfile-3.6
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-3.6} configfile-3.6.cfg results
+	startOpenl2tpd results/configfile-3.6.cfg
+	sleep 1
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile show profile_name=two
+	l2tpConfig tunnel profile show profile_name=three
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: NONE
+
+Tunnel profile two
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: NONE
+
+Tunnel profile three
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: NONE
+}
+
+set configfile-3.7 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+tunnel profile create profile_name=one
+tunnel profile modify profile_name=one \
+	hide_avps=yes \
+	auth_mode=simple \
+	framing_cap=async \
+	bearer_cap=analog \
+	use_tiebreaker=yes \
+	hello_timeout=42 \
+	max_retries=42 \
+	rx_window_size=42 \
+	tx_window_size=42 \
+	retry_timeout=42 \
+	idle_timeout=42 \
+	secret=wibble3 \
+	allow_ppp_proxy=yes \
+	trace_flags=15 \
+	use_udp_checksums=no \
+	host_name=wibble2 \
+	max_sessions=42 \
+	src_ipaddr=10.1.2.4 \
+	dest_ipaddr=10.1.2.3 \
+	peer_udp_port=42 \
+	peer_profile_name=wibble4 \
+	session_profile_name=wibble5 \
+	ppp_profile_name=wibble6 \
+	do_pmtu_discovery=yes \
+	mtu=1400 \
+
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-3.7 { } \
+    { !l2tpdRunning && tunnelProfile } \
+    { \
+	global configfile-3.7
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-3.7} configfile-3.7.cfg results
+	startOpenl2tpd results/configfile-3.7.cfg
+	sleep 1
+	l2tpConfig tunnel profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Tunnel profile one
+  l2tp host name: wibble2
+  local IP address: 10.1.2.4
+  peer IP address: 10.1.2.3
+  peer UDP port: 42
+  authorization mode SIMPLE, hide AVPs ON, allow PPP proxy ON
+  tunnel secret: 'wibble3'
+  hello timeout 42, retry timeout 42, idle timeout 42
+  rx window size 42, tx window size 42, max retries 42
+  use UDP checksums: OFF
+  do pmtu discovery: ON, mtu: 1400
+  framing capability: ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: ON
+  max sessions: 42
+  peer profile: wibble4
+  session profile: wibble5
+  ppp profile: wibble6
+  trace flags: PROTOCOL FSM API AVP
+}
+
+set configfile-3.8 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+tunnel profile create profile_name=three
+tunnel profile modify profile_name=three \
+	auth_mode=simple \
+	trace_flags=15 \
+	use_udp_checksums=no \
+	max_sessions=42 \
+	peer_profile_name=wibble4 \
+	session_profile_name=wibble5 \
+	ppp_profile_name=wibble6 \
+	do_pmtu_discovery=yes \
+	mtu=1400 \
+
+tunnel profile create profile_name=two
+tunnel profile modify profile_name=two \
+	hide_avps=yes \
+	framing_cap=async \
+	bearer_cap=analog \
+	use_tiebreaker=yes \
+	secret=wibble3 \
+	allow_ppp_proxy=yes \
+	host_name=wibble2 \
+
+tunnel profile create profile_name=one
+tunnel profile modify profile_name=one \
+	hello_timeout=42 \
+	max_retries=42 \
+	rx_window_size=42 \
+	tx_window_size=42 \
+	retry_timeout=42 \
+	idle_timeout=42 \
+	src_ipaddr=10.1.2.4 \
+	dest_ipaddr=10.1.2.3 \
+	peer_udp_port=42 \
+
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-3.8 { } \
+    { !l2tpdRunning && tunnelProfile } \
+    { \
+	global configfile-3.8
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-3.8} configfile-3.8.cfg results
+	startOpenl2tpd results/configfile-3.8.cfg
+	sleep 1
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile show profile_name=two
+	l2tpConfig tunnel profile show profile_name=three
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Tunnel profile one
+  local IP address: 10.1.2.4
+  peer IP address: 10.1.2.3
+  peer UDP port: 42
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 42, retry timeout 42, idle timeout 42
+  rx window size 42, tx window size 42, max retries 42
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: NONE
+
+Tunnel profile two
+  l2tp host name: wibble2
+  authorization mode NONE, hide AVPs ON, allow PPP proxy ON
+  tunnel secret: 'wibble3'
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: ON
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: NONE
+
+Tunnel profile three
+  authorization mode SIMPLE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: OFF
+  do pmtu discovery: ON, mtu: 1400
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  max sessions: 42
+  peer profile: wibble4
+  session profile: wibble5
+  ppp profile: wibble6
+  trace flags: PROTOCOL FSM API AVP
+}
+
+############################################################################
+# Tests 4.* - session profile operations
+############################################################################
+
+set configfile-4.1 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+session profile create profile_name=one
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-4.1 { } \
+    { !l2tpdRunning && sessionProfile } \
+    { \
+	global configfile-4.1
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-4.1} configfile-4.1.cfg results
+	startOpenl2tpd results/configfile-4.1.cfg
+	sleep 1
+	l2tpConfig session profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Session profile one
+  ppp profile: default
+  trace flags: NONE
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+}
+
+set configfile-4.2 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+session profile create profile_name=one
+session profile modify profile_name=one \
+	trace_flags=1 \
+	sequencing_required=yes \
+	ppp_profile_name=wibble \
+	use_sequence_numbers=yes \
+	reorder_timeout=42 \
+
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-4.2 { } \
+    { !l2tpdRunning && sessionProfile } \
+    { \
+	global configfile-4.2
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-4.2} configfile-4.2.cfg results
+	startOpenl2tpd results/configfile-4.2.cfg
+	sleep 1
+	l2tpConfig session profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+}
+
+set configfile-4.3 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+session profile create profile_name=one
+session profile modify profile_name=one \
+	trace_flags=1 \
+	reorder_timeout=42 \
+
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-4.3 { } \
+    { !l2tpdRunning && sessionProfile } \
+    { \
+	global configfile-4.3
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-4.3} configfile-4.3.cfg results
+	startOpenl2tpd results/configfile-4.3.cfg
+	sleep 1
+	l2tpConfig session profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  reorder timeout: 42 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+}
+
+set configfile-4.4 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+session profile create profile_name=one
+session profile modify profile_name=one \
+	trace_flags=1 \
+	sequencing_required=yes \
+	ppp_profile_name=wibble \
+	use_sequence_numbers=yes \
+	reorder_timeout=42 \
+
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-4.4 { } \
+    { !l2tpdRunning && sessionProfile } \
+    { \
+	global configfile-4.4
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-4.4} configfile-4.4.cfg results
+	startOpenl2tpd results/configfile-4.4.cfg
+	sleep 1
+	l2tpConfig session profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+}
+
+set configfile-4.5 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+session profile create profile_name=one
+session profile modify profile_name=one \
+	ppp_profile_name=wibble \
+	use_sequence_numbers=yes \
+
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-4.5 { } \
+    { !l2tpdRunning && sessionProfile } \
+    { \
+	global configfile-4.5
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-4.5} configfile-4.5.cfg results
+	startOpenl2tpd results/configfile-4.5.cfg
+	sleep 1
+	l2tpConfig session profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Session profile one
+  ppp profile: wibble
+  trace flags: NONE
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: ON
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+}
+
+set configfile-4.6 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+session profile create profile_name=three
+session profile create profile_name=two
+session profile create profile_name=one
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-4.6 { } \
+    { !l2tpdRunning && sessionProfile } \
+    { \
+	global configfile-4.6
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-4.6} configfile-4.6.cfg results
+	startOpenl2tpd results/configfile-4.6.cfg
+	sleep 1
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile show profile_name=two
+	l2tpConfig session profile show profile_name=three
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Session profile one
+  ppp profile: default
+  trace flags: NONE
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Session profile two
+  ppp profile: default
+  trace flags: NONE
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Session profile three
+  ppp profile: default
+  trace flags: NONE
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+}
+
+set configfile-4.7 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+session profile create profile_name=one
+session profile modify profile_name=one \
+	trace_flags=1 \
+	sequencing_required=yes \
+	ppp_profile_name=wibble \
+	use_sequence_numbers=yes \
+	reorder_timeout=42 \
+
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-4.7 { } \
+    { !l2tpdRunning && sessionProfile } \
+    { \
+	global configfile-4.7
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-4.7} configfile-4.7.cfg results
+	startOpenl2tpd results/configfile-4.7.cfg
+	sleep 1
+	l2tpConfig session profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+}
+
+set configfile-4.8 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+session profile create profile_name=three
+session profile modify profile_name=three \
+	trace_flags=1 \
+	sequencing_required=yes \
+	ppp_profile_name=wibble \
+	use_sequence_numbers=yes \
+	reorder_timeout=42 \
+
+session profile create profile_name=two
+session profile modify profile_name=two \
+	trace_flags=1 \
+	reorder_timeout=42 \
+
+session profile create profile_name=one
+session profile modify profile_name=one \
+	ppp_profile_name=wibble \
+
+
+# ppp profiles
+
+# locally created tunnels and sessions
+}
+
+test configfile-4.8 { } \
+    { !l2tpdRunning && sessionProfile } \
+    { \
+	global configfile-4.8
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-4.8} configfile-4.8.cfg results
+	startOpenl2tpd results/configfile-4.8.cfg
+	sleep 1
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile show profile_name=two
+	l2tpConfig session profile show profile_name=three
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Session profile one
+  ppp profile: wibble
+  trace flags: NONE
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Session profile two
+  ppp profile: default
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  reorder timeout: 42 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Session profile three
+  ppp profile: wibble
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+}
+
+############################################################################
+# Tests 5.* - ppp profile operations
+############################################################################
+
+set configfile-5.1 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+ppp profile create profile_name=one
+
+# locally created tunnels and sessions
+}
+
+test configfile-5.1 { } \
+    { !l2tpdRunning && pppProfile } \
+    { \
+	global configfile-5.1
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-5.1} configfile-5.1.cfg results
+	startOpenl2tpd results/configfile-5.1.cfg
+	sleep 1
+	l2tpConfig ppp profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Ppp profile one
+  trace flags: NONE
+  mru: 1500, mtu: 1500, mode: SYNC|ASYNC
+  allowed authentications: PAP CHAP MSCHAP MSCHAPv2 EAP 
+  max connect time: 0, max failure count: 10, idle timeout: 0
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: NOT SET, peer address: NOT SET
+    dns addresses: NOT SET / NOT SET
+    wins addresses: NOT SET / NOT SET
+    use radius: NO
+  PAP parameters:-
+    max auth requests: 10, restart interval: 3, timeout: 0
+  CHAP parameters:-
+    interval: 10, max challenge: 10, restart: 3
+  LCP parameters:-
+    echo failure count: 0, echo interval: 0
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+  IPCP parameters:-
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+}
+
+set configfile-5.2 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+ppp profile create profile_name=one
+ppp profile modify profile_name=one \
+	trace_flags=15 \
+	asyncmap=66 \
+	mru=42 \
+	mtu=42 \
+	use_radius=yes \
+	radius_hint=wibble \
+	auth_pap=off \
+	auth_chap=off \
+	auth_mschapv1=off \
+	auth_mschapv2=off \
+	auth_eap=off \
+	auth_none=yes \
+    	auth_peer=no \
+	sync_mode=async \
+	chap_interval=42 \
+	chap_max_challenge=42 \
+	chap_restart=42 \
+	pap_max_auth_requests=42 \
+	pap_restart_interval=42 \
+	pap_timeout=42 \
+	idle_timeout=42 \
+	ipcp_max_config_requests=42 \
+	ipcp_max_config_naks=42 \
+	ipcp_max_terminate_requests=42 \
+	ipcp_retransmit_interval=42 \
+	lcp_echo_failure_count=42 \
+	lcp_echo_interval=42 \
+	lcp_max_config_requests=42 \
+	lcp_max_config_naks=42 \
+	lcp_max_terminate_requests=42 \
+	lcp_retransmit_interval=42 \
+	max_connect_time=42 \
+	max_failure_count=42 \
+	dns_ipaddr_pri=10.0.0.3 \
+	dns_ipaddr_sec=10.0.0.4 \
+	wins_ipaddr_pri=10.0.0.5 \
+	wins_ipaddr_sec=10.0.0.6 \
+	local_ipaddr=10.0.0.1 \
+	remote_ipaddr=10.0.0.2 \
+	ip_pool_name=wibble \
+
+
+# locally created tunnels and sessions
+}
+
+test configfile-5.2 { } \
+    { !l2tpdRunning && pppProfile } \
+    { \
+	global configfile-5.2
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-5.2} configfile-5.2.cfg results
+	startOpenl2tpd results/configfile-5.2.cfg
+	sleep 1
+	l2tpConfig ppp profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Ppp profile one
+  trace flags: PROTOCOL FSM API AVP
+  mru: 42, mtu: 42, mode: ASYNC
+  allowed authentications: NOAUTH 
+  max connect time: 42, max failure count: 42, idle timeout: 42
+  asyncmap: 0x42
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: 10.0.0.1, peer address: 10.0.0.2
+    dns addresses: 10.0.0.3 / 10.0.0.4
+    wins addresses: 10.0.0.5 / 10.0.0.6
+    ip pool name: wibble
+    use radius: YES
+    radius hint: wibble
+  PAP parameters:-
+    max auth requests: 42, restart interval: 42, timeout: 42
+  CHAP parameters:-
+    interval: 42, max challenge: 42, restart: 42
+  LCP parameters:-
+    echo failure count: 42, echo interval: 42
+    max config requests: 42, max config naks: 42
+    max terminate requests: 42, retransmit interval: 42
+  IPCP parameters:-
+    max config requests: 42, max config naks: 42
+    max terminate requests: 0, retransmit interval: 42
+}
+
+set configfile-5.3 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+ppp profile create profile_name=one
+ppp profile modify profile_name=one \
+	trace_flags=15 \
+	auth_pap=on \
+	auth_chap=on \
+	auth_mschapv1=on \
+	auth_mschapv2=on \
+	auth_eap=off \
+	auth_none=no \
+	sync_mode=async \
+	pap_timeout=42 \
+	idle_timeout=42 \
+	local_ipaddr=10.0.0.1 \
+	remote_ipaddr=10.0.0.2 \
+	ip_pool_name=wibble \
+
+
+# locally created tunnels and sessions
+}
+
+test configfile-5.3 { } \
+    { !l2tpdRunning && pppProfile } \
+    { \
+	global configfile-5.3
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-5.3} configfile-5.3.cfg results
+	startOpenl2tpd results/configfile-5.3.cfg
+	sleep 1
+	l2tpConfig ppp profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Ppp profile one
+  trace flags: PROTOCOL FSM API AVP
+  mru: 1500, mtu: 1500, mode: ASYNC
+  allowed authentications: PAP CHAP MSCHAP MSCHAPv2 
+  max connect time: 0, max failure count: 10, idle timeout: 42
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: 10.0.0.1, peer address: 10.0.0.2
+    dns addresses: NOT SET / NOT SET
+    wins addresses: NOT SET / NOT SET
+    ip pool name: wibble
+    use radius: NO
+  PAP parameters:-
+    max auth requests: 10, restart interval: 3, timeout: 42
+  CHAP parameters:-
+    interval: 10, max challenge: 10, restart: 3
+  LCP parameters:-
+    echo failure count: 0, echo interval: 0
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+  IPCP parameters:-
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+}
+
+set configfile-5.4 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+ppp profile create profile_name=one
+ppp profile modify profile_name=one \
+	trace_flags=15 \
+	asyncmap=66 \
+	mru=42 \
+	mtu=42 \
+	use_radius=yes \
+	radius_hint=wibble \
+	auth_pap=off \
+	auth_chap=off \
+	auth_mschapv1=off \
+	auth_mschapv2=off \
+	auth_eap=off \
+	auth_none=yes \
+	auth_peer=no \
+	sync_mode=async \
+	chap_interval=42 \
+	chap_max_challenge=42 \
+	chap_restart=42 \
+	pap_max_auth_requests=42 \
+	pap_restart_interval=42 \
+	pap_timeout=42 \
+	idle_timeout=42 \
+	ipcp_max_config_requests=42 \
+	ipcp_max_config_naks=42 \
+	ipcp_max_terminate_requests=42 \
+	ipcp_retransmit_interval=42 \
+	lcp_echo_failure_count=42 \
+	lcp_echo_interval=42 \
+	lcp_max_config_requests=42 \
+	lcp_max_config_naks=42 \
+	lcp_max_terminate_requests=42 \
+	lcp_retransmit_interval=42 \
+	max_connect_time=42 \
+	max_failure_count=42 \
+	dns_ipaddr_pri=10.0.0.3 \
+	dns_ipaddr_sec=10.0.0.4 \
+	wins_ipaddr_pri=10.0.0.5 \
+	wins_ipaddr_sec=10.0.0.6 \
+	local_ipaddr=10.0.0.1 \
+	remote_ipaddr=10.0.0.2 \
+	ip_pool_name=wibble \
+
+
+# locally created tunnels and sessions
+}
+
+test configfile-5.4 { } \
+    { !l2tpdRunning && pppProfile } \
+    { \
+	global configfile-5.4
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-5.4} configfile-5.4.cfg results
+	startOpenl2tpd results/configfile-5.4.cfg
+	sleep 1
+	l2tpConfig ppp profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Ppp profile one
+  trace flags: PROTOCOL FSM API AVP
+  mru: 42, mtu: 42, mode: ASYNC
+  allowed authentications: NOAUTH 
+  max connect time: 42, max failure count: 42, idle timeout: 42
+  asyncmap: 0x42
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: 10.0.0.1, peer address: 10.0.0.2
+    dns addresses: 10.0.0.3 / 10.0.0.4
+    wins addresses: 10.0.0.5 / 10.0.0.6
+    ip pool name: wibble
+    use radius: YES
+    radius hint: wibble
+  PAP parameters:-
+    max auth requests: 42, restart interval: 42, timeout: 42
+  CHAP parameters:-
+    interval: 42, max challenge: 42, restart: 42
+  LCP parameters:-
+    echo failure count: 42, echo interval: 42
+    max config requests: 42, max config naks: 42
+    max terminate requests: 42, retransmit interval: 42
+  IPCP parameters:-
+    max config requests: 42, max config naks: 42
+    max terminate requests: 0, retransmit interval: 42
+}
+
+set configfile-5.5 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+ppp profile create profile_name=one
+ppp profile modify profile_name=one \
+	auth_pap=on \
+	auth_chap=on \
+	auth_mschapv1=off \
+	auth_mschapv2=off \
+	auth_eap=on \
+	auth_none=no \
+	sync_mode=sync \
+	ipcp_max_config_requests=42 \
+	ipcp_max_config_naks=42 \
+	dns_ipaddr_pri=10.0.0.3 \
+	dns_ipaddr_sec=10.0.0.4 \
+	wins_ipaddr_pri=10.0.0.5 \
+	wins_ipaddr_sec=10.0.0.6 \
+	ip_pool_name=wibble \
+
+
+# locally created tunnels and sessions
+}
+
+test configfile-5.5 { } \
+    { !l2tpdRunning && pppProfile } \
+    { \
+	global configfile-5.5
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-5.5} configfile-5.5.cfg results
+	startOpenl2tpd results/configfile-5.5.cfg
+	sleep 1
+	l2tpConfig ppp profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Ppp profile one
+  trace flags: NONE
+  mru: 1500, mtu: 1500, mode: SYNC
+  allowed authentications: PAP CHAP EAP 
+  max connect time: 0, max failure count: 10, idle timeout: 0
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: NOT SET, peer address: NOT SET
+    dns addresses: 10.0.0.3 / 10.0.0.4
+    wins addresses: 10.0.0.5 / 10.0.0.6
+    ip pool name: wibble
+    use radius: NO
+  PAP parameters:-
+    max auth requests: 10, restart interval: 3, timeout: 0
+  CHAP parameters:-
+    interval: 10, max challenge: 10, restart: 3
+  LCP parameters:-
+    echo failure count: 0, echo interval: 0
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+  IPCP parameters:-
+    max config requests: 42, max config naks: 42
+    max terminate requests: 3, retransmit interval: 3
+}
+
+set configfile-5.6 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+ppp profile create profile_name=three
+ppp profile create profile_name=two
+ppp profile create profile_name=one
+
+# locally created tunnels and sessions
+}
+
+test configfile-5.6 { } \
+    { !l2tpdRunning && pppProfile } \
+    { \
+	global configfile-5.6
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-5.6} configfile-5.6.cfg results
+	startOpenl2tpd results/configfile-5.6.cfg
+	sleep 1
+	l2tpConfig ppp profile show profile_name=one
+	l2tpConfig ppp profile show profile_name=two
+	l2tpConfig ppp profile show profile_name=three
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Ppp profile one
+  trace flags: NONE
+  mru: 1500, mtu: 1500, mode: SYNC|ASYNC
+  allowed authentications: PAP CHAP MSCHAP MSCHAPv2 EAP 
+  max connect time: 0, max failure count: 10, idle timeout: 0
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: NOT SET, peer address: NOT SET
+    dns addresses: NOT SET / NOT SET
+    wins addresses: NOT SET / NOT SET
+    use radius: NO
+  PAP parameters:-
+    max auth requests: 10, restart interval: 3, timeout: 0
+  CHAP parameters:-
+    interval: 10, max challenge: 10, restart: 3
+  LCP parameters:-
+    echo failure count: 0, echo interval: 0
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+  IPCP parameters:-
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+
+Ppp profile two
+  trace flags: NONE
+  mru: 1500, mtu: 1500, mode: SYNC|ASYNC
+  allowed authentications: PAP CHAP MSCHAP MSCHAPv2 EAP 
+  max connect time: 0, max failure count: 10, idle timeout: 0
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: NOT SET, peer address: NOT SET
+    dns addresses: NOT SET / NOT SET
+    wins addresses: NOT SET / NOT SET
+    use radius: NO
+  PAP parameters:-
+    max auth requests: 10, restart interval: 3, timeout: 0
+  CHAP parameters:-
+    interval: 10, max challenge: 10, restart: 3
+  LCP parameters:-
+    echo failure count: 0, echo interval: 0
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+  IPCP parameters:-
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+
+Ppp profile three
+  trace flags: NONE
+  mru: 1500, mtu: 1500, mode: SYNC|ASYNC
+  allowed authentications: PAP CHAP MSCHAP MSCHAPv2 EAP 
+  max connect time: 0, max failure count: 10, idle timeout: 0
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: NOT SET, peer address: NOT SET
+    dns addresses: NOT SET / NOT SET
+    wins addresses: NOT SET / NOT SET
+    use radius: NO
+  PAP parameters:-
+    max auth requests: 10, restart interval: 3, timeout: 0
+  CHAP parameters:-
+    interval: 10, max challenge: 10, restart: 3
+  LCP parameters:-
+    echo failure count: 0, echo interval: 0
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+  IPCP parameters:-
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+}
+
+set configfile-5.7 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+ppp profile create profile_name=one
+ppp profile modify profile_name=one \
+	trace_flags=15 \
+	asyncmap=66 \
+	mru=42 \
+	mtu=42 \
+	use_radius=yes \
+	radius_hint=wibble \
+	auth_pap=off \
+	auth_chap=off \
+	auth_mschapv1=off \
+	auth_mschapv2=off \
+	auth_eap=off \
+	auth_none=yes \
+	auth_peer=no \
+	sync_mode=async \
+	chap_interval=42 \
+	chap_max_challenge=42 \
+	chap_restart=42 \
+	pap_max_auth_requests=42 \
+	pap_restart_interval=42 \
+	pap_timeout=42 \
+	idle_timeout=42 \
+	ipcp_max_config_requests=42 \
+	ipcp_max_config_naks=42 \
+	ipcp_max_terminate_requests=42 \
+	ipcp_retransmit_interval=42 \
+	lcp_echo_failure_count=42 \
+	lcp_echo_interval=42 \
+	lcp_max_config_requests=42 \
+	lcp_max_config_naks=42 \
+	lcp_max_terminate_requests=42 \
+	lcp_retransmit_interval=42 \
+	max_connect_time=42 \
+	max_failure_count=42 \
+	dns_ipaddr_pri=10.0.0.3 \
+	dns_ipaddr_sec=10.0.0.4 \
+	wins_ipaddr_pri=10.0.0.5 \
+	wins_ipaddr_sec=10.0.0.6 \
+	local_ipaddr=10.0.0.1 \
+	remote_ipaddr=10.0.0.2 \
+	ip_pool_name=wibble \
+
+
+# locally created tunnels and sessions
+}
+
+test configfile-5.7 { } \
+    { !l2tpdRunning && pppProfile } \
+    { \
+	global configfile-5.7
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-5.7} configfile-5.7.cfg results
+	startOpenl2tpd results/configfile-5.7.cfg
+	sleep 1
+	l2tpConfig ppp profile show profile_name=one
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Ppp profile one
+  trace flags: PROTOCOL FSM API AVP
+  mru: 42, mtu: 42, mode: ASYNC
+  allowed authentications: NOAUTH 
+  max connect time: 42, max failure count: 42, idle timeout: 42
+  asyncmap: 0x42
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: 10.0.0.1, peer address: 10.0.0.2
+    dns addresses: 10.0.0.3 / 10.0.0.4
+    wins addresses: 10.0.0.5 / 10.0.0.6
+    ip pool name: wibble
+    use radius: YES
+    radius hint: wibble
+  PAP parameters:-
+    max auth requests: 42, restart interval: 42, timeout: 42
+  CHAP parameters:-
+    interval: 42, max challenge: 42, restart: 42
+  LCP parameters:-
+    echo failure count: 42, echo interval: 42
+    max config requests: 42, max config naks: 42
+    max terminate requests: 42, retransmit interval: 42
+  IPCP parameters:-
+    max config requests: 42, max config naks: 42
+    max terminate requests: 0, retransmit interval: 42
+}
+
+set configfile-5.8 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+ppp profile create profile_name=three
+ppp profile modify profile_name=three \
+	trace_flags=15 \
+	asyncmap=66 \
+	mru=42 \
+	mtu=42 \
+	auth_pap=off \
+	auth_chap=off \
+	auth_mschapv1=off \
+	auth_mschapv2=off \
+	auth_eap=off \
+	auth_none=yes \
+	sync_mode=async \
+	chap_interval=42 \
+	chap_max_challenge=42 \
+	chap_restart=42 \
+	pap_max_auth_requests=42 \
+	pap_restart_interval=42 \
+	pap_timeout=42 \
+	idle_timeout=42 \
+	ipcp_max_config_requests=42 \
+	ipcp_max_config_naks=42 \
+	ipcp_max_terminate_requests=42 \
+	ipcp_retransmit_interval=42 \
+	lcp_echo_failure_count=42 \
+	lcp_echo_interval=42 \
+	lcp_max_config_requests=42 \
+	lcp_max_config_naks=42 \
+	lcp_max_terminate_requests=42 \
+	lcp_retransmit_interval=42 \
+	max_connect_time=42 \
+	max_failure_count=42 \
+	dns_ipaddr_pri=10.0.0.3 \
+	dns_ipaddr_sec=10.0.0.4 \
+	wins_ipaddr_pri=10.0.0.5 \
+	wins_ipaddr_sec=10.0.0.6 \
+	local_ipaddr=10.0.0.1 \
+	remote_ipaddr=10.0.0.2 \
+	ip_pool_name=wibble \
+        default_route=yes \
+
+ppp profile create profile_name=two
+ppp profile modify profile_name=two \
+	pap_max_auth_requests=42 \
+	pap_restart_interval=42 \
+	pap_timeout=42 \
+	ip_pool_name=wibble \
+
+ppp profile create profile_name=one
+ppp profile modify profile_name=one \
+	trace_flags=15 \
+	lcp_retransmit_interval=42 \
+
+
+# locally created tunnels and sessions
+}
+
+test configfile-5.8 { } \
+    { !l2tpdRunning && pppProfile } \
+    { \
+	global configfile-5.8
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-5.8} configfile-5.8.cfg results
+	startOpenl2tpd results/configfile-5.8.cfg
+	sleep 1
+	l2tpConfig ppp profile show profile_name=one
+	l2tpConfig ppp profile show profile_name=two
+	l2tpConfig ppp profile show profile_name=three
+	sleep 1
+	exec killall openl2tpd
+	sleep 1
+    } \
+    {
+
+
+Ppp profile one
+  trace flags: PROTOCOL FSM API AVP
+  mru: 1500, mtu: 1500, mode: SYNC|ASYNC
+  allowed authentications: PAP CHAP MSCHAP MSCHAPv2 EAP 
+  max connect time: 0, max failure count: 10, idle timeout: 0
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: NOT SET, peer address: NOT SET
+    dns addresses: NOT SET / NOT SET
+    wins addresses: NOT SET / NOT SET
+    use radius: NO
+  PAP parameters:-
+    max auth requests: 10, restart interval: 3, timeout: 0
+  CHAP parameters:-
+    interval: 10, max challenge: 10, restart: 3
+  LCP parameters:-
+    echo failure count: 0, echo interval: 0
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 42
+  IPCP parameters:-
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+
+Ppp profile two
+  trace flags: NONE
+  mru: 1500, mtu: 1500, mode: SYNC|ASYNC
+  allowed authentications: PAP CHAP MSCHAP MSCHAPv2 EAP 
+  max connect time: 0, max failure count: 10, idle timeout: 0
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: NOT SET, peer address: NOT SET
+    dns addresses: NOT SET / NOT SET
+    wins addresses: NOT SET / NOT SET
+    ip pool name: wibble
+    use radius: NO
+  PAP parameters:-
+    max auth requests: 42, restart interval: 42, timeout: 42
+  CHAP parameters:-
+    interval: 10, max challenge: 10, restart: 3
+  LCP parameters:-
+    echo failure count: 0, echo interval: 0
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+  IPCP parameters:-
+    max config requests: 10, max config naks: 10
+    max terminate requests: 3, retransmit interval: 3
+
+Ppp profile three
+  trace flags: PROTOCOL FSM API AVP
+  mru: 42, mtu: 42, mode: ASYNC
+  allowed authentications: NOAUTH 
+  max connect time: 42, max failure count: 42, idle timeout: 42
+  asyncmap: 0x42
+  multilink: NO, proxy arp: NO
+  IP parameters:-
+    local address: 10.0.0.1, peer address: 10.0.0.2 [default route]
+    dns addresses: 10.0.0.3 / 10.0.0.4
+    wins addresses: 10.0.0.5 / 10.0.0.6
+    ip pool name: wibble
+    use radius: NO
+  PAP parameters:-
+    max auth requests: 42, restart interval: 42, timeout: 42
+  CHAP parameters:-
+    interval: 42, max challenge: 42, restart: 42
+  LCP parameters:-
+    echo failure count: 42, echo interval: 42
+    max config requests: 42, max config naks: 42
+    max terminate requests: 42, retransmit interval: 42
+  IPCP parameters:-
+    max config requests: 42, max config naks: 42
+    max terminate requests: 0, retransmit interval: 42
+}
+
+############################################################################
+# Tests 6.* - tunnel operations
+############################################################################
+
+set configfile-6.1 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+tunnel create tunnel_name=l2tp61 src_ipaddr=192.168.0.1 dest_ipaddr=10.42.43.44 \
+	tunnel_id=61 \
+	config_id=61 \
+
+}
+
+test configfile-6.1 { configfile: simple tunnel create } \
+    { !l2tpdRunning && tunnel } \
+    { \
+	global configfile-6.1
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-6.1} configfile-6.1.cfg results
+	startOpenl2tpd results/configfile-6.1.cfg
+	sleep 1
+	l2tpConfig tunnel show config tunnel_name=l2tp61
+	sleep 1
+	exec killall openl2tpd
+	filterOut "  created at: .*" "  created at:"
+	filterOut "  peer tunnel id: .*," "  peer tunnel id: 0,"
+	filterOut "  UDP ports: local .*," "  UDP ports: local 0,"
+	addCrLf
+    } \
+    {
+
+
+Tunnel 61, from 192.168.0.1 to 10.42.43.44, config_id 61:-
+  state: WAITCTLREPLY
+  created at:
+  administrative name: 'l2tp61'
+  created by admin: YES, tunnel mode: LAC
+  peer tunnel id: 0, host name: NOT SET
+  UDP ports: local 0, peer 1701
+  authorization mode: NONE, hide AVPs: OFF, allow PPP proxy: OFF
+  session limit: 0, session count: 0
+  tunnel profile: default, peer profile: default
+  session profile: default, ppp profile: default
+  hello timeout: 60, retry timeout: 1, idle timeout: 0
+  rx window size: 10, tx window size: 10, max retries: 5
+  use udp checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC, bearer capability: DIGITAL ANALOG
+  use tiebreaker: OFF
+  trace flags: NONE
+  peer protocol version: 0.0, firmware 0
+  peer framing capability: NONE
+  peer bearer capability: NONE
+  peer rx window size: 0
+}
+
+set configfile-6.2 {
+
+# system
+
+# peer profiles
+peer profile create profile_name=wibble
+
+# tunnel profiles
+tunnel profile create profile_name=wibble
+
+# session profiles
+session profile create profile_name=wibble
+
+# ppp profiles
+ppp profile create profile_name=wibble
+
+# locally created tunnels and sessions
+tunnel create tunnel_name=l2tp62 src_ipaddr=127.0.0.1 dest_ipaddr=10.42.43.44 \
+	tunnel_id=62 \
+	config_id=62 \
+	hide_avps=yes \
+	auth_mode=none \
+	framing_cap=async \
+	bearer_cap=analog \
+	use_tiebreaker=yes \
+	hello_timeout=42 \
+	max_retries=42 \
+	rx_window_size=42 \
+	tx_window_size=42 \
+	retry_timeout=42 \
+	idle_timeout=42 \
+	secret=wibble \
+	allow_ppp_proxy=yes \
+	trace_flags=7 \
+	use_udp_checksums=no \
+	host_name=wibble \
+	max_sessions=42 \
+	src_ipaddr=127.0.0.1 \
+	our_udp_port=1701 \
+	peer_udp_port=5000 \
+	peer_profile_name=wibble \
+	profile_name=wibble \
+	session_profile_name=wibble \
+	ppp_profile_name=wibble \
+	do_pmtu_discovery=yes \
+	mtu=1400 \
+
+}
+
+test configfile-6.2 { configfile: complex tunnel create } \
+    { !l2tpdRunning && tunnel } \
+    { \
+	global configfile-6.2
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-6.2} configfile-6.2.cfg results
+	startOpenl2tpd results/configfile-6.2.cfg
+	sleep 1
+	l2tpConfig tunnel show config tunnel_name=l2tp62
+	sleep 1
+	exec killall openl2tpd
+	filterOut "  created at: .*" "  created at:"
+	filterOut "  peer tunnel id: .*," "  peer tunnel id: 0,"
+	filterOut "  UDP ports: local .*," "  UDP ports: local 0,"
+	filterOut "  tiebreaker: .*$" "  tiebreaker:"
+	addCrLf
+    } \
+    {
+
+
+Tunnel 62, from 127.0.0.1 to 10.42.43.44, config_id 62:-
+  state: WAITCTLREPLY
+  created at:
+  administrative name: 'l2tp62'
+  created by admin: YES, tunnel mode: LAC
+  local host name: wibble
+  peer tunnel id: 0, host name: NOT SET
+  UDP ports: local 0, peer 5000
+  authorization mode: NONE, hide AVPs: ON, allow PPP proxy: ON
+  tunnel secret: 'wibble'
+  session limit: 42, session count: 0
+  tunnel profile: wibble, peer profile: wibble
+  session profile: wibble, ppp profile: wibble
+  hello timeout: 42, retry timeout: 42, idle timeout: 42
+  rx window size: 42, tx window size: 42, max retries: 42
+  use udp checksums: OFF
+  do pmtu discovery: ON, mtu: 1400
+  framing capability: ASYNC, bearer capability: ANALOG
+  use tiebreaker: ON
+  tiebreaker:
+  trace flags: PROTOCOL FSM API
+  peer protocol version: 0.0, firmware 0
+  peer framing capability: NONE
+  peer bearer capability: NONE
+  peer rx window size: 0
+}
+
+set configfile-6.3 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+tunnel create tunnel_name=l2tp631 src_ipaddr=192.168.0.1 dest_ipaddr=10.42.43.44 \
+	tunnel_id=631 \
+	config_id=631 \
+	hide_avps=yes \
+	secret=wibble \
+	trace_flags=7 \
+	host_name=wibble \
+	mtu=1400 \
+
+tunnel create tunnel_name=l2tp632 src_ipaddr=192.168.0.1 dest_ipaddr=10.42.43.44 \
+	tunnel_id=632 \
+	config_id=632 \
+
+tunnel create tunnel_name=l2tp633 src_ipaddr=192.168.0.1 dest_ipaddr=10.42.43.44 \
+	tunnel_id=633 \
+	config_id=633 \
+        mtu=1420 \
+
+}
+
+test configfile-6.3 { configfile: multiple tunnel creates } \
+    { !l2tpdRunning && tunnel } \
+    { \
+	global configfile-6.3
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-6.3} configfile-6.3.cfg results
+	startOpenl2tpd results/configfile-6.3.cfg
+	sleep 1
+	l2tpConfig tunnel show config tunnel_name=l2tp631
+	l2tpConfig tunnel show config tunnel_name=l2tp632
+	l2tpConfig tunnel show config tunnel_name=l2tp633
+	sleep 1
+	exec killall openl2tpd
+	filterOut "  created at: .*" "  created at:"
+	filterOut "  peer tunnel id: .*," "  peer tunnel id: 0,"
+	filterOut "  UDP ports: local .*," "  UDP ports: local 0,"
+	addCrLf
+    } \
+    {
+
+
+Tunnel 631, from 192.168.0.1 to 10.42.43.44, config_id 631:-
+  state: WAITCTLREPLY
+  created at:
+  administrative name: 'l2tp631'
+  created by admin: YES, tunnel mode: LAC
+  local host name: wibble
+  peer tunnel id: 0, host name: NOT SET
+  UDP ports: local 0, peer 1701
+  authorization mode: NONE, hide AVPs: ON, allow PPP proxy: OFF
+  tunnel secret: 'wibble'
+  session limit: 0, session count: 0
+  tunnel profile: default, peer profile: default
+  session profile: default, ppp profile: default
+  hello timeout: 60, retry timeout: 1, idle timeout: 0
+  rx window size: 10, tx window size: 10, max retries: 5
+  use udp checksums: ON
+  do pmtu discovery: OFF, mtu: 1400
+  framing capability: SYNC ASYNC, bearer capability: DIGITAL ANALOG
+  use tiebreaker: OFF
+  trace flags: PROTOCOL FSM API
+  peer protocol version: 0.0, firmware 0
+  peer framing capability: NONE
+  peer bearer capability: NONE
+  peer rx window size: 0
+Tunnel 632, from 192.168.0.1 to 10.42.43.44, config_id 632:-
+  state: WAITCTLREPLY
+  created at:
+  administrative name: 'l2tp632'
+  created by admin: YES, tunnel mode: LAC
+  peer tunnel id: 0, host name: NOT SET
+  UDP ports: local 0, peer 1701
+  authorization mode: NONE, hide AVPs: OFF, allow PPP proxy: OFF
+  session limit: 0, session count: 0
+  tunnel profile: default, peer profile: default
+  session profile: default, ppp profile: default
+  hello timeout: 60, retry timeout: 1, idle timeout: 0
+  rx window size: 10, tx window size: 10, max retries: 5
+  use udp checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC, bearer capability: DIGITAL ANALOG
+  use tiebreaker: OFF
+  trace flags: NONE
+  peer protocol version: 0.0, firmware 0
+  peer framing capability: NONE
+  peer bearer capability: NONE
+  peer rx window size: 0
+Tunnel 633, from 192.168.0.1 to 10.42.43.44, config_id 633:-
+  state: WAITCTLREPLY
+  created at:
+  administrative name: 'l2tp633'
+  created by admin: YES, tunnel mode: LAC
+  peer tunnel id: 0, host name: NOT SET
+  UDP ports: local 0, peer 1701
+  authorization mode: NONE, hide AVPs: OFF, allow PPP proxy: OFF
+  session limit: 0, session count: 0
+  tunnel profile: default, peer profile: default
+  session profile: default, ppp profile: default
+  hello timeout: 60, retry timeout: 1, idle timeout: 0
+  rx window size: 10, tx window size: 10, max retries: 5
+  use udp checksums: ON
+  do pmtu discovery: OFF, mtu: 1420
+  framing capability: SYNC ASYNC, bearer capability: DIGITAL ANALOG
+  use tiebreaker: OFF
+  trace flags: NONE
+  peer protocol version: 0.0, firmware 0
+  peer framing capability: NONE
+  peer bearer capability: NONE
+  peer rx window size: 0
+}
+
+set configfile-6.4 {
+
+# system
+
+# peer profiles
+peer profile create profile_name=wibble
+
+# tunnel profiles
+tunnel profile create profile_name=wibble
+
+# session profiles
+session profile create profile_name=wibble
+
+# ppp profiles
+ppp profile create profile_name=wibble
+
+# locally created tunnels and sessions
+tunnel create tunnel_name=l2tp64 src_ipaddr=192.168.0.1 dest_ipaddr=10.42.43.44 \
+	tunnel_id=64 \
+	config_id=64 \
+	profile_name=wibble \
+	peer_profile_name=wibble \
+	session_profile_name=wibble \
+	ppp_profile_name=wibble \
+
+}
+
+test configfile-6.4 { configfile: tunnel create with profiles } \
+    { !l2tpdRunning && tunnel } \
+    { \
+	global configfile-6.4
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-6.4} configfile-6.4.cfg results
+	startOpenl2tpd results/configfile-6.4.cfg
+	sleep 1
+	l2tpConfig tunnel show config tunnel_name=l2tp64
+	sleep 1
+	exec killall openl2tpd
+	filterOut "  created at: .*" "  created at:"
+	filterOut "  peer tunnel id: .*," "  peer tunnel id: 0,"
+	filterOut "  UDP ports: local .*," "  UDP ports: local 0,"
+	addCrLf
+    } \
+    {
+
+
+Tunnel 64, from 192.168.0.1 to 10.42.43.44, config_id 64:-
+  state: WAITCTLREPLY
+  created at:
+  administrative name: 'l2tp64'
+  created by admin: YES, tunnel mode: LAC
+  peer tunnel id: 0, host name: NOT SET
+  UDP ports: local 0, peer 1701
+  authorization mode: NONE, hide AVPs: OFF, allow PPP proxy: OFF
+  session limit: 0, session count: 0
+  tunnel profile: wibble, peer profile: wibble
+  session profile: wibble, ppp profile: wibble
+  hello timeout: 60, retry timeout: 1, idle timeout: 0
+  rx window size: 10, tx window size: 10, max retries: 5
+  use udp checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC, bearer capability: DIGITAL ANALOG
+  use tiebreaker: OFF
+  trace flags: NONE
+  peer protocol version: 0.0, firmware 0
+  peer framing capability: NONE
+  peer bearer capability: NONE
+  peer rx window size: 0
+}
+
+############################################################################
+# Tests 7.* - session operations
+############################################################################
+
+set configfile-7.1 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+tunnel create tunnel_name=l2tp71 src_ipaddr=127.0.0.1 dest_ipaddr=127.0.0.1 \
+	tunnel_id=71 \
+	config_id=71 \
+
+#
+session create tunnel_name=l2tp71 \
+    session_name=sess71 \
+    session_id=71 \
+
+}
+
+test configfile-7.1 { configfile: simple session create } \
+    { !l2tpdRunning && session } \
+    { \
+	global configfile-7.1
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-7.1} configfile-7.1.cfg results
+	startOpenl2tpd results/configfile-7.1.cfg
+	sleep 1
+	l2tpConfig session show tunnel_name=l2tp71 session_name=sess71
+	sleep 1
+	exec killall openl2tpd
+	filterOut "  created at: .*" "  created at:"
+	filterOut ", peer session id: .*" ", peer session id: 0"
+	addCrLf
+    } \
+    {
+
+
+Session 71 on tunnel 71:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created at:
+  administrative name: sess71
+  created by admin: YES, peer session id: 0
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: NONE
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  call serial number: 1
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+    call serial number: 1
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+}
+
+set configfile-7.2 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+session profile create profile_name=wibble \
+
+# ppp profiles
+ppp profile create profile_name=wibble \
+
+# locally created tunnels and sessions
+tunnel create tunnel_name=l2tp72 \
+        src_ipaddr=127.0.0.1 \
+        dest_ipaddr=127.0.0.1 \
+	tunnel_id=72 \
+	config_id=72 \
+
+#
+session create tunnel_name=l2tp72 \
+    session_name=sess72 \
+    session_id=72 \
+    profile_name=wibble \
+    ppp_profile_name=wibble \
+    session_type=laic \
+    priv_group_id=mygroup \
+    interface_name=l2tp72 \
+    user_name=my_user \
+    user_password=my_password \
+    framing_type=sync \
+    bearer_type=digital \
+    minimum_bps=1 \
+    maximum_bps=1000000 \
+    connect_speed=512000:256000 \
+    use_ppp_proxy=yes \
+    proxy_auth_type=pap \
+    proxy_auth_name=my_user \
+    proxy_auth_challenge=0x0102030405060708090a \
+    proxy_auth_response=0x0a090807060504030201 \
+    calling_number=0123456789 \
+    called_number=9876543210 \
+    sub_address=1234 \
+    initial_rcvd_lcp_confreq=0x010203040506070809 \
+    last_sent_lcp_confreq=0x01020304 \
+    last_rcvd_lcp_confreq=0x9876 \
+    sequencing_required=yes \
+    use_sequence_numbers=yes \
+    reorder_timeout=10 \
+    trace_flags=7 \
+
+}
+
+test configfile-7.2 { configfile: session create with all parameters } \
+    { !l2tpdRunning && session } \
+    { \
+	global configfile-7.2
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-7.2} configfile-7.2.cfg results
+	startOpenl2tpd results/configfile-7.2.cfg
+	sleep 1
+	l2tpConfig session show tunnel_name=l2tp72 session_name=sess72
+	sleep 1
+	exec killall openl2tpd
+	filterOut "  created at: .*" "  created at:"
+	filterOut ", peer session id: .*" ", peer session id: 0"
+	addCrLf
+    } \
+    {
+
+
+Session 72 on tunnel 72:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created at:
+  administrative name: sess72
+  created by admin: YES, peer session id: 0
+  private group id: mygroup
+  ppp user name: my_user
+  ppp user password: my_password
+  ppp interface name: l2tp72
+  ppp profile name: wibble
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 10
+  trace flags: PROTOCOL FSM API
+  framing types: SYNC
+  bearer types: DIGITAL
+  call serial number: 1
+  min bps: 1, max bps: 1000000
+  tx connect speed: 256000, rx connect speed: 512000
+  calling number: '123456789'
+  called number: '4294967295'
+  sub address: '1234'
+  use ppp proxy: YES
+  proxy auth type: PAP
+  proxy auth name: 'my_user'
+  proxy auth challenge: 0102030405060708090a
+  proxy auth response: 0a090807060504030201
+  initial received LCP CONFREQ: 010203040506070809
+  last received LCP CONFREQ: 9876
+  last sent LCP CONFREQ: 01020304
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+    call serial number: 1
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+}
+
+set configfile-7.3 {
+
+# system
+
+# peer profiles
+
+# tunnel profiles
+
+# session profiles
+
+# ppp profiles
+
+# locally created tunnels and sessions
+tunnel create tunnel_name=l2tp73 src_ipaddr=127.0.0.1 dest_ipaddr=127.0.0.1 \
+	tunnel_id=73 \
+	config_id=73 \
+
+#
+session create tunnel_name=l2tp73 \
+    session_name=sess731 \
+    session_id=731 \
+
+session create tunnel_name=l2tp73 \
+    session_name=sess732 \
+    session_id=732 \
+
+session create tunnel_name=l2tp73 \
+    session_name=sess733 \
+    session_id=733 \
+
+}
+
+test configfile-7.3 { configfile: multiple session creates } \
+    { !l2tpdRunning && session } \
+    { \
+	global configfile-7.3
+	clearResult
+	set cwd [pwd]
+	makeFile ${configfile-7.3} configfile-7.3.cfg results
+	startOpenl2tpd results/configfile-7.3.cfg
+	sleep 1
+	l2tpConfig session show tunnel_name=l2tp73 session_name=sess731
+	l2tpConfig session show tunnel_name=l2tp73 session_name=sess732
+	l2tpConfig session show tunnel_name=l2tp73 session_name=sess733
+	sleep 1
+	exec killall openl2tpd
+	filterOut "  created at: .*" "  created at:"
+	filterOut ", peer session id: .*" ", peer session id: 0"
+	addCrLf
+    } \
+    {
+}

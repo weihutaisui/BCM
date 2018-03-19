@@ -1,0 +1,49 @@
+<html>
+  <head>
+    <meta http-equiv='Pragma' content='no-cache'>
+    <link rel='stylesheet' href='tabletab.css' type='text/css'>
+    <script src='jquery.js'></script>
+    <title>Container Detail Information</title>
+    <script language="javascript">
+<!-- hide
+      $(document).ready(function() {
+        var tablinks = document.getElementsByClassName('tablinks');
+
+        tablinks[0].className += ' active';
+
+        document.getElementById('state').style.display = 'block';
+      });
+
+      function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+
+        tabcontent = document.getElementsByClassName('tabcontent');
+
+        for (i = 0; i < tabcontent.length; i++) {
+          tabcontent[i].style.display = 'none';
+        }
+
+        tablinks = document.getElementsByClassName('tablinks');
+
+        for (i = 0; i < tablinks.length; i++) {
+          tablinks[i].className = tablinks[i].className.replace(' active', '');
+        }
+
+        document.getElementById(tabName).style.display = 'block';
+        evt.currentTarget.className += ' active';
+      }
+// done hiding -->
+    </script>
+  </head>
+  <body>
+    <form>
+      <center><b>Container Detail Information</b></center><br><br>
+      <ul class='tab'>
+        <li><a href='#' class='tablinks' onclick="openTab(event, 'state')">State</a></li>
+        <li><a href='#' class='tablinks' onclick="openTab(event, 'network')">Network</a></li>
+        <li><a href='#' class='tablinks' onclick="openTab(event, 'stats')">Statistics</a></li>
+      </ul>
+<%ejGetOther(container-detail)%>
+    </form>
+  </body>
+</html>

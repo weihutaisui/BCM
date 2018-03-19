@@ -1,0 +1,126 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript">
+
+var sessionKey='<%ejGetOther(sessionKey)%>';
+
+function frmLoad() {
+   with ( document.forms[0] ) {
+      stunEnable = '<%ejGet(stunEnable)%>';
+      stunServerAddress.value = '<%ejGet(stunServerAddress)%>';
+      stunServerPort.value = '<%ejGet(stunServerPort)%>';
+      stunUser.value = '<%ejGet(stunUser)%>';
+      stunPwd.value = '<%ejGet(stunPwd)%>';
+      stunMaxKeepAlivePeriod.value = '<%ejGet(stunMaxKeepAlivePeriod)%>';
+      stunMinKeepAlivePeriod.value = '<%ejGet(stunMinKeepAlivePeriod)%>';
+
+      if ( stunEnable == '1' )
+         enable[1].checked = true;
+      else
+         enable[0].checked = true;
+   }
+}
+
+function btnApply() {
+   var loc = 'stuncfg.cgi?';
+
+   with (document.forms[0]) {
+      if (enable[1].checked == true) {
+         loc += 'stunEnable=1';
+      } else {
+         loc += 'stunEnable=0';
+      }
+
+      if (stunServerAddress.value.length > 256) {
+         alert('The length of STUN Server Address (' + stunServerAddress.value.length + ') is too long [1-256].');
+         return;
+      }
+      loc += '&stunServerAddress=' + encodeUrl(stunServerAddress.value);
+
+      loc += '&stunServerPort=' + encodeUrl(stunServerPort.value);
+
+      if (stunUser.value.length > 256) {
+         alert('The length of STUN User Name (' + stunUser.value.length + ') is too long [0-256].');
+         return;
+      }
+      loc += '&stunUser=' + encodeUrl(stunUser.value);
+ 
+      if (stunPwd.value.length > 256) {
+         alert('The length of STUN Password (' + stunPwd.value.length + ') is too long [0-256].');
+         return;
+      }
+      loc += '&stunPwd=' + encodeUrl(stunPwd.value);
+
+      loc += '&stunMaxKeepAlivePeriod=' + encodeUrl(stunMaxKeepAlivePeriod.value);
+      loc += '&stunMinKeepAlivePeriod=' + encodeUrl(stunMinKeepAlivePeriod.value);
+   }
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location.assign("' + loc + '")';
+   eval(code);
+}
+
+// done hiding -->
+</script>
+   </head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form>
+            <b>STUN client - Configuration<br>
+            </b>
+            <br>
+            Session Traversal Utilities for NAT (STUN) is a protocol that serves as a tool 
+            for other protocols in dealing with Network Address Translator (NAT) traversal. <br>
+            <br>
+            Select the desired values and click "Apply/Save" to configure the STUN client options.<br>
+            <br>
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="240"></td>
+                  <td><input name='enable' type='radio'>Disable</td>
+                  <td><input name='enable' type='radio'>Enable</td>
+               </tr>
+            </table>
+            <br>
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="240">STUN Server Address:</td>
+                  <td><input type='text' name='stunServerAddress' size="20" maxlength="256"></td>
+               </tr>
+               <tr>
+                  <td>STUN Server Port:</td>
+                  <td><input type='text' name='stunServerPort' size="20" maxlength="256"></td>
+               </tr>
+               <tr>
+                  <td>STUN User Name:</td>
+                  <td><input type='text' name='stunUser' size="20" maxlength="256"></td>
+               </tr>
+               <tr>
+                  <td>STUN Password:</td>
+                  <td><input type='password' name='stunPwd' size="20" maxlength="256"></td>
+               </tr>
+            </table>
+
+            <br>
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="240">Max KeepAlive Period:</td>
+                  <td><input type='text' name='stunMaxKeepAlivePeriod' size="20" maxlength="256"></td>
+               </tr>
+               <tr>
+                  <td>Min KeepAlive Period:</td>
+                  <td><input type='text' name='stunMinKeepAlivePeriod' size="20" maxlength="256"></td>
+               </tr>
+            </table>
+            <center>
+               <p align="center">
+                  <input type='button' onClick='btnApply()' value='Apply/Save'>
+            </center>
+         </form>
+      </blockquote>
+   </body>
+</html>

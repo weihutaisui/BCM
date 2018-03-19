@@ -1,0 +1,37 @@
+Event Notification Plugin
+=========================
+
+The event_sock plugin implements a simple socket based event notification protocol which allows client processes to register for some or all of the supported events.  
+
+The named pipe /tmp/openl2tpd.evt is used to accept incoming unix stream socket connections.  A maximum of 5 concurrent clients is permitted.
+
+Messages in both directions (from openl2tpd to client and from client to openl2tpd) use a common header followed by a variable length data section.  The header has a field containing the event type(s) and a field giving the length of the data which follows immediately after the header.
+
+When initially connected, clients are not configured to receive any event messages.  Each client has it's own mask of events, and only event types for which the client's mask is set will be sent to the client.  The client may send a message at any time to amend the mask.
+
+To amend the event mask, the event field of the message header must contain one or more event types (logically ORed together), which are to be amended.  The message length field in the header must be 1, and the following data byte will be interpreted as the operation to perform (zero == mask off, nonzero == mask on).  Client context is not maintained once the client socket has closed, and mask settings will be lost.
+ 
+Once the event mask is set, the client will receive asynchronous event notification via the socket.  The client should read sizeof(struct l2tp_event_hdr) from the socket, and then use the length field of the header to determine the number of subsequent bytes to read.
+
+The purpose and number of subsequent data bytes is event specific, all data should be assumed to be in host endianness.  For the currently supported events, the data comprises:
+ 
+ 	L2TP_EVENT_SESSION_CREATED (4 bytes)
+ 		uint16_t: L2TP tunnel ID
+ 		uint16_t: L2TP session ID
+
+ 	L2TP_EVENT_SESSION_DELETED (4 bytes)
+ 		uint16_t: L2TP tunnel ID
+ 		uint16_t: L2TP session ID
+
+ 	L2TP_EVENT_SESSION_UP (8 bytes)
+ 		uint16_t: L2TP tunnel ID
+ 		uint16_t: L2TP session ID
+ 		uint16_t: L2TP peer tunnel ID
+ 		uint16_t: L2TP peer session ID
+
+ 	L2TP_EVENT_SESSION_DOWN (4 bytes)
+ 		uint16_t: L2TP tunnel ID
+ 		uint16_t: L2TP session ID
+
+An example implementation of a client application in included in the file event_sock_example.c
+

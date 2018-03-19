@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+
+<html">
+
+<!--[if lte IE 9]>
+<p style="background-color:red; color:white"><b>Your version of Internet Explorer does not support web sockets.</b></p>
+<![endif]-->
+
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache' charset='utf-8'>
+      <link class='include' rel='stylesheet' type='text/css' href='tablesorter/themes/blue/style.css'/>
+      <script language="javascript" src="util.js"></script>
+
+      <!--[if lt IE 9]><script language="javascript" type="text/javascript" src="excanvas.js"></script><![endif]-->
+      <script class="include" type="text/javascript" src="jquery.js"></script>
+      <script class="include" type="text/javascript" src="gauge.min.js"></script>
+      <script class="include" type="text/javascript" src="tablesorter/jquery.tablesorter.min.js"></script>
+
+      <script class="code" type="text/javascript">
+<!-- hide
+      var NEEDLE_EXPIRE_IN_MILLISEC = 100;
+      var resultHistoryList = '<%ejGetOther(spdsvcInfo, resultHistoList)%>';
+      var results = resultHistoryList.split('|');
+      var webSockets = '<%ejGetOther(sysInfo, buildWebSockets)%>';
+      var chipId = '<%ejGetOther(sysInfo, chipId)%>';
+      var key = '<%ejGetOther(sessionKey)%>';
+
+   $(document).ready(function(){
+
+      function get_appropriate_ws_url()
+      {
+         var pcol;
+         var u = document.URL;
+
+         if (u.substring(0, 5) == "https") {
+            pcol = 'wss://';
+            u = u.substr(8);
+         } else {
+            pcol = 'ws://';
+            if (u.substring(0, 4) == "http")
+               u = u.substr(7);
+         }
+
+         u = u.split('/');
+
+         return pcol + u[0] + ':7681/';
+      }
+
+      if (typeof MozWebSocket != 'undefined') {
+         ws_speed_service = new MozWebSocket(get_appropriate_ws_url(), 'speed-service');
+      } else {
+         ws_speed_service = new WebSocket(get_appropriate_ws_url(), 'speed-service');
+      }
+
+      try {
+         ws_speed_service.onopen = function () {
+	        // send session key to validate session
+	        ws_speed_service.send('sessionKey=' + key);
+         } 
+         ws_speed_service.onmessage = function (msg) {
+            // msg.data should have 2 fields:
+            //    1. status: 0 is OK
+            //    2. Kbps
+            //console.log ('info = ' + msg.data);
+
+            window.location.href = '/webs/speedsvc.html';
+         } 
+      } catch(exception) {
+         alert('<p>Error' + exception);  
+      }
+
+      var sendData = function()
+      {
+         var data = getSelect(document.forms[0].mode) + '|';
+         data += document.getElementById('serverIpAddr').value + '|';
+         data += document.getElementById('tcpPort').value + '|';
+         data += getSelect(document.forms[0].direction) + '|';
+         data += 'HW|';
+         data += document.getElementById('duration').value + '|';
+         data += document.getElementById('pktLength').value + '|';
+         data += document.getElementById('kbps').value + '|';
+         
+         if (getSelect(document.forms[0].mode) == 'client_bw')
+         {
+            data += getSelect(document.forms[0].algo) + '|';
+            data += document.getElementById('steps').value + '|';
+            data += document.getElementById('loss').value + '|';
+            data += document.getElementById('latency').value + '|';
+            data += document.getElementById('lossPercentage').value;
+         }
+         else
+            data += '0|0|0|-1|0';
+
+         // readyState == OPEN (1)
+         if (ws_speed_service.readyState == 1)
+            ws_speed_service.send(data);
+      };
+
+      var onClick = function(event)
+      {
+         if (webSockets == '1') {
+            if (getSelect(document.forms[0].direction) == 'upstream')
+               Gauge.Collection.get('upstream').setValue(0);
+            else
+               Gauge.Collection.get('downstream').setValue(0);
+            replotMeterGauge(0);
+            sendData();
+         } else
+            runClick();
+      };
+
+      // bind click event to onClick function
+      $('#btn0').click(onClick);
+
+      // make ResultHistoryTable be sortable
+      //$('#ResultHistoryTable').tablesorter( {sortList: [[0,0], [1,0]]} );
+      $('#ResultHistoryTable').tablesorter();
+   });
+
+function replotMeterGauge(counter) {
+   var step = 1;
+ 
+   if (getSelect(document.forms[0].mode) == 'client_bw')
+   {
+      if (getSelect(document.forms[0].algo) == 'Bin' ||
+          getSelect(document.forms[0].algo) == 'Fast' ||
+          getSelect(document.forms[0].algo) == 'Ramp')
+      {
+         step = parseInt(document.getElementById('steps').value);
+      }
+      else if (getSelect(document.forms[0].algo) == 'RxRate')
+      {
+         step = 2;
+      }
+   }
+
+   // convert max from Kbps to Mbps
+   var max = parseInt(document.getElementById('kbps').value)/1000;
+   // duration now in millisecond, period = duration * step
+   var period = parseInt(document.getElementById('duration').value) * step;
+   // max = (period / NEEDLE_EXPIRE_IN_MILLISEC) * interval
+   var interval = (max * NEEDLE_EXPIRE_IN_MILLISEC) / period;
+
+   if (counter < max)
+   {
+      counter += interval;
+      setTimeout(function(){replotMeterGauge(counter)},NEEDLE_EXPIRE_IN_MILLISEC);
+   }
+   else
+      counter = max;
+
+   if (getSelect(document.forms[0].direction) == 'upstream')
+      Gauge.Collection.get('upstream').setValue(counter);
+   else
+      Gauge.Collection.get('downstream').setValue(counter);
+}
+
+function initMeterGauge() {
+   var up = 0;
+   var down = 0;
+   var resultCols = '';
+
+   // results should have the following format
+   // 'runtime;throughput;payloadrate;packetloss;latency;ajustedreceivedrate;receivedtime;overhead;direction|
+   //  runtime;throughput;payloadrate;packetloss;latency;ajustedreceivedrate;receivedtime;overhead;direction|'
+
+   if (results.length > 0) {
+      for ( i = 0; i < results.length; i++ ) {
+         if (results[i] != '') {
+            resultCols = results[i].split(';');
+            if (resultCols.length > 8 &&
+                resultCols[8] == 'upstream') {
+               up = parseInt(resultCols[1], 10) / 1000;
+               break;
+            }
+         }
+      }
+
+      for ( i = 0; i < results.length; i++ ) {
+         if (results[i] != '') {
+            resultCols = results[i].split(';');
+            if (resultCols.length > 8 &&
+                resultCols[8] == 'downstream') {
+               down = parseInt(resultCols[1], 10) / 1000;
+               break;
+            }
+         }
+      }
+   }
+
+   Gauge.Collection.get('upstream').setValue(up);
+   Gauge.Collection.get('downstream').setValue(down);
+}
+
+function frmLoad() {
+   var testParams = '<%ejGetOther(spdsvcInfo, testParams)%>';
+   var params = testParams.split('|');
+
+   document.getElementById('mode').value = params[0];
+   document.getElementById('serverIpAddr').value = params[1];
+   document.getElementById('tcpPort').value = params[2];
+   document.getElementById('direction').value = params[3];
+   document.getElementById('duration').value = params[5];
+   document.getElementById('pktLength').value = params[6];
+   document.getElementById('kbps').value = params[7];
+   document.getElementById('algo').value = params[8];
+   document.getElementById('steps').value = params[9];
+   document.getElementById('loss').value = params[10];
+   document.getElementById('latency').value = params[11];
+   document.getElementById('lossPercentage').value = params[12];
+
+   if (params[0] == 'client_bw')
+   {
+      document.getElementById('bwParams').style.display = 'block';
+      if (params[8] == 'Bin')
+      {
+         document.getElementById('stepParam').style.display = 'block';
+         document.getElementById('lossParam').style.display = 'block';
+         document.getElementById('latencyParam').style.display = 'block';
+         document.getElementById('lossPercentageParam').style.display = 'none';
+      }
+      else if (params[8] == 'Fast')
+      {
+         document.getElementById('stepParam').style.display = 'block';
+         document.getElementById('lossParam').style.display = 'block';
+         document.getElementById('latencyParam').style.display = 'none';
+         document.getElementById('lossPercentageParam').style.display = 'none';
+      }
+      else if (params[8] == 'Ramp')
+      {
+         document.getElementById('stepParam').style.display = 'block';
+         document.getElementById('lossParam').style.display = 'none';
+         document.getElementById('latencyParam').style.display = 'block';
+         document.getElementById('lossPercentageParam').style.display = 'block';
+      }
+      else if (params[8] == 'RxRate')
+      {
+         document.getElementById('stepParam').style.display = 'none';
+         document.getElementById('lossParam').style.display = 'none';
+         document.getElementById('latencyParam').style.display = 'none';
+         document.getElementById('lossPercentageParam').style.display = 'none';
+      }
+   }
+}
+
+function runClick()
+{
+   var mode = 'mode='+getSelect(document.forms[0].mode);
+   var serverIpAddr = 'serverIpAddr='+document.getElementById('serverIpAddr').value;
+   var tcpPort = 'tcpPort='+document.getElementById('tcpPort').value;
+   var direction = 'direction='+getSelect(document.forms[0].direction);
+   var dataPath = 'dataPath=HW';
+   var duration = 'duration='+document.getElementById('duration').value;
+   var pktLength = 'pktLength='+document.getElementById('pktLength').value;
+   var kbps = 'kbps='+document.getElementById('kbps').value;
+   var loc = 'speedsvc.cmd?'+mode+"&"+serverIpAddr+"&"+tcpPort+"&"+direction+"&"+dataPath+"&"+duration+"&"+pktLength+"&"+kbps;
+
+   if (getSelect(document.forms[0].mode) == 'client_bw')
+   {
+      var algo = 'algo='+getSelect(document.forms[0].algo);
+      var steps = 'steps='+document.getElementById('steps').value;
+      var loss = 'loss='+document.getElementById('loss').value;
+      var latency = 'latency='+document.getElementById('latency').value;
+      var lossPercentage = 'lossPercentage='+document.getElementById('lossPercentage').value;
+      loc = loc + '&'+algo+'&'+steps+'&'+loss+'&'+latency+'&'+lossPercentage; 
+   }
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+function showAlgoParam()
+{
+   if (getSelect(document.forms[0].algo) == 'Bin')
+   {
+      document.getElementById('stepParam').style.display = 'block';
+      document.getElementById('lossParam').style.display = 'block';
+      document.getElementById('latencyParam').style.display = 'block';
+      document.getElementById('lossPercentageParam').style.display = 'none';
+   }
+   else if (getSelect(document.forms[0].algo) == 'Fast')
+   {
+      document.getElementById('stepParam').style.display = 'block';
+      document.getElementById('lossParam').style.display = 'block';
+      document.getElementById('latencyParam').style.display = 'none';
+      document.getElementById('lossPercentageParam').style.display = 'none';
+   }
+   else if (getSelect(document.forms[0].algo) == 'Ramp')
+   {
+      document.getElementById('stepParam').style.display = 'block';
+      document.getElementById('lossParam').style.display = 'none';
+      document.getElementById('latencyParam').style.display = 'block';
+      document.getElementById('lossPercentageParam').style.display = 'block';
+   }
+   else if (getSelect(document.forms[0].algo) == 'RxRate')
+   {
+      document.getElementById('stepParam').style.display = 'none';
+      document.getElementById('lossParam').style.display = 'none';
+      document.getElementById('latencyParam').style.display = 'none';
+      document.getElementById('lossPercentageParam').style.display = 'none';
+   }
+}
+
+function showBwParam()
+{
+   if (getSelect(document.forms[0].mode) == "client_bw")
+   {
+      document.getElementById('bwParams').style.display = 'block';
+      showAlgoParam();
+   }
+   else
+   {
+      document.getElementById('bwParams').style.display = 'none';
+      document.getElementById('stepParam').style.display = 'none';
+      document.getElementById('lossParam').style.display = 'none';
+      document.getElementById('latencyParam').style.display = 'none';
+      document.getElementById('lossPercentageParam').style.display = 'none';
+   }
+}
+// done hiding -->
+</script>
+</head>
+<body onLoad='frmLoad()'>
+   <canvas id="downstream" width="250" height="250"
+      data-type="canv-gauge"
+      data-title="Downstream"
+      data-min-value="0"
+      data-max-value="1000"
+      data-major-ticks="0 100 200 300 400 500 600 700 800 900 1000"
+      data-minor-ticks="5"
+      data-stroke-ticks="true"
+      data-units="Mbps"
+      data-value-format="3.0"
+      data-glow="true"
+      data-animation-delay="10"
+      data-animation-duration="200"
+      data-animation-fn="bounce"
+      data-colors-needle="#f00 #00f"
+      data-highlights="0 400 #66cc66, 400 600 #E7E658, 600 1000 #cc6666"
+      data-onready="initMeterGauge();"
+	></canvas>
+   <canvas id="upstream" width="250" height="250"
+      data-type="canv-gauge"
+      data-title="Upstream"
+      data-min-value="0"
+      data-max-value="1000"
+      data-major-ticks="0 100 200 300 400 500 600 700 800 900 1000"
+      data-minor-ticks="5"
+      data-stroke-ticks="true"
+      data-units="Mbps"
+      data-value-format="3.0"
+      data-glow="true"
+      data-animation-delay="10"
+      data-animation-duration="200"
+      data-animation-fn="bounce"
+      data-colors-needle="#f00 #00f"
+      data-highlights="0 400 #66cc66, 400 600 #E7E658, 600 1000 #cc6666"
+      data-onready="initMeterGauge();"
+	></canvas>
+   <form>
+      <b>Initiate A Speed Diagnostic</b><br><br>
+      <table border=0 cellspacing=2 cellpadding=0 width=50%>
+         <tr>
+            <td width="50%">Test mode:</td>
+            <td>
+               <select id='mode' name='mode' style='width: 145px' onchange='showBwParam()'>
+                  <option value='client_bw'>bw
+                  <option value='client_send'>send
+               </select>
+            </td>
+         </tr>
+         <tr>
+            <td>Server Address:</td>
+            <td><input type='text' id='serverIpAddr' name='serverIpAddr'></td>
+         </tr>
+         <tr>
+            <td>Server Port:</td>
+            <td><input type='text' id='tcpPort' name='tcpPort'></td>
+         </tr>
+         <tr>
+            <td>Direction:</td>
+            <td>
+               <select id='direction' name='direction' style='width: 145px'>
+                  <option value='downstream'>downstream
+                  <option value='upstream'>upstream
+               </select>
+            </td>
+         </tr>
+         <tr>
+            <td>Step Duration (ms):</td>
+            <td><input type='text' id='duration' name='duration'></td>
+         </tr>
+         <tr>
+            <td>UDP Payload Length:</td>
+            <td><input type='text' id='pktLength' name='pktLength'></td>
+         </tr>
+         <tr>
+            <td>(max)kbps:</td>
+            <td><input type='text' id='kbps' name='kbps'></td>
+         </tr>
+      </table>
+            
+      <div id='bwParams' style="display:none;">
+      <table border=0 cellspacing=2 cellpadding=0 width=50%>
+         <tr>
+            <td width="50%">Algorithm:</td>
+            <td>
+               <select id='algo' name='algo' style='width: 145px' onchange='showAlgoParam()'>
+                  <option value='Fast'>Fast
+                  <option value='Bin'>Bin
+                  <option value='Ramp'>Ramp
+                  <option value='RxRate'>RxRate
+               </select>
+            </td>
+         </tr>
+      </table>
+      </div>
+
+      <div id='stepParam' style="display:none;">
+      <table border=0 cellspacing=2 cellpadding=0 width=50%>
+         <tr>
+            <td width="50%">Max Steps:</td>
+            <td><input type='text' id='steps' name='steps'></td>
+         </tr>
+      </table>
+      </div>
+
+      <div id='lossParam' style="display:none;">
+      <table border=0 cellspacing=2 cellpadding=0 width=50%>
+         <tr>
+            <td width="50%">Allowed Loss Percentage:</td>
+            <td><input type='text' id='loss' name='loss'></td>
+         </tr>
+      </table>
+      </div>
+
+      <div id='latencyParam' style="display:none;">
+      <table border=0 cellspacing=2 cellpadding=0 width=50%>
+         <tr>
+            <td width="50%">Latency Tolerance Percentage:</td>
+            <td><input type='text' id='latency' name='latency'></td>
+         </tr>
+      </table>
+      </div>
+
+      <div id='lossPercentageParam' style="display:none;">
+      <table border=0 cellspacing=2 cellpadding=0 width=50%>
+         <tr>
+            <td width="50%">Maximum Loss Percentage:</td>
+            <td><input type='text' id='lossPercentage' name='lossPercentage'></td>
+         </tr>
+      </table>
+      </div>
+
+      <br>
+      <button id='btn0' type='button'>Run Speed Diagnostics</button>
+      <br><br>
+      <b>Speed Diagnostics Result History</b><br><br>
+      <table  id='ResultHistoryTable' class='tablesorter'>
+         <thead>
+            <tr>
+               <th>Runtime</th>
+               <th>Good Put (Kbps)</th>
+               <th>Payload Rate (Kbps)</th>
+               <th>Loss Packets</th>
+               <th>Average Latency (us)</th>
+               <th>Ajusted Received Rate (Kbps)</th>
+               <th>Received Time (us)</th>
+               <th>Overhead</th>
+               <th>Direction</th>
+            </tr>
+         </thead>
+         <script language="javascript">
+         <!-- hide
+         {
+            var i = 0;
+
+            for ( i = 0; i < results.length; i++ ) {
+               if (results[i] != '') {
+                  var result = results[i].split(';');
+                  document.writeln('            <tr>');
+                  document.writeln('               <td>' + result[0] + '</td>');   // runtime
+                  document.writeln('               <td>' + result[1] + '</td>');   // goodput
+                  document.writeln('               <td>' + result[2] + '</td>');   // payload rate
+                  document.writeln('               <td>' + result[3] + '</td>');   // loss packets
+                  document.writeln('               <td>' + result[4] + '</td>');   // avgLatency
+                  document.writeln('               <td>' + result[5] + '</td>');   // adjusted received rate
+                  document.writeln('               <td>' + result[6] + '</td>');   // received time
+                  document.writeln('               <td>' + result[7] + '</td>');   // overhead
+                  document.writeln('               <td>' + result[8] + '</td>');   // direction
+                  document.writeln('            </tr>');
+               }
+            }
+         }
+         //
+         </script>
+      </table>
+   </form>
+</body>
+</html>
+

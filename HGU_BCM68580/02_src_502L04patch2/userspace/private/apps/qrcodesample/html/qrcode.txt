@@ -1,0 +1,1 @@
+http://davidshimjs.github.io/qrcodejs/

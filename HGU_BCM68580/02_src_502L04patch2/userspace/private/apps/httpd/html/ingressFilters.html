@@ -1,0 +1,307 @@
+<html>
+   <head>
+    <meta http-equiv='Pragma' content='no-cache'>
+	<meta http-equiv="X-UA-Compatible" content="IE=7">
+	<meta http-equiv="X-UA-Compatible" content="IE=8">
+	<meta http-equiv="X-UA-Compatible" content="IE=9">
+    <link rel="stylesheet" href='stylemain.css' type='text/css'>
+	<link rel="stylesheet" href='colors.css' type='text/css'>
+	<link rel="stylesheet" href='IF/jquery-ui.css' type='text/css'>
+    <script language="javascript" src="portName.js"></script>
+	<script class="include" type="text/javascript" src="IF/jquery-1.10.2.js"></script>
+	<script class="include" type="text/javascript" src="IF/jquery-ui-1.11.js"></script>
+    <script class="include" type="text/javascript" src="IF/jquery.deserialize.js"></script>
+	  <script language="javascript" src="portName.js"></script>
+        <style>
+            #sortable1, #sortable2, #sortable3, #sortable4 {
+            border: 1px solid #eee;
+            width: 142px;
+            min-height: 20px;
+            list-style-type: none;
+            margin: 0;
+            padding: 5px 0 0 0;
+            float: left;
+            margin-right: 10px;
+            }
+            #sortable1 li, #sortable2 li, #sortable3 li, #sortable4 li {
+            margin: 0 5px 5px 5px;
+            padding: 5px;
+            font-size: 1.2em;
+            width: 120px;
+            }
+        </style>
+	  <script language="javascript">
+<!-- hide
+
+var id = 1;
+
+String.prototype.insert = function (index, string) {
+  if (index > 0)
+    return this.substring(0, index) + string + this.substring(index, this.length);
+  else
+    return string + this;
+};
+
+if (!String.prototype.format) {
+  String.prototype.format = function() {
+    var args = arguments;
+    return this.replace(/{(\d+)}/g, function(match, number) { 
+      return typeof args[number] != 'undefined'
+        ? args[number]
+        : match
+      ;
+    });
+  };
+}
+
+if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function(obj, start) {
+         for (var i = (start || 0), j = this.length; i < j; i++) {
+             if (this[i] === obj) { return i; }
+         }
+         return -1;
+    }
+}
+
+function decreacecounter() {
+   id--;
+}
+
+String.prototype.splitPlus = function(sep) {
+  var a = this.split(sep)
+  if (a[0] == '') return [];
+  return a;
+};
+
+var rowIndex = 1;
+var portsStr = "<%ejGetOther(ingressFiltersSysPortsGet)%>";	
+
+function showPortsAndAction(b)
+{
+   	var c = $("#cpu_text" + b).val().splitPlus(',');
+	var f = $("#forward_text" + b).val().splitPlus(',');
+	var d = $("#drop_text" + b).val().splitPlus(',');
+	
+	var other = portsStr.splitPlus(',');
+	other.push("wan0");
+	other = $(other).not(c).not(f).not(d);
+
+    $(".connectedSortable li").each(function () { $(this).remove(); });
+    $('#sortable1').append($.map(other, function(val) { return "<li id='" + val + "' class='ui-state-default'>" + val +"</li>"; }).join(""));
+	$('#sortable2').append($.map(c, function(val) { return "<li id='" + val + "' class='ui-state-default'>" + val +"</li>"; }).join(""));
+	$('#sortable3').append($.map(f, function(val) { return "<li id='" + val + "' class='ui-state-default'>" + val +"</li>"; }).join(""));
+	$('#sortable4').append($.map(d, function(val) { return "<li id='" + val + "' class='ui-state-default'>" + val +"</li>"; }).join(""));
+	rowIndex = b;
+	
+    $("#overlay").show();
+}
+
+$(function(){
+	$('#savePorts').click(function(){
+		$("#cpu_text" + rowIndex).val($("#sortable2 li").map(function() { return $(this).text(); }).get().join(","));
+		$("#forward_text" + rowIndex).val($("#sortable3 li").map(function() { return $(this).text(); }).get().join(","));
+		$("#drop_text" + rowIndex).val($("#sortable4 li").map(function() { return $(this).text(); }).get().join(","));
+        $("#overlay").hide();
+		
+		return false;
+	});						
+});
+
+function onselectaction(textObj,i){
+    $("select#Type").prop( "disabled", true );
+    if (textObj.value != "filter_ETYPE_UDEF" && textObj.value != "filter_TPID" && textObj.value != "filter_MAC_ADDR_OUI") {
+    	$("input#value" + i).prop( "disabled", true );
+    }
+    else
+    {
+    	$("input#value" + i).prop( "disabled", false );
+    }
+}
+
+var fullFiltersList = "filter_DHCP,filter_IGMP,filter_MLD,filter_ICMPV6,filter_PPPOE_D,filter_PPPOE_S,filter_ARP,filter_802_1X,filter_802_1AG_CFM,filter_PTP_1588,filter_L4_PTP_1588,filter_MCAST,filter_BCAST,filter_HDR_ERR,filter_IP_FRAG"
+
+var fullFiltersArry = fullFiltersList.splitPlus(','); 
+
+function ValidateFlagText(textBoxObj,i,event) {
+    var length = 3;
+    if ($("select[name='filterType"+ i +"']").val() == "filter_MAC_ADDR_OUI") {
+        length = 5;
+    } 
+    //skip events for space and control keys
+    if (event.keyCode != 37 && event.keyCode != 39 && event.keyCode != 46 && event.keyCode != 8) {
+        var originalValue = textBoxObj.value;
+        var charCount = textBoxObj.value.length;
+
+		if (event.keyCode < 48 || event.keyCode > 70) {
+			alert("Only hex char allowed");
+			textBoxObj.value = originalValue.substring(0, charCount);			
+        }  
+		textBoxObj.value = textBoxObj.value.substring(0,length);		
+    }
+}
+
+function addFilterRow() 
+{
+	var j;
+	var numOfUDEF = 0;
+	var isExist;
+	var tableRowLength = $('#mytable >tbody >tr').length;
+	var existingFiltersList = "";
+	var existingFiltersArry;
+	var finalFiltersArry = fullFiltersList.splitPlus(',');
+
+	for (j =1;j < tableRowLength; j++) {
+		if (j>1)
+			existingFiltersList = existingFiltersList.concat(",");
+		existingFiltersList = existingFiltersList.concat($("select[name='filterType"+ j +"']").val());
+	}
+	existingFiltersArry = existingFiltersList.splitPlus(',');
+
+	for (var i = 0; i <= existingFiltersArry.length; i++) {
+    		if (existingFiltersArry[i] == "filter_ETYPE_UDEF") { 
+      			numOfUDEF++; 
+    		}
+	}
+
+    var str = "<tr id='tr{0}'><td class='hd' colspan='8'><select id='Type' onchange='onselectaction(this,{0})' name='filterType{0}'>{1}<option value='filter_TPID'>TPID</option><option value='filter_MAC_ADDR_OUI'>MAC_ADDR_OUI</option></select></td><td class='hd' colspan='8'><input type='textbox' id='value{0}' name='value{0}' onkeydown='ValidateFlagText(this,{0}, event)' value='none' disabled='true'></td><td><table><tr><td>cpu</td><td><input class='ports' type='text' name='filter_cpu{0}' id='cpu_text{0}'></td></tr><tr><td>forward</td><td><input class='ports' type='text' name='filter_forward{0}' id='forward_text{0}'></td></tr><tr><td>drop</td><td><input class='ports' type='text' name='filter_drop{0}' id='drop_text{0}'></td></tr></table></td><td class='hd' colspan='8'><input type='button' onClick='showPortsAndAction({0})' value='Edit'></td></tr>";
+
+	for (j=0 ; j < existingFiltersArry.length ; j++){
+		isExist = finalFiltersArry.indexOf(existingFiltersArry[j]);
+		if ( isExist != -1){            
+			finalFiltersArry.splice(isExist,1);            
+		}
+	}
+
+	if (numOfUDEF < 4){
+		finalFiltersArry.push("filter_ETYPE_UDEF");
+	}
+
+    var selectionStr = "";
+    selectionStr = $.map(finalFiltersArry, function(val) { return "<option value='" + val + "'>" + val.slice(7) + "</option>"; }).join("");
+
+	str = str.format(id, selectionStr);
+	id++;
+	return str;	
+}
+
+function indexNames(withRemove) 
+{
+    var str = "<tr id='tr{0}'><td class='hd' colspan='8'><select id='Type' onchange='onselectaction(this,{0})' name='filterType{0}'><option value='filter_DHCP'>DHCP</option><option value='filter_IGMP'>IGMP</option><option value='filter_MLD'>MLD</option><option value='filter_ICMPV6'>ICMPV6</option><option value='filter_ETYPE_UDEF'>ETYPE_UDEF</option><option value='filter_PPPOE_D'>PPPOE_D</option><option value='filter_PPPOE_S'>PPPOE_S</option><option value='filter_ARP'>ARP</option><option value='filter_802_1X'>802_1X</option><option value='filter_802_1AG_CFM'>802_1AG_CFM</option><option value='filter_PTP_1588'>PTP_1588</option><option value='filter_L4_PTP_1588'>L4_PTP_1588</option><option value='filter_MCAST'>MCAST</option><option value='filter_BCAST'>BCAST</option><option value='filter_MAC_ADDR_OUI'>MAC_ADDR_OUI</option><option value='filter_HDR_ERR'>HDR_ERR</option><option value='filter_IP_FRAG'>IP_FRAG</option><option value='filter_TPID'>TPID</option></select></td><td class='hd' colspan='8'><input type='textbox' id='value{0}' name='value{0}' onkeydown='ValidateFlagText(this,{0}, event)' value='none' disabled='true'></td><td><table><tr><td>cpu</td><td><input class='ports' type='text' name='filter_cpu{0}' id='cpu_text{0}'></td></tr><tr><td>forward</td><td><input class='ports' type='text' name='filter_forward{0}' id='forward_text{0}'></td></tr><tr><td>drop</td><td><input class='ports' type='text' name='filter_drop{0}' id='drop_text{0}'></td></tr></table></td><td class='hd' colspan='8'><input type='button' onClick='showPortsAndAction({0})' value='Edit'></td></tr>";
+
+    str = str.format(id);
+    id++;
+	return str;	
+}
+
+(function($){
+    var proxy = $.fn.serializeArray;
+    $.fn.serializeArray = function(){
+        var inputs = this.find(':disabled');
+        inputs.prop('disabled', false);
+        var serialized = proxy.apply( this, arguments );
+        inputs.prop('disabled', true);
+        return serialized;
+    };
+})(jQuery);
+
+$(function(){
+	$('button[type=submit]').click(function(){
+		$.post( "/ingressfilters.cmd", $('#testForm').serialize(), function(data) {
+			if (data != 0)
+               	alert(data);
+
+            location.reload();
+		}); 
+		return false;
+	});						
+
+    $('button[type=cancel]').click(function(){
+        location.reload();
+        return false;
+	});
+
+    var newstr = "<%ejGetOther(ingressFiltersGet)%>";
+	var j;
+	var i = (newstr.match(/filterType/g) || []).length;	
+	for (j = 0;j<i;j++) {$('#mytable').append(indexNames(false))};
+	$('#testForm').deserialize(newstr);
+	$("select#Type").prop( "disabled", true );
+    $('.ports').prop('disabled', true);
+
+    $( "#sortable1, #sortable2, #sortable3, #sortable4" ).sortable({
+      connectWith: ".connectedSortable"
+    }).disableSelection();
+});
+
+var serializedTable = "";
+function setTableSerializeStr(){
+	serializedTable.html($('#testForm').serialize());
+}
+
+// done hiding -->
+</script>
+   </head>
+   <body>    
+      <blockquote>
+<div id="overlay" style="z-index: 999; position: absolute; left: 0px; top: 50%; width: 100%; height: 100%; display: none; background-color: rgba(0, 0, 0, 0.8);">
+            <div id="portsAndAction" style="width:800px; margin:0 auto;">
+            <h2 style="color:yellow">Drag and drop the wanted ports into the action column,</h2> 
+            <h2 style="color:yellow">in order to remove port from any action please drag it into PORTS column</h2>
+                <table border="1" cellpadding="2" cellspacing="0">
+                    <tr>
+						<td><center>PORTS</center></td>
+						<td><center>CPU</center></td>
+						<td><center>FORWARD</center></td>
+						<td><center>DROP</center></td>
+                    </tr>
+                    <tr>
+        				<td>
+                			<ul id="sortable1" class="connectedSortable">
+                			</ul>
+        				</td>
+        				<td>
+                			<ul id="sortable2" class="connectedSortable">
+                			</ul>
+        				</td>
+        				<td>
+                			<ul id="sortable3" class="connectedSortable">
+                			</ul>
+        				</td>
+        				<td>
+                			<ul id="sortable4" class="connectedSortable">
+                			</ul>
+        				</td>
+                    </tr>				
+                </table>
+                <input type='button' value='Save' id="savePorts">save</input>
+            </div>
+
+</div>
+
+      <table border="0" id="globaltable">
+        <tr>
+        <td>
+            <form id="testForm">
+                <b>Ingress Filters</b><br>
+                <br>
+                <table border="1" cellpadding="2" cellspacing="0" id="mytable">
+                    <tr>
+                        <td class='hd' colspan="8"><center>Type</center></td>
+                        <td class='hd' colspan="8"><center>Value</center></td>					
+                        <td class='hd' colspan="8"><center>Ports and Action</center></td>
+                    </tr>				
+                </table>
+                <br>
+                <br>
+                <input type='button' value='Add' style="font-size: 13px" onClick="var i = 5;  $('#mytable').append(addFilterRow()); $('.ports').prop('disabled', true)">
+                <button type="submit" value='Save'>Save</button>
+                <button type="cancel" value='Cancel'>Cancel</button>
+            </form>
+        </td>
+        <td>
+        </td>
+      </tr>
+      </blockquote>
+   </body>
+</html>
+

@@ -1,0 +1,50 @@
+#!/usr/bin/env sh 
+
+SRC_DIR=$1
+BIN_DIR=$2
+
+# expand to null if no match
+shopt -s nullglob		
+
+extract()
+{
+    echo "Cleaning previous build"
+    make -C .. distclean
+    echo "Extracting release $d"
+    rm -rf $SRC_DIR 
+    tar -xzf $t
+    mv $d/MCS6430F_Reference_Host_Code $SRC_DIR
+    mv $d/Binaries/modem $BIN_DIR
+    mv $d/Binaries/booter/hmibooter_*.* $BIN_DIR
+    mv $d/Binaries/booter/*.cfg $BIN_DIR
+    mv $d/Binaries/booter/patchConfig/patchConfig_*.linexe $BIN_DIR
+    rm -rf $d
+}
+
+# extract DSL Delivery package
+echo "Looking for MCS6430F releases in dsl-release directories" 
+cd dsl-release || exit 1
+deliveries=(*_delivery_cs*.tgz)
+for t in ${deliveries[*]}
+do
+    d=${t/.tgz/} 
+    case ${#deliveries[*]} in
+      1) extract; y=yes;;
+      *) echo "Select MCS6430F release $d?" 
+         select y in yes no; do 
+    	 if [ "$y" == yes ]; then
+    	     extract
+    	     break
+    	 elif [ "$y" == no ]; then
+    	     echo "Skipping release $d"
+    	     break
+    	 fi
+         done
+    esac
+    [[ "$y" == no ]] && continue
+    break
+done
+if ! test -d $SRC_DIR; then 
+    echo "Please download BCM6430F Software (named 'Broadcom CO Firmware release') from docSAFE and place in dsl-release subdir." 
+    exit 1
+fi

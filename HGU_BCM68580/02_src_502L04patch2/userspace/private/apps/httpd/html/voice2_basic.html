@@ -1,0 +1,897 @@
+<html>
+   <head>
+   
+      <style type="text/css">
+      ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }
+      ul#tabs li { display: inline; }
+      ul#tabs li a { color: #42454a; background-color: #dedbde; border: 1px solid #c9c3ba; border-bottom: none; padding: 0.3em; text-decoration: none; }
+      ul#tabs li a:hover { background-color: #f1f0ee; }
+      ul#tabs li a.selected { color: #000; background-color: #f1f0ee; font-weight: bold; padding: 0.7em 0.3em 0.38em 0.3em; }
+      div.tabContent { border: 1px solid #c9c3ba; padding: 0.5em; background-color: #f1f0ee; }
+      div.tabContent.hide { display: none; }
+      </style>
+      
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+      <link rel="stylesheet" href='colors.css' type='text/css'>
+      <script language="javascript" src="util.js"></script>
+<script language="javascript">
+
+var voiceRunning = '<%ejGetVoice(voiceStatus)%>';
+var selTab = '<%ejGetVoice(selectedBasicTab)%>';
+
+var ifList  = '<%ejGetVoice(ifList)%>';
+var ipFamilyList  = '<%ejGetVoice(ipFamilyList)%>';
+var mgtList = '<%ejGetVoice(mgtProtList)%>';
+var locList = '<%ejGetVoice(localeList)%>';
+
+var ifn = '<%ejGetVoice(ifName)%>';
+var ip = '<%ejGetVoice(ipAddrFamily)%>';
+var mp = '<%ejGetVoice(mgtProt)%>'
+var sl = '<%ejGetVoice(localeName)%>';
+var dnsEn = '<%ejGetVoice(voiceDnsEnable)%>';
+var dnsAddr = '<%ejGetVoice(voiceDnsAddr)%>';
+
+var numFxs = '<%ejGetVoice(numFxs)%>';
+var numFxo = '<%ejGetVoice(numFxo)%>';
+var numSelectButtons = 2;
+var numVoiceButtonSets = 4;
+
+for (var i = 1; i <= numFxs; i++)
+{
+   eval( "var ig" + i + " \= \"\" " );
+   eval( "var eg" + i + " \= \"\" " );
+}
+
+var minGain = -20;
+var maxGain = 20;
+
+var tmpig = '<%ejGetVoice(ingressGain)%>';
+var tmpeg = '<%ejGetVoice(egressGain)%>';
+
+if ( tmpig.search("ejGetVoice") < 0 ) {
+   eval( tmpig );
+}
+if ( tmpeg.search("ejGetVoice") < 0 ) {
+   eval( tmpeg );
+}
+
+var voipProfileList  = '<%ejGetVoice(voipProfileList)%>';
+var codecProfileList  = '<%ejGetVoice(codecProfileList)%>';
+var srtpOptionList = '<%ejGetVoice(srtpOptionList)%>';
+var dtmfMethodList = '<%ejGetVoice(dtmfMethodList)%>';
+ 
+var cpEnabled = '<%ejGetVoice(cProfEnabled)%>';
+var cpName = '<%ejGetVoice(cProfName)%>'; 
+var cpPtime = '<%ejGetVoice(cProfPtime)%>';
+var cpVad = '<%ejGetVoice(cProfVadEnabled)%>';
+
+var vpEnabled = '<%ejGetVoice(vProfEnabled)%>';
+var vpName = '<%ejGetVoice(vProfName)%>'; 
+var vpDtmf = '<%ejGetVoice(vProfDtmf)%>';
+var vpRtpMin = '<%ejGetVoice(vProfRtpMin)%>';
+var vpRtpMax = '<%ejGetVoice(vProfRtpMax)%>';
+var vpDscpMark = '<%ejGetVoice(vProfDscp)%>';
+var vpRtcpEn = '<%ejGetVoice(vProfRtcpEn)%>'; 
+var vpRtcpInt = '<%ejGetVoice(vProfRtcpInt)%>';
+var vpSrtpEn = '<%ejGetVoice(vProfSrtpEn)%>';  
+var vpSrtpOpt = '<%ejGetVoice(vProfSrtpOpt)%>';
+var vpV18En = '<%ejGetVoice(vProfV18En)%>';
+
+var sessionKey='<%ejGetOther(sessionKey)%>';
+
+function printSrtpOptionListBox(){
+   var tokSrtpOptionList = srtpOptionList.split(" ");
+
+   for(i = 0; i < tokSrtpOptionList.length; i++)
+   {
+      document.writeln("<option value=\"" + tokSrtpOptionList[i] + "\" selected>");
+      document.writeln(tokSrtpOptionList[i]);
+   }
+}
+
+function printDtmfMethodListBox(){
+   var tokDtmfMethodList = dtmfMethodList.split(" ");
+
+   for(i = 0; i < tokDtmfMethodList.length; i++)
+   {
+      document.writeln("<option value=\"" + tokDtmfMethodList[i] + "\" selected>");
+      document.writeln(tokDtmfMethodList[i]);
+   }
+}
+
+function printInterfaceListBox(){
+   var tokInterfaceList = ifList.split(" ");
+
+   for(i = 0; i < tokInterfaceList.length; i++)
+   { 
+      document.writeln("<option value=\"" + tokInterfaceList[i] + "\" selected>"); 
+      document.writeln(tokInterfaceList[i]);
+   }
+}
+
+function printIpFamilyListBox(){
+   var tokIpFamilyList = ipFamilyList.split(" ");
+
+   for(i = 0; i < tokIpFamilyList.length; i++)
+   {
+      document.writeln("<option value=\"" + tokIpFamilyList[i] + "\" selected>");  
+      document.writeln(tokIpFamilyList[i]);
+   }
+}
+
+function printLocaleListBox(){
+   var tokLocCodeList = locList.split(",");
+
+   for(i = 0; i < tokLocCodeList.length; i++)
+   {
+      var tokCodeNameList = tokLocCodeList[i].split(" - ");
+      document.writeln("<option value=\"" + tokCodeNameList[0] + "\" selected>");
+      document.writeln(tokCodeNameList[0] + " - " + tokCodeNameList[1]);
+   }
+}
+
+function printMgtListBox(){
+   var tokMgtCodeList = mgtList.split(" ");
+
+   for(i = 0; i < tokMgtCodeList.length; i++)
+   {
+      document.writeln("<option value=\"" + tokMgtCodeList[i] + "\" selected>");
+      document.writeln(tokMgtCodeList[i]);
+   }
+}
+
+function printGainsListBox(){
+   for(i = minGain; i < maxGain; i++)
+   {
+      document.writeln("<option value=\"" + i + "\" selected>");
+      document.writeln(i);
+   }
+}
+
+function printVoipProfListBox(){
+   var tokVoipProfList = voipProfileList.split(",");
+
+   for(i = 0; i < tokVoipProfList.length; i++)
+   {
+      document.writeln("<option value=\"" + tokVoipProfList[i] + "\" selected>");  
+      document.writeln(tokVoipProfList[i]);
+   }
+}
+
+function printCodecProfListBox(){
+   var tokCodecProfList = codecProfileList.split(",");
+
+   for(i = 0; i < tokCodecProfList.length; i++)
+   {
+      document.writeln("<option value=\"" + tokCodecProfList[i] + "\" selected>");  
+      document.writeln(tokCodecProfList[i]);
+   }
+}
+
+function btnStartSip() {
+   var loc = 'voicesipstart.cmd?';
+
+   loc += addParamsToQuery( loc, "basic" );
+   
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+
+function btnStopSip() {
+   var loc = 'voicesipstop.cmd?';
+
+   loc += addParamsToQuery( loc, "basic" );
+   
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+      
+   eval(code);
+}
+
+function btnDefaultSip() {
+   var loc = 'voicesipsetdefault.cmd?';
+
+   loc += addParamsToQuery( loc, "basic" );
+   
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+   
+   eval(code);
+}
+
+function btnApplySip() {
+   var loc = 'voicesipapply.cmd?';
+
+   loc += addParamsToQuery( loc, "basic" );
+
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+function btnSelectVoipProf() {
+   var loc = 'voicevoipprofselect.cmd?';
+   
+   loc += addParamsToSelect( loc, "voip" );
+
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+function btnSelectCodecProf() {
+   var loc = 'voicecodecprofselect.cmd?';
+   
+   loc += addParamsToSelect( loc, "codec" );
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+// Adds parameters to the query passed to the C code
+function addParamsToQuery( loc_init, current_view) {
+   var loc = loc_init;
+
+   with ( document.forms[0] ) {
+      loc += 'currentview=' + current_view;
+      eval( "loc += \'&ifName=\' + ifName.value.replace(/[\'\" ]/g,\'\')" );
+	  eval( "loc += \'&ipAddrFamily=\' + ipAddrFamily.value.replace(/[\'\" ]/g,\'\')" );
+	  eval( "loc += \'&localeName=\' + localeName.value.replace(/[\'\" ]/g,\'\')" );
+	  eval( "loc += \'&mgtProt=\' + mgtProt.value.replace(/[\'\" ]/g,\'\')" );
+
+	  if (document.getElementById("voiceDnsInfo").style.visibility == 'visible')
+	  {
+	     loc += '&voiceDnsAddr=' + document.getElementById("voiceDnsAddress").value;
+	  }
+	  
+	  for (var i = 1; i <= numFxs; i++)
+	  {
+	     eval( "loc += \'&ingressGain" + i + "=\' + ingressGain" + i + ".value.replace(/[\'\" ]/g,\'\')" );
+         eval( "loc += \'&egressGain" + i + "=\' + egressGain" + i + ".value.replace(/[\'\" ]/g,\'\')" );
+      }
+	  
+	  loc += '&vProfEnabled=' + document.getElementById("profEnabled").checked;
+	  loc += '&vProfName=' + document.getElementById("profName").value;
+	  loc += '&vProfDtmf=' + document.getElementById("dtmfMethod").value;
+      loc += '&vProfRtpMin=' + document.getElementById("rtpMin").value;
+	  loc += '&vProfRtpMax=' + document.getElementById("rtpMax").value;
+      loc += '&vProfDscp=' + document.getElementById("dscpMark").value;
+	  loc += '&vProfRtcpEn=' + document.getElementById("rtcpEn").checked;
+      loc += '&vProfRtcpInt=' + document.getElementById("rtcpInt").value;
+      loc += '&vProfSrtpEn=' + document.getElementById("srtpEn").checked;
+      loc += '&vProfSrtpOpt=' + document.getElementById("srtpOpt").value;
+      loc += '&vProfV18En=' + document.getElementById("v18En").checked;
+	  
+      loc += '&cProfPtime=' + document.getElementById("PTime").value;
+      loc += '&cProfVadEnabled=' + document.getElementById("vadEn").checked;
+
+      loc += '&currentBasicTab=' + selectedTab;	  
+   }
+
+   return loc;
+}
+
+function addParamsToSelect( loc_init, current_view) {
+   var loc = loc_init;
+
+   with ( document.forms[0] ) {
+      loc += 'currentview=' + current_view;
+   }
+    
+   if (current_view == "codec")
+   {
+      loc += '&codecProf=' + document.getElementById("codecProfile").value;
+   } 
+   else if (current_view == "voip")
+   {
+      loc += '&voipProf=' + document.getElementById("voipProfile").value;
+   }
+ 
+   loc += '&currentBasicTab=' + selectedTab;
+   
+   return loc;
+}
+
+function frmLoad(current_view) {
+
+   init();										
+   
+   with ( document.forms[0] ) {
+         
+      /* Initialize global parameters */
+      eval("ifName.value = ifn");
+      eval("ipAddrFamily.value = ip");
+	  eval("localeName.value = sl");
+      eval("mgtProt.value = mp");
+	  
+	  if (eval(dnsEn) == true)
+	  {
+	     document.getElementById("voiceDnsInfo").style.visibility = 'visible';
+		 if(dnsAddr == "")
+	     {
+            document.getElementById("voiceDnsAddress").value = "0.0.0.0";
+	     }
+	     else
+	     {
+	        document.getElementById("voiceDnsAddress").value = dnsAddr;
+	     }
+	  } 
+	  else 
+	  {
+	     document.getElementById("voiceDnsInfo").style.visibility = 'hidden';
+	  }
+      
+	  for (var i = 1; i <= numFxs; i++) {
+         eval("ingressGain" + i + ".value = ig"+i);
+         eval("egressGain" + i + ".value = eg"+i);
+      }
+
+      if(vpEnabled == "Yes")
+      {
+         document.getElementById("profEnabled").checked = true;
+         
+         // Enable controls
+         document.getElementById("profName").disabled = false;
+         document.getElementById("dtmfMethod").disabled = false; 
+         document.getElementById("rtpMin").disabled = false;
+         document.getElementById("rtpMax").disabled = false;
+         document.getElementById("dscpMark").disabled = false;
+         document.getElementById("rtcpEn").disabled = false;
+         document.getElementById("rtcpInt").disabled = false;
+         document.getElementById("srtpEn").disabled = false;
+         document.getElementById("srtpOpt").disabled = false;
+         document.getElementById("v18En").disabled = false;        
+      }
+      else
+      {
+         document.getElementById("profEnabled").checked = false;
+      }
+
+      if(cpEnabled == "Yes")
+      {  
+         // Enable controls
+         document.getElementById("vadEn").disabled = false;
+         document.getElementById("PTime").disabled = false; 
+      }
+      else
+      {
+         document.getElementById("profEnabled").checked = false;
+      }
+
+      document.getElementById("profName").value = vpName;
+      document.getElementById("dtmfMethod").value = vpDtmf; 
+      document.getElementById("rtpMin").value = vpRtpMin;
+      document.getElementById("rtpMax").value = vpRtpMax;
+      document.getElementById("dscpMark").value = vpDscpMark;
+      if(vpRtcpEn == "Yes")
+      {
+         document.getElementById("rtcpEn").checked = true;
+      }
+      else
+      {
+         document.getElementById("rtcpEn").checked = false;
+      }
+      document.getElementById("rtcpInt").value = vpRtcpInt;
+      if(vpSrtpEn == "Yes")
+      {
+         document.getElementById("srtpEn").checked = true;
+         document.getElementById("srtpOpt").value = vpSrtpOpt;
+      }
+      else
+      {
+         document.getElementById("srtpEn").checked = false;
+         document.getElementById("srtpOpt").disabled = true;
+      }
+      if(vpV18En == "Yes")
+      {
+         document.getElementById("v18En").checked = true;
+      }
+      else
+      {
+         document.getElementById("v18En").checked = false;
+      }
+
+      if(cpVad == "Yes")
+      {
+         document.getElementById("vadEn").checked = true;
+      }
+      else
+      {
+         document.getElementById("vadEn").checked = false;
+      }
+      document.getElementById("PTime").value = cpPtime;
+
+      document.getElementById("voipProfile").value = vpName;
+      document.getElementById("codecProfile").value = cpName;
+
+      showSelectedTab();	  
+   }
+}
+
+function enableVoiceButtons(index)
+{
+   var buttonStart = document.getElementById( "StartButton" + index );
+   var buttonStop = document.getElementById( "StopButton" + index );
+   var buttonApply = document.getElementById( "ApplyButton" + index );
+   var buttonDefault = document.getElementById( "DefaultButton" + index );
+
+   if ( voiceRunning == 1 ) {
+      buttonStart.disabled = true;
+      buttonStop.disabled = false;
+      buttonApply.disabled = false;
+      buttonDefault.disabled = false;
+   } else {
+      buttonStart.disabled = false;
+      buttonStop.disabled = true;
+      buttonApply.disabled = false;
+      buttonDefault.disabled = false;
+   }
+}
+
+function enableSelectButtons(index)
+{
+      var buttonSelect = document.getElementById( "SelectButton" + index );
+	  buttonSelect.disabled = false;
+}
+
+var tabLinks = new Array();
+var contentDivs = new Array();
+var selectedTab;
+
+function init() {
+
+  // Grab the tab links and content divs from the page
+  var tabListItems = document.getElementById('tabs').childNodes;
+  for ( var i = 0; i < tabListItems.length; i++ ) {
+    if ( tabListItems[i].nodeName == "LI" ) {
+      var tabLink = getFirstChildWithTagName( tabListItems[i], 'A' );
+      var id = getHash( tabLink.getAttribute('href') );
+      tabLinks[id] = tabLink;
+      contentDivs[id] = document.getElementById( id );
+    }
+  }
+
+  // Assign onclick events to the tab links, and
+  // highlight the first tab
+  var i = 0;
+  selectedTab = selTab;
+
+  for ( var id in tabLinks ) {
+    tabLinks[id].onclick = showTab;
+    tabLinks[id].onfocus = function() { this.blur() };
+    if ( i == 0 ) tabLinks[id].className = 'selected';
+    i++;
+  }
+
+  // Hide all content divs except the first
+  var i = 0;
+  
+  for ( var id in contentDivs ) {
+    if ( i != 0 ) contentDivs[id].className = 'tabContent hide';
+    i++;
+  }
+}
+
+
+function showTab() {
+  var selectedId = getHash( this.getAttribute('href') );
+
+  // Highlight the selected tab, and dim all others.
+  // Also show the selected content div, and hide all others.
+  for ( var id in contentDivs ) {
+    if ( id == selectedId ) {
+      selectedTab = selectedId;
+      tabLinks[id].className = 'selected';
+      contentDivs[id].className = 'tabContent';
+    } else {
+      tabLinks[id].className = '';
+      contentDivs[id].className = 'tabContent hide';
+    }
+  }
+
+  // Stop the browser following the link
+  return false;
+}
+
+function showSelectedTab() {
+  // Highlight the selected tab, and dim all others.
+  // Also show the selected content div, and hide all others.
+  for ( var id in contentDivs ) {
+    if ( id == selTab ) {
+      tabLinks[id].className = 'selected';
+      contentDivs[id].className = 'tabContent active';
+    } else {
+      tabLinks[id].className = '';
+      contentDivs[id].className = 'tabContent hide';
+    }
+  }
+
+  // Stop the browser following the link
+  return false;
+}
+
+function getFirstChildWithTagName( element, tagName ) {
+  for ( var i = 0; i < element.childNodes.length; i++ ) {
+    if ( element.childNodes[i].nodeName == tagName ) return element.childNodes[i];
+  }
+}
+
+function getHash( url ) {
+  var hashPos = url.lastIndexOf ( '#' );
+  return url.substring( hashPos + 1 );
+}
+
+function createGainsTable() {
+
+   document.writeln("<table id='gainsTable' border='1'><tbody id='gainsTbody'>");
+
+   /* Line row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'><\/td>");
+   for (var line = 1; line <= numFxs; line++) {
+      var data = line;
+      document.writeln("<td align=center>FXS " + data + "</td>");
+   }
+   document.writeln("</tr>");
+   
+   /* Ingress gain row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>Ingress Gain<\/td>");
+   for (var line = 1; line <= numFxs; line++) {
+	  document.writeln("<td><select name='ingressGain" + line + "'>");
+                        printGainsListBox()
+      document.writeln("</select></td>");
+   }
+   document.writeln("</tr>");
+   
+   /* Egress gain row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>Egress Gain<\/td>");
+   for (var line = 1; line <= numFxs; line++) {
+	  document.writeln("<td><select name='egressGain" + line + "'>");
+                        printGainsListBox()
+      document.writeln("</select></td>");
+   }
+   document.writeln("</tr>");
+
+   document.writeln("</tbody></table>");
+}
+
+function createVoipProfileTable() {
+
+   document.writeln("<table id='voipProfileTable' border='1'><tbody id='voipProfileTbody'>");
+
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>Profile Enabled:<\/td>");
+   document.writeln("<td align=center width='150'><input type='checkbox' size=10 id='profEnabled'></td>"); /* vpEnabled */
+   document.writeln("</tr>");
+   
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>Profile Name:<\/td>");
+   document.writeln("<td align=center width='150'><input type='text' id='profName' disabled=true></td>"); /* vpName */
+   document.writeln("</tr>");
+   
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>DTMF Method:<\/td>");
+   document.writeln("<td align=center width='150'><select id='dtmfMethod' size='1' disabled=true>");
+                    printDtmfMethodListBox()
+   document.writeln("</select></td>");                             /* vpDtmf */
+   document.writeln("</tr>");
+
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>RTP Port Min:<\/td>");
+   document.writeln("<td align=center width='150'><input type='text' id='rtpMin' disabled=true></td>");      /* vpRtpMin */
+   document.writeln("</tr>");
+
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>RTP Port Min:<\/td>");
+   document.writeln("<td align=center width='150'><input type='text' id='rtpMax' disabled=true></td>");      /* vpRtpMax */
+   document.writeln("</tr>");
+   
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>DSCP Mark:<\/td>");
+   document.writeln("<td align=center width='150'><input type='text' id='dscpMark' disabled=true></td>");    /*  vpDscpMark */
+   document.writeln("</tr>");    
+
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>RTCP Enabled:<\/td>");
+   document.writeln("<td align=center width='150'><input type='checkbox' size=10 id='rtcpEn' disabled=true></td>");       /* vpRtcpEn */        
+   document.writeln("</tr>");
+ 
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>RTCP Send Interval:<\/td>");
+   document.writeln("<td align=center width='150'><input type='text' id='rtcpInt' disabled=true></td>");      /* vpRtcpInt */
+   document.writeln("</tr>");
+
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>SRTP Enabled:<\/td>");
+   document.writeln("<td align=center width='150'><input type='checkbox' size=10 id='srtpEn' disabled=true></td>");       /* vpSrtpEn */
+   document.writeln("</tr>");
+  
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>SRTP Option:<\/td>");
+   document.writeln("<td align=center width='150'><select id='srtpOpt' size='1' disabled=true>");
+                    printSrtpOptionListBox()
+   document.writeln("</select></td>");
+   document.writeln("</tr>");
+  
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>V.18 Enabled:<\/td>");
+   document.writeln("<td align=center width='150'><input type='checkbox' size=10 id='v18En' disabled=true></td>");       /* vpV18En */
+   document.writeln("</tr>");
+   
+   document.writeln("</tbody></table>");
+}
+
+function createCodecProfileTable() {
+
+   document.writeln("<table id='codecProfileTable' border='1'><tbody id='voipProfileTbody'>");
+
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>Profile Enabled:<\/td>");
+   document.writeln("<td id='codecProfEnabled' align=center width='150'>" + cpEnabled + "</td>");
+   document.writeln("</tr>");
+   
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>Profile Name:<\/td>");
+   document.writeln("<td id='codecProfName' align=center width='150'>" + cpName + "</td>");
+   document.writeln("</tr>");
+   
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>PTime:<\/td>");
+   document.writeln("<td align=center width='150'><input type='text' id='PTime' disabled=true></td>");      /* cpPtime */
+   document.writeln("</tr>");
+
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='100'>VAD Enabled:<\/td>");
+   document.writeln("<td align=center width='150'><input type='checkbox' size=10 id='vadEn' disabled=true></td>");       /* cpVad */
+   document.writeln("</tr>");
+   
+   document.writeln("</tbody></table>");
+   document.writeln("<td class='txt' width='450'><b>NOTE: VAD setting will apply to all codec profiles</b></td>");
+
+}
+
+function createTabs() {
+  document.writeln("<ul id='tabs'>");
+  document.writeln("<li><a href='#" + 0 + "'>Global Parameters</a></li>");
+
+  document.writeln("<li><a href='#" + 1 + "'>Gain Plan</a></li>");
+  
+  document.writeln("<li><a href='#" + 2 + "'>VOIP Profiles</a></li>");
+  
+  document.writeln("<li><a href='#" + 3 + "'>Codec Profiles</a></li>"); 
+}
+
+function createGlobal() {
+   document.writeln("<div class='tabContent' id='0'>");
+   document.writeln("<div>");
+   document.writeln("   <br>");
+   document.writeln("   <table border='0' cellpadding='0' cellspacing='0'>");
+   document.writeln("      <tr>");
+   document.writeln("         <td class='txt' width='150'>Bound Interface Name:</td>");
+   document.writeln("         <td><select name='ifName' size='1'>");
+                               printInterfaceListBox()
+   document.writeln("         </select></td>");
+   document.writeln("      </tr>");
+   document.writeln("   </table>");
+
+   document.writeln("   <br>");
+   document.writeln("   <table border='0' cellpadding='0' cellspacing='0'>");
+   document.writeln("      <tr>");
+   document.writeln("         <td class='txt' width='150'>IP Address Family:</td>");
+   document.writeln("         <td><select name='ipAddrFamily' size='1'>");
+                               printIpFamilyListBox()
+   document.writeln("         </select></td>");
+   document.writeln("      </tr>");
+   document.writeln("   </table>");
+   
+   document.writeln("   <br>");
+   document.writeln("   <table border='0' cellpadding='0' cellspacing='0'>");
+   document.writeln("      <tr>");
+   document.writeln("         <td class='txt' width='150'>Locale Selection:</td>");
+   document.writeln("         <td><select name='localeName' size='1'>");
+                               printLocaleListBox()
+   document.writeln("         </select></td>");
+   document.writeln("      </tr>");
+   document.writeln("   </table>");
+
+   document.writeln("   <br>");
+   document.writeln("   <table border='0' cellpadding='0' cellspacing='0'>");
+   document.writeln("      <tr>");
+   document.writeln("         <td class='txt' width='150'>Management Protocol:</td>");
+   document.writeln("         <td><select name='mgtProt' size='1'>");
+                               printMgtListBox()
+   document.writeln("         </select></td>");
+   document.writeln("      </tr>");
+   document.writeln("   </table>");
+   
+   document.writeln("   <br>");
+   
+   document.writeln("   <div id='voiceDnsInfo'>");
+   document.writeln("      <table border='0' cellpadding='0' cellspacing='0' ID='Table0'>");
+   document.writeln("         <tr>");
+   document.writeln("            <td class='txt' width='150'>Voice DNS address:</td>");
+   document.writeln("            <td><input type='text' id='voiceDnsAddress'></td>");
+   document.writeln("         </tr>");
+   document.writeln("      </table>");
+   document.writeln("   </div>");
+   
+   document.writeln("   <br>");
+
+   document.writeln("<td class='txt' width='450'><b>NOTE: Interface and address family changes require the SIP client to be stopped and then started to take effect</b></td>");
+
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <center>");
+   document.writeln("       <input type='button' onClick='btnStartSip()' value='Start SIP client' id='StartButton" + 0 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnStopSip()' value='Stop SIP client' id='StopButton" + 0 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnDefaultSip()' value='Restore default setting' id='DefaultButton" + 0 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnApplySip()' value='Apply' id='ApplyButton" + 0 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("    </center>");
+   document.writeln("    <br>");
+   document.writeln("</div>");
+   document.writeln("</div>");
+}
+
+function createGains() {
+   document.writeln("<div class='tabContent' id='1'>");
+   document.writeln("<div>");
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+                        createGainsTable()
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <center>");
+   document.writeln("       <input type='button' onClick='btnStartSip()' value='Start SIP client' id='StartButton" + 1 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnStopSip()' value='Stop SIP client' id='StopButton" + 1 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnDefaultSip()' value='Restore default setting' id='DefaultButton" + 1 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnApplySip()' value='Apply' id='ApplyButton" + 1 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("    </center>");
+   document.writeln("    <br>");
+   document.writeln("</div>");
+   document.writeln("</div>");
+}
+
+function createVoipProfiles() {
+   document.writeln("<div class='tabContent' id='2'>");
+   document.writeln("<div>");
+
+   document.writeln("   <br>");
+   document.writeln("   <table border='0' cellpadding='0' cellspacing='0'>");
+   document.writeln("      <tr>");
+   document.writeln("         <td class='txt' width='150'>Available VOIP Profiles:</td>");
+   document.writeln("         <td><select id='voipProfile' size='1'>");
+                               printVoipProfListBox()
+   document.writeln("         </select></td>");
+   document.writeln("         <td><input type='button' onClick='btnSelectVoipProf()' value='Select' id='SelectButton" + 0 + "' disabled=false></td>");
+   document.writeln("      </tr>");
+   document.writeln("   </table>");
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+                        createVoipProfileTable()
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <center>");
+   document.writeln("       <input type='button' onClick='btnStartSip()' value='Start SIP client' id='StartButton" + 2 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnStopSip()' value='Stop SIP client' id='StopButton" + 2 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnDefaultSip()' value='Restore default setting' id='DefaultButton" + 2 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnApplySip()' value='Apply' id='ApplyButton" + 2 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("    </center>");
+   document.writeln("    <br>");
+   document.writeln("</div>");
+   document.writeln("</div>");
+}
+
+function createCodecProfiles() {
+   document.writeln("<div class='tabContent' id='3'>");
+   document.writeln("<div>");
+   document.writeln("   <br>");
+   document.writeln("   <table border='0' cellpadding='0' cellspacing='0'>");
+   document.writeln("      <tr>");
+   document.writeln("         <td class='txt' width='150'>Available Codec Profiles:</td>");
+   document.writeln("         <td><select id='codecProfile' size='1'>");
+                               printCodecProfListBox()
+   document.writeln("         </select></td>");
+   document.writeln("         <td><input type='button' onClick='btnSelectCodecProf()' value='Select' id='SelectButton" + 1 + "' disabled=false></td>");
+   document.writeln("      </tr>");
+   document.writeln("   </table>");
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+                        createCodecProfileTable()
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <center>");
+   document.writeln("       <input type='button' onClick='btnStartSip()' value='Start SIP client' id='StartButton" + 3 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnStopSip()' value='Stop SIP client' id='StopButton" + 3 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnDefaultSip()' value='Restore default setting' id='DefaultButton" + 3 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnApplySip()' value='Apply' id='ApplyButton" + 3 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("    </center>");
+   document.writeln("    <br>");
+   document.writeln("</div>");
+   document.writeln("</div>");
+}
+
+</script>
+</head>
+
+<body onLoad="frmLoad('basic')">
+   <blockquote>
+      <form> 
+      <script TYPE="text/javascript">
+        createTabs();
+        createGlobal();
+        createGains();
+		createVoipProfiles();
+		createCodecProfiles();
+	    for (var i = 0; i < numVoiceButtonSets; i++) {
+           enableVoiceButtons(i);
+        }
+		
+	    for (i = 0; i < numSelectButtons; i++) {
+           enableSelectButtons(i);
+        }
+
+     </script>     
+     
+      </form>
+   </blockquote>
+</body>
+</html>

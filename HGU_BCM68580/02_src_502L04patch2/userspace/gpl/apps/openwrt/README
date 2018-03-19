@@ -1,0 +1,10 @@
+Known Issues:
+
+1. The default openwrt-rootfs.tar.gz is built for arm platform. If you intend to
+use OpenWRT_EE for other CPU architecture, you will have to build from the source.
+And change the toolchain configuration in "make menuconfig" accordingly.
+
+2. To build OpenWRT_EE from source, please delete "openwrt-rootfs.tar.gz" and run 
+make. The Makefile script will then try to download OpenWRT source code from upstream, 
+patch it with our changes, and build from there.
+

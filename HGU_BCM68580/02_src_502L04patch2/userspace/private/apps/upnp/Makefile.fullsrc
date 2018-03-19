@@ -1,0 +1,127 @@
+#
+# Linux upnp Makefile
+#
+# Copyright (c) 2003-2012 Broadcom Corporation
+# All Rights Reserved
+#
+# <:label-BRCM:2012:proprietary:standard
+# 
+#  This program is the proprietary software of Broadcom and/or its
+#  licensors, and may only be used, duplicated, modified or distributed pursuant
+#  to the terms and conditions of a separate, written license agreement executed
+#  between you and Broadcom (an "Authorized License").  Except as set forth in
+#  an Authorized License, Broadcom grants no license (express or implied), right
+#  to use, or waiver of any kind with respect to the Software, and Broadcom
+#  expressly reserves all rights in and to the Software and all intellectual
+#  property rights therein.  IF YOU HAVE NO AUTHORIZED LICENSE, THEN YOU HAVE
+#  NO RIGHT TO USE THIS SOFTWARE IN ANY WAY, AND SHOULD IMMEDIATELY NOTIFY
+#  BROADCOM AND DISCONTINUE ALL USE OF THE SOFTWARE.
+# 
+#  Except as expressly set forth in the Authorized License,
+# 
+#  1. This program, including its structure, sequence and organization,
+#     constitutes the valuable trade secrets of Broadcom, and you shall use
+#     all reasonable efforts to protect the confidentiality thereof, and to
+#     use this information only in connection with your use of Broadcom
+#     integrated circuit products.
+# 
+#  2. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED "AS IS"
+#     AND WITH ALL FAULTS AND BROADCOM MAKES NO PROMISES, REPRESENTATIONS OR
+#     WARRANTIES, EITHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, WITH
+#     RESPECT TO THE SOFTWARE.  BROADCOM SPECIFICALLY DISCLAIMS ANY AND
+#     ALL IMPLIED WARRANTIES OF TITLE, MERCHANTABILITY, NONINFRINGEMENT,
+#     FITNESS FOR A PARTICULAR PURPOSE, LACK OF VIRUSES, ACCURACY OR
+#     COMPLETENESS, QUIET ENJOYMENT, QUIET POSSESSION OR CORRESPONDENCE
+#     TO DESCRIPTION. YOU ASSUME THE ENTIRE RISK ARISING OUT OF USE OR
+#     PERFORMANCE OF THE SOFTWARE.
+# 
+#  3. TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL BROADCOM OR
+#     ITS LICENSORS BE LIABLE FOR (i) CONSEQUENTIAL, INCIDENTAL, SPECIAL,
+#     INDIRECT, OR EXEMPLARY DAMAGES WHATSOEVER ARISING OUT OF OR IN ANY
+#     WAY RELATING TO YOUR USE OF OR INABILITY TO USE THE SOFTWARE EVEN
+#     IF BROADCOM HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES;
+#     OR (ii) ANY AMOUNT IN EXCESS OF THE AMOUNT ACTUALLY PAID FOR THE
+#     SOFTWARE ITSELF OR U.S. $1, WHICHEVER IS GREATER. THESE LIMITATIONS
+#     SHALL APPLY NOTWITHSTANDING ANY FAILURE OF ESSENTIAL PURPOSE OF ANY
+#     LIMITED REMEDY.
+# :>
+#
+# $Id: Makefile,v 1.11.20.1 2003/10/16 21:26:02 mthawani Exp $
+#
+
+STRIP = $(CROSS_COMPILE)strip
+SIZE = $(CROSS_COMPILE)size
+
+CURR_DIR	= $(shell pwd)
+SRCBASE		:= $(shell (cd $(CURR_DIR) && pwd -P))
+BUILD_DIR	:= $(subst /userspace, /userspace,$(CURR_DIR))
+BUILD_DIR	:= $(word 1, $(BUILD_DIR))
+
+#
+# Private apps and libs are allowed to link with libraries from the
+# private and public directories.
+#
+# WARNING: Do not modify this section unless you understand the
+# license implications of what you are doing.
+#
+ALLOWED_LIB_DIRS := /lib:/lib/private:/lib/public
+include $(BUILD_DIR)/make.common
+
+SHARED		= ./router/shared
+IGD			= ./igd/linux
+LIBUPNP		= ./protocol/linux
+
+CFLAGS	+= -s -Os
+CFLAGS  += -I$(TOOLCHAIN)/include
+CFLAGS += $(BRCM_WERROR_CFLAGS)
+
+export CFLAGS
+
+#DEBUG	:= 1
+
+IGD_OBJS = $(IGD)/linux_main.o $(IGD)/linux_net.o $(IGD)/linux_igd.o \
+			  $(IGD)/igd.o $(IGD)/dev2.o $(IGD)/igd_desc.o $(IGD)/wancommon.o $(IGD)/wanppp.o $(IGD)/wanipc.o \
+			  $(IGD)/layer3.o $(IGD)/wandsllinkconfig.o
+
+SHARED_OBJS = $(SHARED)/shutils.o $(SHARED)/linux_timer.o $(SHARED)/pcpiwf.o
+
+
+LIBS = -L./protocol/linux  -lupnp \
+	-L$(INSTALL_DIR)/lib -lcms_dal -lcms_msg $(CMS_COMMON_LIBS) -L$(INSTALL_DIR)/lib $(CMS_CORE_LIBS)
+
+ifeq ($(strip $(BRCM_USER_SSP)),y)
+CFLAGS  += $(SSP_MIN_COMPILER_OPTS)
+LIBS += -L$(INSTALL_DIR)/lib $(SSP_LIBS) 
+endif
+
+dynamic: install
+
+EXE = upnp
+
+all: $(EXE)
+
+install: all
+	install -d $(INSTALL_DIR)/bin
+	install -m 755 upnp $(INSTALL_DIR)/bin
+	$(STRIP) $(INSTALL_DIR)/bin/upnp
+
+clean:
+	$(MAKE) -C $(IGD) clean
+	$(MAKE) -C $(SHARED) clean
+	$(MAKE) -C $(LIBUPNP) clean
+	rm -f upnp
+
+binaryonly_dist_clean: clean generic_binaryonly_dist_clean
+	rm -f Makefile.fullsrc brcm-credits.xml
+	rm -rf *.c *.h linux igd include protocol router
+$(EXE): FORCE
+	$(MAKE) -C $(SHARED) SRCBASE=$(SRCBASE)
+	$(MAKE) -C $(LIBUPNP) SRCBASE=$(SRCBASE)
+	$(MAKE) -C $(IGD) SRCBASE=$(SRCBASE) 
+	$(CC) $(BCM_LD_FLAGS) -o $(EXE) $(IGD_OBJS) $(SHARED_OBJS) -Wl,-rpath,$(CMS_LIB_RPATH) $(CMS_LIB_PATH) $(LIBS)
+ifneq ($(DEBUG),1)
+	$(STRIP) $(EXE)
+endif
+	$(SIZE) $(EXE)
+
+FORCE:

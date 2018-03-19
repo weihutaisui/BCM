@@ -1,0 +1,516 @@
+.ig \"-*- nroff -*-
+Copyright (c) 2004,2005,2006,2007,2008 Katalix Systems Ltd.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this
+manual into another language, under the above conditions for modified
+versions, except that this permission notice may be included in
+translations approved by Katalix Systems Ltd instead of in
+the original English.
+..
+.\"
+.\" MAN PAGE COMMENTS to openl2tp-docs@lists.sourceforge.net
+.\"
+.TH openl2tp 7 "13 August 2007" "OpenL2TP" "OpenL2TP Manual"
+.PD
+.SH NAME
+openl2tp \- General documentation
+.PD
+.SH SYNOPSIS
+.PP
+This document describes the general features of
+.B OpenL2TP,
+a dual-licensed, open-source implementation of L2TP for Linux.
+.PP
+.B OpenL2TP
+is ideal for use in any of the following environments:-
+.IP \(bu 4
+as an L2TP VPN service for deployment on servers at the
+workplace, providing L2TP VPN access for home workers.
+.IP \(bu
+as a component in commercial 
+.I "Embedded Linux" 
+systems, such as home gateways or even big telecommunications
+switches.
+.IP \(bu
+as an L2TP client for desktop users.
+.SH PROTOCOL OVERVIEW
+.PP
+L2TP was designed by the IETF (Internet Engineering Task Force, the
+internet standards body) to tunnel one or more PPP sessions through an
+IP tunnel across an IP network. It utilizes two types of messages,
+control messages and data messages. Control messages are used in the
+establishment, maintenance and clearing of tunnels and sessions. Data
+messages are used to encapsulate PPP frames being carried over the
+tunnel. Control messages utilize a reliable control channel within
+L2TP to guarantee delivery. Data messages are not retransmitted when
+packet loss occurs.
+.PP
+When two L2TP peers have established a tunnel, sessions may be added
+to the tunnel. A tunnel may carry up to 65535 sessions. Control
+message exchanges are used to setup each L2TP session. When an L2TP
+session is in place, PPP data packets may be passed over the
+(unreliable) data channel of the session. Thus data packets are
+encapsulated first by an L2TP header and then a packet transport such
+as UDP, Frame Relay, ATM, etc.
+.nf
+
+   +-------------------+
+   | PPP Frames        |
+   +-------------------+    +-----------------------+
+   | L2TP Data Messages|    | L2TP Control Messages |
+   +-------------------+    +-----------------------+
+   | L2TP Data Channel |    | L2TP Control Channel  |
+   | (unreliable)      |    | (reliable)            |
+   +------------------------------------------------+
+   |      Packet Transport (UDP, FR, ATM, etc.)     |
+   +------------------------------------------------+
+
+	Diagram reproduced from RFC2661
+
+.fi
+.SS "L2TP Access Concentrator (LAC)"
+The LAC takes PPP sessions from ingress interfaces, which may be
+regular modems, ATM (PPPoA), Frame Relay (PPPoFR) or ethernet (PPPoE)
+interfaces and tunnels them through L2TP tunnels.  The LAC might
+create a new tunnel on-demand for the PPP session or it might choose
+to use an existing L2TP tunnel if it already exists.
+.PP
+In the simplest case, the PPP client and LAC are located on the same
+host and only one PPP session is used per L2TP tunnel. Some L2TP
+implementations, most notably Microsoft's, have this limitation.
+.PD
+.SS "L2TP Network Server (LNS)"
+The LNS is typically the server side of an L2TP connection. It accepts
+requests from the network to create new tunnels or add new sessions to
+tunnels. The LNS may terminate the PPP sessions locally or it may forward
+them via egress PPP interfaces.
+.PD
+.SH FEATURE SUMMARY
+.B OpenL2TP
+is a complete implementation of RFC2661 - Layer Two
+Tunneling Protocol, Version 2. Key features are:-
+.IP \(bu 4
+Operation as both LAC and LNS simultanesously is supported. A single
+server may be a LAC for some tunnels and a LNS for others.
+.IP \(bu
+Incoming and outgoing tunnels and sessions are supported.
+.IP \(bu
+Multiple tunnels and multiple sessions in those tunnels are supported.
+The maximum number of tunnels and sessions is limited only by available
+system memory (max 65535 tunnels and 65535 sessions per tunnel) or by
+system and user-configured limits.
+.IP \(bu
+All four session types are supported, i.e. LAC/LNS Incoming/Outgoing
+Calls.
+.IP \(bu
+Multiple tunnels between the same two L2TP hosts is supported.
+.IP \(bu
+Tunnel, session and PPP parameters may be defined in named profiles,
+simplifying the management interface and allowing specific parameter
+values to be used for specific incoming tunnels (those created by remote
+request over the network).
+.IP \(bu
+Is able to parse and record all standard L2TP AVPs defined in RFC2661.
+It checks that all required AVPs are present in each message and 
+generates error log messages if unexpected AVPs are seen.
+.IP \(bu
+Control messages are handled by a userland daemon,
+.BR openl2tpd .
+All L2TP data packets are handled by the kernel.
+.IP \(bu
+Trace messages optionally logged using syslog can be enabled/disabled
+at system, tunnel and session levels. Thus to debug problems on a busy
+system, tracing can be safely enabled only for specific entities without
+flooding the system with messages from other uninteresting entities. 
+.IP \(bu
+Management interface uses Sun RPC, making 
+.B OpenL2TP
+particularly suitable for embedded chassis environments such as telco
+systems. No config files to worry about!
+.IP \(bu
+Bundled with an intuitive command-line management application that
+uses TAB syntax completion, command history and context sensitive help.
+.IP \(bu
+Employs a plugin architecture to allow third parties to easily extend 
+or integrate 
+.B OpenL2TP
+with other software, e.g. PPP, RADIUS, B-RAS etc etc. Includes a plugin
+for interfacing to
+.BI pppd ( 8 )
+but other PPP implementations may be used if desired via a plugin.
+.IP \(bu
+Supports automatic IP address assignment from local address pools
+if other address allocation mechanisms (e.g. RADIUS) are not configured.
+Use 
+.BR ippoold ( 8 ).
+.IP \(bu
+Locally created tunnels may optionally be designated 
+.I persistent,
+causing them to try to recreate themselves should the tunnel fail for
+some reason. Any locally created sessions in persistent tunnels are
+also automatically restored if/when the tunnel restablishes
+itself. This is useful if
+.B openl2tpd
+is used as an L2TP client.
+.IP \(bu
+Interoperates with Cisco IOS 12.2 and Microsoft W2K/XP.
+.PD
+.SH PROFILES
+Profiles allow a set of tunnel, session or PPP parameters to be 
+configured and then referred to by name. For tunnels and sessions
+created by a local administrator, profiles simply offer a convenient
+shorthand for specifying several parameters in one go. However, profiles
+are most useful to specify parameters to be used in the future when
+L2TP tunnels or sessions are created by remote request over the network.
+.PP
+The following profile types exist:-
+.TP 16
+.B TUNNEL PROFILE
+Provides a named set of L2TP tunnel parameters which may be used when
+creating tunnels locally (by specifying the tunnel profile name when
+the tunnel is created) or when tunnels are created by remote request.
+.TP
+.B SESSION PROFILE
+Provides a named set of L2TP session parameters which may be used when
+creating sessions locally (by specifying the session profile name when
+the session is created) or when sessions are created by remote request.
+.TP
+.B PPP PROFILE
+Provides a named set of PPP parameters which are to be used when
+creating PPP connections in L2TP sessions.
+.TP
+.B PEER PROFILE
+Identifies parameters to be used when connecting to an L2TP
+peer. Peers are identified by name or by IP address / netmask.  The
+peer profile specifies default tunnel, session and PPP profile names
+which are to be used when communicating with the peer.
+.PP
+An administrator may create as many profiles as desired. The naming of
+profiles is scoped by profile type; it is possible to create a tunnel
+profile called
+.I one
+and a session profile called
+.I one,
+for example.
+.PP
+The profile name
+.I default
+is reserved; it is the name of default profiles which are used by the
+system when no other profile can be found.
+.PP
+Every parameter of a tunnel or session profile may be specified when a
+tunnel or session is created by a local administrator. If, therefore,
+.B OpenL2TP
+is being used as a simple, manually configured L2TP client, tunnel and
+session profiles aren't strictly necessary; the administrator just
+gives values for all non-default parameters when creating the tunnel
+or session.
+.PP
+When new L2TP tunnels, L2TP sessions or PPP connections are created,
+parameter values for any parameters not specified in the create
+request are derived from default profiles. These default profiles are
+automatically created by the system; their parameter values may be
+modified but the default profiles cannot be deleted. Default profiles
+thus provide a convenient way to override the default behavior of
+.B OpenL2TP.
+.PP
+For incoming tunnel, session and PPP setup requests, parameters are
+derived from tunnel, session and PPP profiles named in the peer profile
+that matches the incoming peer. Thus, to configure a server to accept
+incoming tunnel requests from host X, using a shared password Y, the 
+local administrator would do the following:-
+.IP \(bu 4
+create a tunnel profile and specify the tunnel password, authentication
+mode and any other L2TP tunnel parameters to be used for the peer.
+.IP \(bu
+create a peer profile, giving it the same name as the hostname of the
+remote peer. Specify the tunnel profile name of the tunnel profile 
+previously created.
+.PP
+If multiple tunnel peers share the same password, the same tunnel profile
+may be used for each peer.
+.PP
+Note that for further flexibility, tunnel profiles allow the session
+profile and PPP profile to be named. Thus, when a new L2TP session is
+created in a tunnel, if a session profile isn't specified in the
+request, its session parameters are derived from the session profile
+called out via the tunnel profile, or via the session profile named in
+the peer profile if the tunnel profile did not include a session
+profile name. Similarly, PPP parameters are derived from the PPP
+profile specified in the request, or in the session profile, or in the
+tunnel profile or in the peer profile. This feature is known as
+.I profile inheritance.
+.PD
+.SH SECURE TUNNEL ESTABLISHMENT
+The L2TP standard, documented in RFC2661, provides mechanisms for
+secure tunnel establishment. 
+.PP
+Tunnels may optionally be protected using a shared password (secret)
+which must be configured at both LAC and LNS. This may be used to
+prevent unwanted tunnels being created; the LAC or LNS sends a
+challenge to the peer using the shared tunnel password and expects a
+valid response before allowing the new tunnel to be created.
+.PP
+To prevent hackers from eavesdropping on L2TP protocol packets, some protocol
+fields (called Attribute Value Pairs, or AVPs) in L2TP protocol
+messages may be hidden (encrypted). This so-called
+.I AVP hiding
+may be enabled when the tunnel is created. Either or both LAC and LNS 
+may use AVP hiding in L2TP messages that it sends.
+.PP
+.B OpenL2TP
+provides
+.I Simple
+and
+.I Challenge
+tunnel authentication modes for incoming tunnels.
+.TP 10
+.B SIMPLE
+accepts the tunnel only if a matching peer profile can be found for
+the peer; a shared tunnel password is not required. Thus, by creating
+one or more peer profiles, an operator determines the peer host names
+and/or IP address ranges of permitted remote peers without needing to use
+passwords..
+.TP
+.B CHALLENGE
+accepts the tunnel only if both SIMPLE authentication succeeds and
+an L2TP challenge is requested by the peer. This is the most secure
+mode, as it enforces the use of L2TP Challenge and Peer Profiles
+to identify a set of permitted remote L2TP peers.
+.PP
+By default, neither SIMPLE nor CHALLENGE authentication mode is
+enabled; L2TP requests are accepted from any remote peer.
+.PD
+.SH L2TP LINUX KERNEL DRIVER
+In order to exchange data packets over an L2TP session, the bundled
+PPP-over-L2TP Linux device driver must be installed. It may be built
+statically into the kernel or as a loadable binary module.
+.PP
+The L2TP server will partially operate without the L2TP kernel support in
+place; L2TP tunnels and sessions are created as normal, but no data
+can be passed through the L2TP session. This may be useful for testing
+the protocol but it isn't useful for much else; indeed, many third
+party L2TP implementations such as Cisco will close the session when it
+fails to do PPP link setup.
+.PD
+.SH MANAGEMENT INTERFACE
+.B OpenL2TP
+departs from UNIX tradition in that it does not use config
+files. Instead it uses Sun RPC (Remote Procedure Call) to provide an
+extensive binary API to L2TP servers over a network.
+.PP
+Sun RPC is used in preference to proprietary message passing over
+sockets for several reasons:-
+.IP \(bu 4
+RPC handles all architecture differences. It is possible to run a L2TP
+control application on, say an Intel Pentium CPU to control several
+L2TP servers running on PowerPC CPUs, for example. It is also ideal
+for Linux Cluster environments. 
+.IP \(bu
+The management interface is defined in a Structured Definition
+Language from which C (or even Java) code can be
+generated. Therefore a single interface definition describes the
+application API. Readers interested in RPC should see 
+.BI rpc ( 3 ) .
+.IP \(bu
+RPC lends itself to several new network management technologies such
+as XML, SOAP, JAX and others.
+.PP
+For simple installations on a standard Linux workstation, the use of
+RPC could be seen as over-complicated and a security risk (since RPC
+requests can arrive over an IP network). Whilst this might be true, 
+.B OpenL2TP 
+is also targetted for easy deployment in commercial system chassis
+environments where CPUs on multiple boards in the chassis are
+controlled by other CPUs in the system. The ability to control 
+.B OpenL2TP
+over a closed network makes for much easier integration into industrial 
+solutions.
+.PP
+However, many installations will not need remote management capability
+so remote RPC requests are by default disabled. The L2TP server
+.BR openl2tpd
+must be started with the -R command line switch to enable remote RPC.
+.PP
+It is recommended that when remote RPC is enabled, a firewall is used
+to protect the system from external attack.
+.PD
+.SH IPSEC
+.PP
+OpenL2TP can be used with or without IPSec. To use IPSec, make sure
+that racoon is installed (from http://ipsec-tools.sourceforge.net) and
+start \fIopenl2tpd\fP with \fI-p ipsec.so\fP to use the IPSec
+plugin. This plugin tracks L2TP tunnel setups and installs rules in the
+IPSec Security Policy Database (SPD). Since this plugin tracks
+ephemeral port usage, OpenL2TP supports multiple L2TP/IPSec
+connections between the same IP peers. This allows configurations
+where there are multiple L2TP/IPSec clients behind a NAT gateway,
+connecting to a remote L2TP server.
+.PP
+To set up an L2TP/IPSec server with OpenL2TP, set up IPSec for the
+desired IPSec policies.  An example racoon configuration file is
+provided in the OpenL2TP distribution to help get started. Add
+Security Policy Database (SPD) entries for the initial L2TP control
+connection (port 1701). When OpenL2TP is used with its \fIipsec\fP
+plugin, additional policies are added on demand for actual IP
+addresses and ephemeral UDP ports, as tunnels are created and deleted. The
+following \fIsetkey\fP command adds an SPD to allow an L2TP server to
+serve L2TP/IPSec clients from any remote IP addresses.
+.nf
+spdadd 0.0.0.0/0[1701] 0.0.0.0/0 udp -P in ipsec
+	esp/transport//require;
+.fi
+.PP
+Then start \fIopenl2tpd\fP with its \fIipsec\fP plugin.
+.nf
+openl2tpd -p ipsec.so
+.fi
+.PP
+.PD
+.SH INTEROPABILITY
+.SS Microsoft Windows 2000 and Windows XP
+.IP \(bu 4
+By default, Microsoft L2TP uses IPSec for all L2TP tunnels. To disable IPSec on Microsoft
+systems, see
+.LP
+.nf
+http://support.microsoft.com/default.aspx?scid=kb;en-us;q310109&sd=tech.
+.fi
+.IP \(bu
+Microsoft L2TP clients negotiate a PPP MTU of only 1400 bytes. Duh!
+.PD
+.SS Cisco IOS 12.2
+.IP \(bu 4
+Cisco does not handle hidden AVPs in the SCCRQ message. As a
+workaround, 
+.B OpenL2TP
+turns off AVP hiding of all attributes in the SCCRQ, even if AVP
+hiding is enabled in the tunnel. Unlike Cisco,
+.B OpenL2TP
+can handle hidden AVPs in the SCCRQ message.
+.IP \(bu
+Cisco advertises a Receive Window Size (RWS) of 800 by default which
+seems way too large -- RFC2661 says the default should be 10.
+.PD
+.SH UNIMPLEMENTED FEATURES
+The L2TP specification includes a few optional features that are not
+currently implemented by
+.B OpenL2TP. 
+These are:-
+.TP 8
+.TP
+.B DATA PACKET REORDERING
+Data packets optionally carry sequence numbers. Although these sequence
+numbers are never used to retransmit unacknowledged data packets, they may be
+used by the receiver to try to reorder out-of-sequence packets. Currently,
+.B OpenL2TP
+simply discards such packets.
+.TP
+.B PPP PROXY
+PPP Proxy allows a LAC or LNS to shortcut PPP LCP negotiation by extracting
+PPP configuration messages and providing them to the peer with the 
+L2TP session setup request. The peer passes this data to its PPP session
+and the two PPP sessions continue with PPP negotiation as if they were
+always directly connected.
+Although the
+.B OpenL2TP
+API supports it, proxy PPP requires major work in the standard UNIX PPP 
+server application
+.BR pppd ( 8 )
+and Linux kernel. However,
+.B OpenL2TP
+already recognizes the PPP PROXY parameters of L2TP protocol messages
+and will report attributes that it receives from its peer using the
+current tunnel API. PPP PROXY is useful only in systems implementing some
+form of Broadband Remote Access Server (B-RAS).
+.TP
+.B PMTU DISCOVERY
+Strictly speaking, PMTU Discovery is not called out in the L2TP
+specification. This mechanism allows a host to determine the MTU of
+the network path to its peer. Although it can be requested when a
+tunnel is created, it is currently unimplemented.
+.PD
+.SH "LIMITATIONS"
+Although
+.B OpenL2TP
+is a comprehensive L2TP implementation, it does have some limitations. These are:-
+.IP \(bu 4
+It creates one UDP socket per tunnel and a temporary socket (as needed)
+for kernel interaction.  The maximum number of tunnels is therefore
+limited by the maximum number of file descriptors that a single
+process may have open (MAX_FILES). This is typically 1024 but may be adjusted using
+.BI ulimit ( 3 ).
+.IP \(bu
+It creates one PPPoL2TP socket per session. If 
+.BI pppd ( 8 )
+is used for PPP, these file descriptors are opened by the
+.BR pppd
+process, so don't add to the file descriptors used by
+.BR openl2tpd .
+However, if all PPP sessions are controlled by a single PPP process
+using a third party PPP implementation, the maximum session count is again 
+limited by MAX_FILES.
+.IP \(bu
+If
+.BR pppd ( 8 )
+is used to provide PPP, one
+.BR pppd
+process is spawned for each session. Although in virtual memory systems, the text segment (code)
+is shared between all instances of
+.BR pppd ,
+each process has its own data and heap. The heap alone can consume 1M of memory which can pose
+real problems to systems without swap space such as embedded systems.
+.IP \(bu
+Internally,
+.BR openl2tpd
+keeps lists of objects (tunnels, sessions, ppp, profiles etc) in linear linked lists. When the 
+number of entries in its lists becomes large, system performance is degraded because it takes
+a long time to walk the lists to find contexts. This will be fixed in a later release.
+.IP \(bu
+It is not possible to run two instances of
+.BR openl2tpd
+on the same system because they will both try to register the same RPC service and one will fail.
+.PD
+.SH "REPORTING BUGS"
+Please report bugs to <openl2tp-bugs@lists.sourceforge.net>.
+.PD
+.SH "SEE ALSO"
+The following documents are also available in the
+.B OpenL2TP 
+set:-
+.TP 16
+.BR openl2tpd ( 8 )
+describes how to invoke
+.B openl2tpd
+which is the L2TP daemon.
+.TP
+.BR openl2tp_rpc ( 4 )
+describes the RPC interface implemented by
+.B openl2tpd.
+This interface may be used by an RPC client application to control
+.BR
+openl2tpd .
+.TP
+.BR l2tpconfig ( 1 )
+describes the command line interface application which is bundled with
+.B OpenL2TP
+distribution. It is an RPC client application, implementing the interfaces
+documented in
+.BR openl2tp_rpc ( 4 ).
+.TP
+.BR ippoold ( 8 )
+an IP address pool manager. 
+.TP
+.BR openl2tpd.conf ( 5 )
+describes the syntax of a local configuration file which may be used
+instead of \fIl2tpconfig\fP to control the L2TP daemon.
+

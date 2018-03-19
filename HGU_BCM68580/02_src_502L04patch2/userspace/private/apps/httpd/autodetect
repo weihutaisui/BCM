@@ -1,0 +1,5 @@
+
+condition: ifneq ($(strip $(BUILD_ANY_CMS_HTTPD)),)
+dependson: wlan public/libs/openssl public/libs/expat public/libs/bcm_sslconf public/libs/httpdshared private/libs/bcmssl private/apps/nvram private/apps/hndrouter
+
+

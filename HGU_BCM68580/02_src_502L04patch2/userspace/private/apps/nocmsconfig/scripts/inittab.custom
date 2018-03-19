@@ -1,0 +1,15 @@
+# See examples/inittab for full description of fields.
+# This file contains customizations for the Broadcom CPE Router SDK
+
+# "bcm_boot_launcher start" will execute all scripts in /etc/rc3.d starting
+# with letter S in lexicographical order 
+::sysinit:/bin/sh -l -c "bcm_boot_launcher start"
+
+# The serial console application that is launched depends on whether CMS is included in the system.
+# If CMS, then launch consoled (-/bin/sh -l -c consoled)
+# If no CMS, then launch /bin/sh (-/bin/sh)
+::respawn:-/bin/sh
+
+# Currently, there are no scripts for shutdown
+::shutdown:/bin/sh -l -c "bcm_boot_launcher stop"
+

@@ -1,0 +1,30 @@
+--- libxml2-2.9.0/configure	2012-09-10 23:55:35.000000000 -0700
++++ libxml2/configure	2016-07-13 17:15:54.409849107 -0700
+@@ -2671,6 +2671,8 @@
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: $INSTALL" >&5
+ $as_echo "$INSTALL" >&6; }
+ 
++INSTALL="${INSTALL} -p"
++
+ # Use test -z because SunOS4 sh mishandles braces in ${var-val}.
+ # It thinks the first close brace ends the variable substitution.
+ test -z "$INSTALL_PROGRAM" && INSTALL_PROGRAM='${INSTALL}'
+diff -urp libxml2-2.9.0/config.sub libxml2/config.sub
+--- libxml2-2.9.0/config.sub	2012-09-11 14:55:36.000000000 +0800
++++ libxml2/config.sub	2017-05-02 15:14:39.642740345 +0800
+@@ -247,6 +247,7 @@ case $basic_machine in
+ 	# Some are omitted here because they have special meanings below.
+ 	1750a | 580 \
+ 	| a29k \
++	| aarch64 | aarch64_be \
+ 	| alpha | alphaev[4-8] | alphaev56 | alphaev6[78] | alphapca5[67] \
+ 	| alpha64 | alpha64ev[4-8] | alpha64ev56 | alpha64ev6[78] | alpha64pca5[67] \
+ 	| am33_2.0 \
+@@ -355,6 +356,7 @@ case $basic_machine in
+ 	# Recognize the basic CPU types with company name.
+ 	580-* \
+ 	| a29k-* \
++	| aarch64-* | aarch64_be-* \
+ 	| alpha-* | alphaev[4-8]-* | alphaev56-* | alphaev6[78]-* \
+ 	| alpha64-* | alpha64ev[4-8]-* | alpha64ev56-* | alpha64ev6[78]-* \
+ 	| alphapca5[67]-* | alpha64pca5[67]-* | arc-* \

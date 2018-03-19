@@ -1,0 +1,22 @@
+# The following is an OpenVPN configuration using a pre-shared key. This is for test purposes only and assumes devices are directly connected (WAN to WAN).
+# 
+# Client1 - server
+# WAN IP - 192.168.50.10
+# LAN subnet - 192.168.1.x
+#
+# Client2 - client
+# WAN IP - 192.168.50.20
+# LAN subnet - 192.168.2.x
+#
+# First create a static key on one of the clients and then manually copy the key
+# to the other client. Key is assumed to be stored in /var/static.key
+# openvpn --genkey --secret /var/static.key
+#
+# The following commands can then be used to start the OpenVPN clients.
+#
+# Client1:
+# openvpn --dev tun0 --ifconfig 10.8.0.1 10.8.0.2 --secret /var/static.key --local 192.168.50.10 --route 192.168.2.0 255.255.255.0 --proto tcp-server --comp-lzo --cipher AES-128-CBC &
+#
+# Client2: 
+# openvpn --dev tun0 --ifconfig 10.8.0.2 10.8.0.1 --secret /var/static.key --remote 192.168.50.10 --local 192.168.50.20 --route 192.168.1.0 255.255.255.0 --proto tcp-client --comp-lzo --cipher AES-128-CBC &
+# 

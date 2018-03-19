@@ -1,0 +1,4579 @@
+# -*- tcl -*-
+
+source test_procs.tcl
+
+############################################################################
+# Tests 1.* - basic list/create/modify/show/delete/unset operations
+############################################################################
+
+test tunnel_profile-1.1 { List tunnel profiles } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-1.1
+	l2tpConfig tunnel profile list
+    } \
+    {
+
+	default
+}
+
+test tunnel_profile-1.2 { Create a tunnel profile 'one' } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-1.2
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile list
+    } \
+    {
+
+Created tunnel profile one
+	default
+	one
+}
+
+test tunnel_profile-1.3 { Show tunnel profile 'default' } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-1.3
+	l2tpConfig tunnel profile show profile_name=default
+    } \
+    {
+
+Tunnel profile default
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: default
+  session profile: default
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+}
+
+test tunnel_profile-1.4 { Show tunnel profile 'one' } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-1.4
+	l2tpConfig tunnel profile show profile_name=one
+    } \
+    {
+
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+}
+
+test tunnel_profile-1.5 { Modify tunnel profile 'one' } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-1.5
+	l2tpConfig tunnel profile modify profile_name=one hello_timeout=59
+	l2tpConfig tunnel profile show profile_name=one
+    } \
+    {
+
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 59, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+}
+
+test tunnel_profile-1.6 { Unset tunnel profile 'one' } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-1.5
+	l2tpConfig tunnel profile unset profile_name=one hello_timeout
+	l2tpConfig tunnel profile show profile_name=one
+    } \
+    {
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+}
+
+test tunnel_profile-1.7 { Delete a tunnel profile 'one' } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-1.6
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile list
+    } \
+    {
+
+Deleted tunnel profile one
+	default
+}
+
+test tunnel_profile-1.8 { Create tunnel profile that already exists } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-1.7
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile list
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile list
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+	default
+	one
+Error at or near 'create'
+Operation failed: Profile already exists
+	default
+	one
+Deleted tunnel profile one
+}
+
+############################################################################
+# Tests 2.* - optional create parameters
+############################################################################
+
+test tunnel_profile-2.1 { Create tunnel profile hello_timeout= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.1
+	l2tpConfig tunnel profile create profile_name=one hello_timeout=59
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 59, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.2 { Create tunnel profile dest_ipaddr= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.2
+	l2tpConfig tunnel profile create profile_name=one dest_ipaddr=10.1.2.3
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  peer IP address: 10.1.2.3
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.3 { Create tunnel profile src_ipaddr= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.3
+	l2tpConfig tunnel profile create profile_name=one src_ipaddr=10.1.2.3
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  local IP address: 10.1.2.3
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.4 { Create tunnel profile peer_udp_port= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.4
+	l2tpConfig tunnel profile create profile_name=one peer_udp_port=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  peer UDP port: 42
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.5 { Create tunnel profile use_tiebreaker= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.5
+	l2tpConfig tunnel profile create profile_name=one use_tiebreaker=yes
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: ON
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.6 { Create tunnel profile allow_ppp_proxy= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.6
+	l2tpConfig tunnel profile create profile_name=one allow_ppp_proxy=yes
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy ON
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.7 { Create tunnel profile framing_caps= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.7
+	l2tpConfig tunnel profile create profile_name=one framing_caps=sync
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one framing_caps=async
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one framing_caps=any
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one framing_caps=none
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: NONE 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.8 { Create tunnel profile bearer_caps= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.8
+	l2tpConfig tunnel profile create profile_name=one bearer_caps=analog
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one bearer_caps=digital
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one bearer_caps=any
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one bearer_caps=none
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: NONE 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.9 { Create tunnel profile host_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.9
+	l2tpConfig tunnel profile create profile_name=one host_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  l2tp host name: wibble
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.10 { Create tunnel profile secret= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.10
+	l2tpConfig tunnel profile create profile_name=one secret=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  tunnel secret: 'wibble'
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.11 { Create tunnel profile do_pmtu_discovery= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.11
+	l2tpConfig tunnel profile create profile_name=one do_pmtu_discovery=yes
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: ON, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.12 { Create tunnel profile mtu= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.12
+	l2tpConfig tunnel profile create profile_name=one mtu=1400
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1400
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.13 { Create tunnel profile trace_flags= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.13
+	l2tpConfig tunnel profile create profile_name=one trace_flags=7
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.14 { Create tunnel profile auth_mode= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.14
+	l2tpConfig tunnel profile create profile_name=one auth_mode=none
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one auth_mode=simple
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one auth_mode=challenge
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Tunnel profile one
+  authorization mode SIMPLE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Tunnel profile one
+  authorization mode CHALLENGE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.15 { Create tunnel profile hide_avps= secret= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.15
+	l2tpConfig tunnel profile create profile_name=one hide_avps=yes secret=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs ON, allow PPP proxy OFF
+  tunnel secret: 'wibble'
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.16 { Create tunnel profile use_udp_checksums= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.16
+	l2tpConfig tunnel profile create profile_name=one use_udp_checksums=no
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: OFF
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.17 { Create tunnel profile max_retries= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.17
+	l2tpConfig tunnel profile create profile_name=one max_retries=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 42
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.18 { Create tunnel profile rx_window_size= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.18
+	l2tpConfig tunnel profile create profile_name=one rx_window_size=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 42, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.19 { Create tunnel profile tx_window_size= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.19
+	l2tpConfig tunnel profile create profile_name=one tx_window_size=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 42, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.20 { Create tunnel profile retry_timeout= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.20
+	l2tpConfig tunnel profile create profile_name=one retry_timeout=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 42, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.21 { Create tunnel profile idle_timeout= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.21
+	l2tpConfig tunnel profile create profile_name=one idle_timeout=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 42
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.22 { Create tunnel profile max_sessions= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.22
+	l2tpConfig tunnel profile create profile_name=one max_sessions=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  max sessions: 42
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.23 { Create tunnel profile peer_profile_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.23
+	l2tpConfig tunnel profile create profile_name=one peer_profile_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: wibble
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.24 { Create tunnel profile session_profile_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.24
+	l2tpConfig tunnel profile create profile_name=one session_profile_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: wibble
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.25 { Create tunnel profile ppp_profile_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    {
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.25
+	l2tpConfig tunnel profile create profile_name=one ppp_profile_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: wibble
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-2.26 { Complex create tunnel profile with all args } \
+    { l2tpdRunning && tunnelProfile } \
+    {
+	clearResult
+	l2tpConfig test log message=tunnel_profile-2.26
+	l2tpConfig tunnel profile create profile_name=one \
+	  dest_ipaddr=10.1.2.3 \
+	  src_ipaddr=10.1.2.4 \
+	  peer_udp_port=42 \
+	  hello_timeout=42 \
+	  max_retries=42 \
+	  rx_window_size=42 \
+	  tx_window_size=42 \
+	  retry_timeout=42 \
+	  idle_timeout=42 \
+	  host_name=wibble2 \
+	  secret=wibble3 \
+	  hide_avps=yes \
+	  use_tiebreaker=yes \
+	  allow_ppp_proxy=yes \
+	  framing_caps=async \
+	  bearer_caps=analog \
+	  do_pmtu_discovery=yes \
+	  mtu=1400 \
+	  trace_flags=15 \
+	  auth_mode=simple \
+	  use_udp_checksums=off \
+	  max_sessions=42 \
+	  peer_profile_name=wibble4 \
+	  session_profile_name=wibble5 \
+	  ppp_profile_name=wibble6
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Tunnel profile one
+  l2tp host name: wibble2
+  local IP address: 10.1.2.4
+  peer IP address: 10.1.2.3
+  peer UDP port: 42
+  authorization mode SIMPLE, hide AVPs ON, allow PPP proxy ON
+  tunnel secret: 'wibble3'
+  hello timeout 42, retry timeout 42, idle timeout 42
+  rx window size 42, tx window size 42, max retries 42
+  use UDP checksums: OFF
+  do pmtu discovery: ON, mtu: 1400
+  framing capability: ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: ON
+  max sessions: 42
+  peer profile: wibble4
+  session profile: wibble5
+  ppp profile: wibble6
+  trace flags: PROTOCOL FSM API AVP
+
+Deleted tunnel profile one
+}
+
+############################################################################
+# Tests 3.* - modify parameters
+############################################################################
+
+test tunnel_profile-3.1 { Modify tunnel profile hello_timeout= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.1
+	l2tpConfig tunnel profile create profile_name=one 
+	l2tpConfig tunnel profile modify profile_name=one hello_timeout=59
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 59, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.2 { Modify tunnel profile dest_ipaddr= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.2
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one dest_ipaddr=10.1.2.3
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  peer IP address: 10.1.2.3
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.3 { Modify tunnel profile src_ipaddr= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.3
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one src_ipaddr=10.1.2.3
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  local IP address: 10.1.2.3
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.4 { Modify tunnel profile peer_udp_port= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.4
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one peer_udp_port=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  peer UDP port: 42
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.5 { Modify tunnel profile use_tiebreaker= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.5
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one use_tiebreaker=yes
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: ON
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.6 { Modify tunnel profile allow_ppp_proxy= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.6
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one allow_ppp_proxy=yes
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy ON
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.7 { Modify tunnel profile framing_caps= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.7
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one framing_caps=sync
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one framing_caps=async
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one framing_caps=any
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one framing_caps=none
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: NONE 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.8 { Modify tunnel profile bearer_caps= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.8
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one bearer_caps=analog
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one bearer_caps=digital
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one bearer_caps=any
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one bearer_caps=none
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: NONE 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.9 { Modify tunnel profile host_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.9
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one host_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  l2tp host name: wibble
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.10 { Modify tunnel profile secret= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.10
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one secret=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  tunnel secret: 'wibble'
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.11 { Modify tunnel profile do_pmtu_discovery= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.11
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one do_pmtu_discovery=yes
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: ON, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.12 { Modify tunnel profile mtu= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.12
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one mtu=1400
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1400
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.13 { Modify tunnel profile trace_flags= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.13
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one trace_flags=7
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.14 { Modify tunnel profile auth_mode= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.14
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one auth_mode=none
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one auth_mode=simple
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one auth_mode=challenge
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode SIMPLE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode CHALLENGE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.15 { Modify tunnel profile hide_avps= secret= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.15
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one hide_avps=yes secret=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs ON, allow PPP proxy OFF
+  tunnel secret: 'wibble'
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.16 { Modify tunnel profile use_udp_checksums= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.16
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one use_udp_checksums=no
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: OFF
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.17 { Modify tunnel profile max_retries= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.17
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one max_retries=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 42
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.18 { Modify tunnel profile rx_window_size= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.18
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one rx_window_size=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 42, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.19 { Modify tunnel profile tx_window_size= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.19
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one tx_window_size=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 42, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.20 { Modify tunnel profile retry_timeout= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.20
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one retry_timeout=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 42, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.21 { Modify tunnel profile idle_timeout= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.21
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one idle_timeout=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 42
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.22 { Modify tunnel profile max_sessions= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.22
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one max_sessions=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  max sessions: 42
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.23 { Modify tunnel profile peer_profile_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.23
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one peer_profile_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: wibble
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.24 { Modify tunnel profile session_profile_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.24
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one session_profile_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: wibble
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.25 { Modify tunnel profile ppp_profile_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.25
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one ppp_profile_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: wibble
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-3.26 { Complex modify tunnel profile with all args } \
+    { l2tpdRunning && tunnelProfile } \
+    {
+	clearResult
+	l2tpConfig test log message=tunnel_profile-3.26
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one \
+	  dest_ipaddr=10.1.2.3 \
+	  src_ipaddr=10.1.2.4 \
+	  peer_udp_port=42 \
+	  hello_timeout=42 \
+	  max_retries=42 \
+	  rx_window_size=42 \
+	  tx_window_size=42 \
+	  retry_timeout=42 \
+	  idle_timeout=42 \
+	  host_name=wibble2 \
+	  secret=wibble3 \
+	  hide_avps=yes \
+	  use_tiebreaker=yes \
+	  allow_ppp_proxy=yes \
+	  framing_caps=async \
+	  bearer_caps=analog \
+	  do_pmtu_discovery=yes \
+	  mtu=1400 \
+	  trace_flags=15 \
+	  auth_mode=simple \
+	  use_udp_checksums=off \
+	  max_sessions=42 \
+	  peer_profile_name=wibble4 \
+	  session_profile_name=wibble5 \
+	  ppp_profile_name=wibble6
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  l2tp host name: wibble2
+  local IP address: 10.1.2.4
+  peer IP address: 10.1.2.3
+  peer UDP port: 42
+  authorization mode SIMPLE, hide AVPs ON, allow PPP proxy ON
+  tunnel secret: 'wibble3'
+  hello timeout 42, retry timeout 42, idle timeout 42
+  rx window size 42, tx window size 42, max retries 42
+  use UDP checksums: OFF
+  do pmtu discovery: ON, mtu: 1400
+  framing capability: ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: ON
+  max sessions: 42
+  peer profile: wibble4
+  session profile: wibble5
+  ppp profile: wibble6
+  trace flags: PROTOCOL FSM API AVP
+
+Deleted tunnel profile one
+}
+
+############################################################################
+# Tests 4.* - unset parameters
+############################################################################
+
+test tunnel_profile-4.1 { Unset tunnel profile hello_timeout= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.1
+	l2tpConfig tunnel profile create profile_name=one 
+	l2tpConfig tunnel profile modify profile_name=one hello_timeout=59
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one hello_timeout
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 59, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.2 { Unset tunnel profile dest_ipaddr= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.2
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one dest_ipaddr=10.1.2.3
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one dest_ipaddr
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  peer IP address: 10.1.2.3
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.3 { Unset tunnel profile src_ipaddr= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.3
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one src_ipaddr=10.1.2.3
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one src_ipaddr
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  local IP address: 10.1.2.3
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.4 { Unset tunnel profile peer_udp_port= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.4
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one peer_udp_port=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one peer_udp_port
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  peer UDP port: 42
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.5 { Unset tunnel profile use_tiebreaker= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.5
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one use_tiebreaker=yes
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one use_tiebreaker
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: ON
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.6 { Unset tunnel profile allow_ppp_proxy= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.6
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one allow_ppp_proxy=yes
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one allow_ppp_proxy
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy ON
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.7 { Unset tunnel profile framing_caps= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.7
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one framing_caps=sync
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one framing_caps
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one framing_caps=async
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one framing_caps
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one framing_caps=any
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one framing_caps
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one framing_caps=none
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one framing_caps
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: NONE 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.8 { Unset tunnel profile bearer_caps= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.8
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one bearer_caps=analog
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one bearer_caps
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one bearer_caps=digital
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one bearer_caps
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one bearer_caps=any
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one bearer_caps
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one bearer_caps=none
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one bearer_caps
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: NONE 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.9 { Unset tunnel profile host_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.9
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one host_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one host_name
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  l2tp host name: wibble
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.10 { Unset tunnel profile secret= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.10
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one secret=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one secret
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  tunnel secret: 'wibble'
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.11 { Unset tunnel profile do_pmtu_discovery= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.11
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one do_pmtu_discovery=yes
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one do_pmtu_discovery
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: ON, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.12 { Unset tunnel profile mtu= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.12
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one mtu=1400
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one mtu
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1400
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.13 { Unset tunnel profile trace_flags= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.13
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one trace_flags=7
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one trace_flags
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.14 { Unset tunnel profile auth_mode= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.14
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one auth_mode=none
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one auth_mode
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one auth_mode=simple
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one auth_mode
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one auth_mode=challenge
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one auth_mode
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode SIMPLE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode CHALLENGE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.15 { Unset tunnel profile hide_avps= secret= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.15
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one hide_avps=yes secret=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one hide_avps secret
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs ON, allow PPP proxy OFF
+  tunnel secret: 'wibble'
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.16 { Unset tunnel profile use_udp_checksums= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.16
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one use_udp_checksums=no
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one use_udp_checksums
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: OFF
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.17 { Unset tunnel profile max_retries= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.17
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one max_retries=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one max_retries
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 42
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.18 { Unset tunnel profile rx_window_size= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.18
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one rx_window_size=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one rx_window_size
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 42, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.19 { Unset tunnel profile tx_window_size= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.19
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one tx_window_size=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one tx_window_size
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 42, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.20 { Unset tunnel profile retry_timeout= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.20
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one retry_timeout=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one retry_timeout
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 42, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.21 { Unset tunnel profile idle_timeout= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.21
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one idle_timeout=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one idle_timeout
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 42
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.22 { Unset tunnel profile max_sessions= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.22
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one max_sessions=42
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one max_sessions
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  max sessions: 42
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.23 { Unset tunnel profile peer_profile_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.23
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one peer_profile_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one peer_profile_name
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: wibble
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.24 { Unset tunnel profile session_profile_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.24
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one session_profile_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one session_profile_name
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: wibble
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.25 { Unset tunnel profile ppp_profile_name= } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.25
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one ppp_profile_name=wibble
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one ppp_profile_name
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: wibble
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-4.26 { Complex modify tunnel profile with all args } \
+    { l2tpdRunning && tunnelProfile } \
+    {
+	clearResult
+	l2tpConfig test log message=tunnel_profile-4.26
+	l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig tunnel profile modify profile_name=one \
+	  dest_ipaddr=10.1.2.3 \
+	  src_ipaddr=10.1.2.4 \
+	  peer_udp_port=42 \
+	  hello_timeout=42 \
+	  max_retries=42 \
+	  rx_window_size=42 \
+	  tx_window_size=42 \
+	  retry_timeout=42 \
+	  idle_timeout=42 \
+	  host_name=wibble2 \
+	  secret=wibble3 \
+	  hide_avps=yes \
+	  use_tiebreaker=yes \
+	  allow_ppp_proxy=yes \
+	  framing_caps=async \
+	  bearer_caps=analog \
+	  do_pmtu_discovery=yes \
+	  mtu=1400 \
+	  trace_flags=15 \
+	  auth_mode=simple \
+	  use_udp_checksums=off \
+	  max_sessions=42 \
+	  peer_profile_name=wibble4 \
+	  session_profile_name=wibble5 \
+	  ppp_profile_name=wibble6
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile unset profile_name=one \
+	  dest_ipaddr \
+	  src_ipaddr \
+	  peer_udp_port \
+	  hello_timeout \
+	  max_retries \
+	  rx_window_size \
+	  tx_window_size \
+	  retry_timeout \
+	  idle_timeout \
+	  host_name \
+	  secret \
+	  hide_avps \
+	  use_tiebreaker \
+	  allow_ppp_proxy \
+	  framing_caps \
+	  bearer_caps \
+	  do_pmtu_discovery \
+	  mtu \
+	  trace_flags \
+	  auth_mode \
+	  use_udp_checksums \
+	  max_sessions \
+	  peer_profile_name \
+	  session_profile_name \
+	  ppp_profile_name
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  l2tp host name: wibble2
+  local IP address: 10.1.2.4
+  peer IP address: 10.1.2.3
+  peer UDP port: 42
+  authorization mode SIMPLE, hide AVPs ON, allow PPP proxy ON
+  tunnel secret: 'wibble3'
+  hello timeout 42, retry timeout 42, idle timeout 42
+  rx window size 42, tx window size 42, max retries 42
+  use UDP checksums: OFF
+  do pmtu discovery: ON, mtu: 1400
+  framing capability: ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: ON
+  max sessions: 42
+  peer profile: wibble4
+  session profile: wibble5
+  ppp profile: wibble6
+  trace flags: PROTOCOL FSM API AVP
+
+Unset parameters of tunnel profile one
+Tunnel profile one
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Deleted tunnel profile one
+}
+
+############################################################################
+# Tests 5.* - config save/restore
+############################################################################
+
+test tunnel_profile-5.1 { Save a created tunnel profile } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-5.1
+	l2tpConfig test modify default_config
+        l2tpConfig tunnel profile create profile_name=one
+	l2tpConfig config save file=results/tunnel_profile-5.1.cfg
+	catFile results/tunnel_profile-5.1.cfg
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created tunnel profile one
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+tunnel profile create profile_name=one$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted tunnel profile one
+}
+
+test tunnel_profile-5.2 { Save all set parameters of a tunnel profile } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-5.2
+	l2tpConfig test modify default_config
+        l2tpConfig tunnel profile create profile_name=one \
+	  dest_ipaddr=10.1.2.3 \
+	  src_ipaddr=10.1.2.4 \
+	  peer_udp_port=42 \
+	  hello_timeout=42 \
+	  max_retries=42 \
+	  rx_window_size=42 \
+	  tx_window_size=42 \
+	  retry_timeout=42 \
+	  idle_timeout=42 \
+	  host_name=wibble2 \
+	  secret=wibble3 \
+	  hide_avps=yes \
+	  use_tiebreaker=yes \
+	  allow_ppp_proxy=yes \
+	  framing_caps=async \
+	  bearer_caps=analog \
+	  do_pmtu_discovery=yes \
+	  mtu=1400 \
+	  trace_flags=15 \
+	  auth_mode=simple \
+	  use_udp_checksums=off \
+	  max_sessions=42 \
+	  peer_profile_name=wibble4 \
+	  session_profile_name=wibble5 \
+	  ppp_profile_name=wibble6
+	l2tpConfig config save file=results/tunnel_profile-5.2.cfg
+	catFile results/tunnel_profile-5.2.cfg
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created tunnel profile one
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+tunnel profile create profile_name=one$
+tunnel profile modify profile_name=one \$
+	hide_avps=yes \$
+	auth_mode=simple \$
+	framing_cap=async \$
+	bearer_cap=analog \$
+	use_tiebreaker=yes \$
+	hello_timeout=42 \$
+	max_retries=42 \$
+	rx_window_size=42 \$
+	tx_window_size=42 \$
+	retry_timeout=42 \$
+	idle_timeout=42 \$
+	secret=wibble3 \$
+	allow_ppp_proxy=yes \$
+	trace_flags=15 \$
+	use_udp_checksums=no \$
+	host_name=wibble2 \$
+	max_sessions=42 \$
+	src_ipaddr=10.1.2.4 \$
+	dest_ipaddr=10.1.2.3 \$
+	peer_udp_port=42 \$
+	peer_profile_name=wibble4 \$
+	session_profile_name=wibble5 \$
+	ppp_profile_name=wibble6 \$
+	do_pmtu_discovery=yes \$
+	mtu=1400 \$
+$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted tunnel profile one
+}
+
+test tunnel_profile-5.3 { Save only non-default parameters of a created tunnel profile } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-5.3
+	l2tpConfig test modify default_config
+        l2tpConfig tunnel profile create profile_name=one \
+	  hello_timeout=42 \
+	  host_name=wibble2 \
+	  secret=wibble3 \
+	  hide_avps=yes \
+	  auth_mode=simple
+	l2tpConfig config save file=results/tunnel_profile-5.3.cfg
+	catFile results/tunnel_profile-5.2.cfg
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created tunnel profile one
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+tunnel profile create profile_name=one$
+tunnel profile modify profile_name=one \$
+	hide_avps=yes \$
+	auth_mode=simple \$
+	framing_cap=async \$
+	bearer_cap=analog \$
+	use_tiebreaker=yes \$
+	hello_timeout=42 \$
+	max_retries=42 \$
+	rx_window_size=42 \$
+	tx_window_size=42 \$
+	retry_timeout=42 \$
+	idle_timeout=42 \$
+	secret=wibble3 \$
+	allow_ppp_proxy=yes \$
+	trace_flags=15 \$
+	use_udp_checksums=no \$
+	host_name=wibble2 \$
+	max_sessions=42 \$
+	src_ipaddr=10.1.2.4 \$
+	dest_ipaddr=10.1.2.3 \$
+	peer_udp_port=42 \$
+	peer_profile_name=wibble4 \$
+	session_profile_name=wibble5 \$
+	ppp_profile_name=wibble6 \$
+	do_pmtu_discovery=yes \$
+	mtu=1400 \$
+$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted tunnel profile one
+}
+
+test tunnel_profile-5.4 { Save all modified values of a tunnel profile } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-5.4
+	l2tpConfig test modify default_config
+        l2tpConfig tunnel profile create profile_name=one
+        l2tpConfig tunnel profile modify profile_name=one \
+	  dest_ipaddr=10.1.2.3 \
+	  src_ipaddr=10.1.2.4 \
+	  peer_udp_port=42 \
+	  hello_timeout=42 \
+	  max_retries=42 \
+	  rx_window_size=42 \
+	  tx_window_size=42 \
+	  retry_timeout=42 \
+	  idle_timeout=42 \
+	  host_name=wibble2 \
+	  secret=wibble3 \
+	  hide_avps=yes \
+	  use_tiebreaker=yes \
+	  allow_ppp_proxy=yes \
+	  framing_caps=async \
+	  bearer_caps=analog \
+	  do_pmtu_discovery=yes \
+	  mtu=1400 \
+	  trace_flags=15 \
+	  auth_mode=simple \
+	  use_udp_checksums=no \
+	  max_sessions=42 \
+	  peer_profile_name=wibble4 \
+	  session_profile_name=wibble5 \
+	  ppp_profile_name=wibble6
+	l2tpConfig config save file=results/tunnel_profile-5.5.cfg
+	catFile results/tunnel_profile-5.5.cfg
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created tunnel profile one
+Modified tunnel profile one
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+tunnel profile create profile_name=one$
+tunnel profile modify profile_name=one \$
+	hide_avps=yes \$
+	auth_mode=simple \$
+	framing_cap=async \$
+	bearer_cap=analog \$
+	use_tiebreaker=yes \$
+	hello_timeout=42 \$
+	max_retries=42 \$
+	rx_window_size=42 \$
+	tx_window_size=42 \$
+	retry_timeout=42 \$
+	idle_timeout=42 \$
+	secret=wibble3 \$
+	allow_ppp_proxy=yes \$
+	trace_flags=15 \$
+	use_udp_checksums=no \$
+	host_name=wibble2 \$
+	max_sessions=42 \$
+	src_ipaddr=10.1.2.4 \$
+	dest_ipaddr=10.1.2.3 \$
+	peer_udp_port=42 \$
+	peer_profile_name=wibble4 \$
+	session_profile_name=wibble5 \$
+	ppp_profile_name=wibble6 \$
+	do_pmtu_discovery=yes \$
+	mtu=1400 \$
+$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted tunnel profile one
+}
+
+test tunnel_profile-5.5 { Save only non-default modified values of a tunnel profile } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-5.5
+	l2tpConfig test modify default_config
+        l2tpConfig tunnel profile create profile_name=one
+        l2tpConfig tunnel profile modify profile_name=one \
+	  mtu=1400 \
+	  trace_flags=15
+	l2tpConfig config save file=results/tunnel_profile-5.5.cfg
+	catFile results/tunnel_profile-5.5.cfg
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created tunnel profile one
+Modified tunnel profile one
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+tunnel profile create profile_name=one$
+tunnel profile modify profile_name=one \$
+	trace_flags=15 \$
+	mtu=1400 \$
+$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted tunnel profile one
+}
+
+test tunnel_profile-5.6 { Save all created tunnel profiles } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-5.6
+	l2tpConfig test modify default_config
+        l2tpConfig tunnel profile create profile_name=one
+        l2tpConfig tunnel profile create profile_name=two
+        l2tpConfig tunnel profile create profile_name=three
+	l2tpConfig config save file=results/tunnel_profile-5.6.cfg
+	catFile results/tunnel_profile-5.6.cfg
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile delete profile_name=two
+	l2tpConfig tunnel profile delete profile_name=three
+    } \
+    {
+
+Modified test config
+Created tunnel profile one
+Created tunnel profile two
+Created tunnel profile three
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+tunnel profile create profile_name=three$
+tunnel profile create profile_name=two$
+tunnel profile create profile_name=one$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted tunnel profile one
+Deleted tunnel profile two
+Deleted tunnel profile three
+}
+
+test tunnel_profile-5.7 { Restore all parameters from a saved file } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-5.7
+	l2tpConfig test modify default_config
+        l2tpConfig tunnel profile create profile_name=one \
+	  dest_ipaddr=10.1.2.3 \
+	  src_ipaddr=10.1.2.4 \
+	  peer_udp_port=42 \
+	  hello_timeout=42 \
+	  max_retries=42 \
+	  rx_window_size=42 \
+	  tx_window_size=42 \
+	  retry_timeout=42 \
+	  idle_timeout=42 \
+	  host_name=wibble2 \
+	  secret=wibble3 \
+	  hide_avps=yes \
+	  use_tiebreaker=yes \
+	  allow_ppp_proxy=yes \
+	  framing_caps=async \
+	  bearer_caps=analog \
+	  do_pmtu_discovery=yes \
+	  mtu=1400 \
+	  trace_flags=15 \
+	  auth_mode=simple \
+	  use_udp_checksums=off \
+	  max_sessions=42 \
+	  peer_profile_name=wibble4 \
+	  session_profile_name=wibble5 \
+	  ppp_profile_name=wibble6
+	l2tpConfig config save file=results/tunnel_profile-5.7.cfg
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig config restore file=results/tunnel_profile-5.7.cfg
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created tunnel profile one
+
+Deleted tunnel profile one
+Created tunnel profile one
+Modified tunnel profile one
+Tunnel profile one
+  l2tp host name: wibble2
+  local IP address: 10.1.2.4
+  peer IP address: 10.1.2.3
+  peer UDP port: 42
+  authorization mode SIMPLE, hide AVPs ON, allow PPP proxy ON
+  tunnel secret: 'wibble3'
+  hello timeout 42, retry timeout 42, idle timeout 42
+  rx window size 42, tx window size 42, max retries 42
+  use UDP checksums: OFF
+  do pmtu discovery: ON, mtu: 1400
+  framing capability: ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: ON
+  max sessions: 42
+  peer profile: wibble4
+  session profile: wibble5
+  ppp profile: wibble6
+  trace flags: PROTOCOL FSM API AVP
+
+Deleted tunnel profile one
+}
+
+test tunnel_profile-5.8 { Restore multiple tunnel profiles } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-5.8
+	l2tpConfig test modify default_config
+        l2tpConfig tunnel profile create profile_name=one \
+	  dest_ipaddr=10.1.2.3 \
+	  src_ipaddr=10.1.2.4 \
+	  peer_udp_port=42 \
+	  hello_timeout=42 \
+	  max_retries=42 \
+	  rx_window_size=42 \
+	  tx_window_size=42 \
+	  retry_timeout=42 \
+	  idle_timeout=42
+        l2tpConfig tunnel profile create profile_name=two \
+	  host_name=wibble2 \
+	  secret=wibble3 \
+	  hide_avps=yes \
+	  use_tiebreaker=yes \
+	  allow_ppp_proxy=yes \
+	  framing_caps=async \
+	  bearer_caps=analog
+        l2tpConfig tunnel profile create profile_name=three \
+	  do_pmtu_discovery=yes \
+	  mtu=1400 \
+	  trace_flags=15 \
+	  auth_mode=simple \
+	  use_udp_checksums=off \
+	  max_sessions=42 \
+	  peer_profile_name=wibble4 \
+	  session_profile_name=wibble5 \
+	  ppp_profile_name=wibble6
+	l2tpConfig config save file=results/tunnel_profile-5.8.cfg
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile delete profile_name=two
+	l2tpConfig tunnel profile delete profile_name=three
+	l2tpConfig config restore file=results/tunnel_profile-5.8.cfg
+	l2tpConfig tunnel profile list
+	l2tpConfig tunnel profile show profile_name=one
+	l2tpConfig tunnel profile show profile_name=two
+	l2tpConfig tunnel profile show profile_name=three
+
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile delete profile_name=two
+	l2tpConfig tunnel profile delete profile_name=three
+    } \
+    {
+
+Modified test config
+Created tunnel profile one
+Created tunnel profile two
+Created tunnel profile three
+
+Deleted tunnel profile one
+Deleted tunnel profile two
+Deleted tunnel profile three
+Created tunnel profile three
+Modified tunnel profile three
+Created tunnel profile two
+Modified tunnel profile two
+Created tunnel profile one
+Modified tunnel profile one
+	default
+	one
+	three
+	two
+Tunnel profile one
+  local IP address: 10.1.2.4
+  peer IP address: 10.1.2.3
+  peer UDP port: 42
+  authorization mode NONE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 42, retry timeout 42, idle timeout 42
+  rx window size 42, tx window size 42, max retries 42
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Tunnel profile two
+  l2tp host name: wibble2
+  authorization mode NONE, hide AVPs ON, allow PPP proxy ON
+  tunnel secret: 'wibble3'
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: ASYNC 
+  bearer capability: ANALOG 
+  use tiebreaker: ON
+  peer profile: NOT SET
+  session profile: NOT SET
+  ppp profile: NOT SET
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+Tunnel profile three
+  authorization mode SIMPLE, hide AVPs OFF, allow PPP proxy OFF
+  hello timeout 60, retry timeout 1, idle timeout 0
+  rx window size 10, tx window size 10, max retries 5
+  use UDP checksums: OFF
+  do pmtu discovery: ON, mtu: 1400
+  framing capability: SYNC ASYNC 
+  bearer capability: DIGITAL ANALOG 
+  use tiebreaker: OFF
+  max sessions: 42
+  peer profile: wibble4
+  session profile: wibble5
+  ppp profile: wibble6
+  trace flags: PROTOCOL FSM API AVP
+
+Deleted tunnel profile one
+Deleted tunnel profile two
+Deleted tunnel profile three
+}
+
+############################################################################
+# Tests 6.* - debug control
+############################################################################
+
+test tunnel_profile-6.1 { Debug modify tunnel profile all=yes } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-6.1
+	l2tpConfig tunnel profile create profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug all=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile delete profile_name=debug
+    } \
+    {
+
+Created tunnel profile debug
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Deleted tunnel profile debug
+}
+
+test tunnel_profile-6.2 { Debug modify tunnel profile all=no } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-6.2
+	l2tpConfig tunnel profile create profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug all=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile delete profile_name=debug
+    } \
+    {
+
+Created tunnel profile debug
+
+  trace flags: NONE
+Deleted tunnel profile debug
+}
+
+test tunnel_profile-6.3 { Debug modify tunnel profile incremental changes } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-6.3
+	l2tpConfig tunnel profile create profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug all=no
+	l2tpConfig debug modify tunnel_profile_name=debug protocol=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug avp_info=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug avp_data=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug avp_hide=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug fsm=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug api=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug ppp_control=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug transport=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug func=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug data=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug system=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	# check every flag is set
+	l2tpConfig debug modify tunnel_profile_name=debug all=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	# Turn each off again
+	l2tpConfig debug modify tunnel_profile_name=debug protocol=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug avp_info=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug avp_data=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug avp_hide=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug fsm=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug api=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug ppp_control=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug transport=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug func=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug data=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug system=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	# check every flag is unset
+	l2tpConfig debug modify tunnel_profile_name=debug all=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile delete profile_name=debug
+    } \
+    {
+
+Created tunnel profile debug
+
+
+  trace flags: PROTOCOL
+
+  trace flags: PROTOCOL AVP
+
+  trace flags: PROTOCOL AVP AVPDATA
+
+  trace flags: PROTOCOL AVP AVPHIDE AVPDATA
+
+  trace flags: PROTOCOL FSM AVP AVPHIDE AVPDATA
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA XPRT PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API AVPHIDE FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: API FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FUNC XPRT DATA SYSTEM
+
+  trace flags: FUNC DATA SYSTEM
+
+  trace flags: DATA SYSTEM
+
+  trace flags: SYSTEM
+
+  trace flags: NONE
+
+  trace flags: NONE
+Deleted tunnel profile debug
+}
+
+test tunnel_profile-6.4 { Debug modify tunnel profile group changes } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-6.4
+	l2tpConfig tunnel profile create profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug all=no
+	l2tpConfig debug modify tunnel_profile_name=debug protocol=yes avp_info=yes fsm=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug api=yes avp_hide=yes avp_data=yes system=yes ppp_control=yes func=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug protocol=no fsm=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug avp_info=no avp_data=no avp_hide=no
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile delete profile_name=debug
+    } \
+    {
+
+Created tunnel profile debug
+
+
+  trace flags: PROTOCOL FSM AVP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC PPP SYSTEM
+
+  trace flags: API AVP AVPHIDE AVPDATA FUNC PPP SYSTEM
+
+  trace flags: API FUNC PPP SYSTEM
+Deleted tunnel profile debug
+}
+
+test tunnel_profile-6.5 { Debug modify tunnel profile bad trace category } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-6.5
+	l2tpConfig tunnel profile create profile_name=debug
+	l2tpConfig debug modify tunnel_profile_name=debug all=no
+	l2tpConfig debug modify tunnel_profile_name=debug wibble=yes
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile delete profile_name=debug
+    } \
+    {
+
+Created tunnel profile debug
+
+Error at or near 'wibble=yes'
+  trace flags: NONE
+Deleted tunnel profile debug
+}
+
+test tunnel_profile-6.6 { Set tunnel profile trace_flags symbolically } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-6.6
+	l2tpConfig tunnel profile create profile_name=debug
+	l2tpConfig tunnel profile modify profile_name=debug trace_flags=all
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile modify profile_name=debug trace_flags=protocol
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile modify profile_name=debug trace_flags=api,fsm
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile modify profile_name=debug trace_flags=avp_info,avp_data,avp_hide
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile modify profile_name=debug trace_flags=api,protocol,fsm,avp_info,avp_data,avp_hide,ppp_control,transport,system,data,func
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile modify profile_name=debug trace_flags=all
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile delete profile_name=debug
+    } \
+    {
+
+Created tunnel profile debug
+Modified tunnel profile debug
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Modified tunnel profile debug
+  trace flags: PROTOCOL
+Modified tunnel profile debug
+  trace flags: FSM API
+Modified tunnel profile debug
+  trace flags: AVP AVPHIDE AVPDATA
+Modified tunnel profile debug
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Modified tunnel profile debug
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Deleted tunnel profile debug
+}
+
+test tunnel_profile-6.7 { Detect bad trace category in command } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-6.7
+	l2tpConfig tunnel profile create profile_name=debug
+	l2tpConfig tunnel profile modify profile_name=debug trace_flags=all
+	l2tpConfig tunnel profile modify profile_name=debug trace_flags=api,protocol,fsm,avp_info,avp_data,avp_hide,wibble,data,func
+	l2tpConfig debug show tunnel_profile_name=debug
+	l2tpConfig tunnel profile delete profile_name=debug
+    } \
+    {
+
+Created tunnel profile debug
+Modified tunnel profile debug
+Error at or near 'modify'
+Unknown trace flag: wibble
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Deleted tunnel profile debug
+}
+
+test tunnel_profile-6.99 { Cleanup } \
+    { l2tpdRunning && tunnelProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=tunnel_profile-6.99
+	l2tpConfig test modify default_config
+    } \
+    {
+
+Modified test config
+}
+

@@ -1,0 +1,208 @@
+% XDSL DISTPOINT HOWTO
+% BROADCOM
+
+# Description
+
+This document relates to the xdsl distpoint userspace application running on
+the following boards:
+
+* BCM968380DP2
+* BCM965200F
+* BCM965200DPF
+* BCM965200DPF2
+* BCM965400X
+
+The xdsl distpoint userspace application is the DSL SDK.
+
+# deamon
+
+The xdsl distpoint sdk is started at boot of the board as a deamon using
+/etc/rc3.d/S82xdsl, which is a softlink to /etc/init.d/xdsl.sh
+
+## start or stop
+
+    > # /etc/init.d/xdsl.sh <start | stop >
+
+Note when starting the sdk from a remote telnet session, there is an
+auto-log-out in busybox. Resulting in the sdk modem binary being stopped from
+running. One can also reboot the board to start the sdk and keep it running
+without impact from a telnet auto-log-out.
+
+
+## start options
+
+The xdsl sdk deamon uses scratchpad to set some startup options. These options
+are persistent, even over a flash upgrade. The scratchpad stores (key, value)
+pairs.
+
+Available (key - values) related to xdsl_distpoint sdk are listed below,
+note that not each board uses all keys.
+
+: start options
+
++--------------+---------------------+----------+-----------------------------+
+| key          | values              | default  | info                        |
++==============+=====================+==========+=============================+
+| xd_log_level | 0                   | 3        | Log level at startup of the |
+|              | 1                   |          | xdsl sdk.                   |
+|              | 2                   |          |                             |
+|              | 3                   |          |                             |
+|              | 4                   |          |                             |
+|              | 5                   |          |                             |
+|              | 6                   |          |                             |
++--------------+---------------------+----------+-----------------------------+
+| xd_vectoring | vce_fast_internal   | disable  | Select if vectoring will    |
+|              | vce_fast_external   |          | be used or not.             |
+|              | enable              |          |                             |
+|              | disable             |          |                             |
++--------------+---------------------+----------+-----------------------------+
+| xd_afe       | g.fast              | g.fast   | In case a board has         |
+|              | vdsl                |          | multiple analog front ends, |
+|              |                     |          | this key will determine the |
+|              |                     |          | analog front end to be used.|
++--------------+---------------------+----------+-----------------------------+
+| xd_bonding   | enable              | disable  | In case bonding is          |
+|              | disable             |          | supported this key will     |
+|              |                     |          | determine if bonding will be|
+|              |                     |          | configured.                 |
++--------------+---------------------+----------+-----------------------------+
+| xd_cpld_cfg  | BCM965400X:         | n.a.     | Select a cpld configuration |
+|              |                     |          |                             |
+|              |  - 0 8kHz           |          |                             |
+|              |  - 1 2048kHz        |          |                             |
+|              |  - 2 10MHz NTR      |          |                             |
++--------------+---------------------+----------+-----------------------------+
+| xd_traf_itf  | BCM965400X:         | 10G      | Select BCM654XX traffic     |
+|              |                     |          | interface                   |
+|              |  - 1G               |          |                             |
+|              |  - 10G              |          |                             |
+|              |  - 10G_xfi          |          |                             |
+|              |  - 10G_sfi          |          |                             |
+|              |  - 10G_sfi_long     |          |                             |
++--------------+---------------------+----------+-----------------------------+
+| xd_traf_mode | BCM965400X:         | G.999.1  | Select BCM654XX traffic     |
+|              |                     |          | mode                        |
+|              |  - G.999.1          |          |                             |
+|              |  - raw_ethernet     |          |                             |
++--------------+---------------------+----------+-----------------------------+
+| xd_inband    | all                 | all      | In case board support dual  |
+|              | none                |          | messaging layer, select     |
+|              | boot                |          | which messages are routed   |
+|              | download            |          | inband                      |
+|              | fw                  |          |                             |
++--------------+---------------------+----------+-----------------------------+
+
+To control the key value in scratchpad, use the command pspctl and stop, start
+the deamon (or reboot the board).
+
+For example to enable vectoring and change start-up log level:
+
+    > # pspctl set xd_vectoring enable
+    > # pspctl set xd_log_level 5
+    > # reboot
+
+
+# access cli
+
+In the busybox shell the command *xdslcli* will drop you in the sdk cli.
+From a remote machine the cli can be accessed using telnet.
+
+    > telnet <ip_board> 57660
+
+Use the command *quit* to leave the sdk cli.
+
+
+# make flash writable
+
+    > # mount -o rw,remount rootfs
+
+Note that /tmp is by default writable after reboot.
+
+
+# transfer a file from the flash
+
+on a remote machine with access to the board:
+
+    > # netcat -l -p 8080 > <file_name>
+
+On the board in busybox:
+
+    > # cat <file_name> | nc <ip_machine_where_netcat_is_running> 8080
+
+Last command will not stop, ctrl-c to stop, check file size. Done.
+If the port 8080 is already in use, take a free port number.
+
+
+# transfer a file to the flash
+
+On a machine witch access to the file to be transfered and to the board:
+
+    > # cat <modem_binary> | netcat -l -p 8080
+
+Make flash writable:
+
+    > # mount -o rw,remount rootfs
+
+On the board in busybox:
+
+    > # nc <ip_machine_where_netcat_is_running> 8080 > <file_name_of_new_modem_binary>
+
+Last command will not stop, ctrl-c to stop, check file size, done.
+If the port 8080 is already in use, take a free port number.
+
+
+# change xdsl sdk
+
+The xdsl sdk binares are located at /bin and are named xdslctl*.
+
+    > # ls -al /bin/xdslctl*
+    > -rwxr-xr-x    1 admin    root       1311248 Jun 25  2015 /bin/xdslctl
+    > -rwxr-xr-x    1 admin    root        926916 Jun 25  2015 /bin/xdslctl_cpe
+
+In case the sdk is running, stop it (see "deamon start, stop").
+Replace the relevant binary with a new version (see also "transfer a file to
+the flash") and start the new sdk.
+
+
+# change booter or modem binary
+
+The xdsl modem and booter binaries are located at /etc/xdsl.
+In this directory there is a softlink to the modem and booter binary in use.
+
+For example on the BCM965200F board:
+
+    >  # ls -al /etc/xdsl
+    >  drwxr-sr-x    2 admin    root             0 Jun 25  2015 .
+    >  drwxr-sr-x   13 admin    root             0 Jun 25  2015 ..
+    >  -rwxr-xr-x    1 admin    root        814464 Jun 25  2015 VE_11_2_6_f4ccpe.cbin
+    >  -rwxr-xr-x    1 admin    root        809472 Jun 25  2015 VE_11_2_6_f4kcpe.cbin
+    >  -rwxr-xr-x    1 admin    root       1175296 Jun 25  2015 VE_11_2_6_f6kco.cbin
+    >  -rwxr-xr-x    1 admin    root        881536 Jun 25  2015 VE_11_2_6_v16sco.cbin
+    >  -rwxr-xr-x    1 admin    root        993408 Jun 25  2015 VE_11_2_6_v24kco.cbin
+    >  -rwxr-xr-x    1 admin    root        839808 Jun 25  2015 VE_11_2_6_v8sco.cbin
+    >  lrwxrwxrwx    1 admin    root            51 Jun 25  2015 booter.bin -> hmibooter_SGMII_1G_RGMII_FCOPE_cfg_6_3_2_v36kco.bin
+    >  -rwxr-xr-x    1 admin    root         53124 Jun 25  2015 hmibooter_SGMII_1G_RGMII_FCOPE_cfg_6_3_2_v36kco.bin
+    >  lrwxrwxrwx    1 admin    root            21 Jun 25  2015 modem_f4ccpe.cbin -> VE_11_2_6_f4ccpe.cbin
+    >  lrwxrwxrwx    1 admin    root            21 Jun 25  2015 modem_f4kcpe.cbin -> VE_11_2_6_f4kcpe.cbin
+    >  lrwxrwxrwx    1 admin    root            20 Jun 25  2015 modem_f6kco.cbin -> VE_11_2_6_f6kco.cbin
+
+Transfer the new binary to the flash (see "transfer a file to the flash") and
+change the relevant softlink. Make sure the new binary file has 'x' permission.
+
+
+# change full flash image
+
+## using the web interface
+
+Either from the CFE, cms cli or busybox it is possible to access a web gui.
+In case of CFE select the new flash image file (it has extension .w) and
+upload. In other cases go to 'Management' -> 'Update Software' and follow the
+displayed instructions.
+
+
+## from command line on an external machine
+
+Enter CFE on the board which will get a new flash image.
+On a remote machine with access to the board and new flash image:
+
+    > curl --silent --form filename=@"<new_flash_image>" <board_ip_address> > /dev/null

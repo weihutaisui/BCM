@@ -1,0 +1,11 @@
+void usl_set_debug(int debug, void (*log_fn)(int level, const char *fmt, ...))
+
+The application may set a function within the application to handle
+debug messages. The level parameter of log_fn is a syslog
+log-level. By default, USL dumps debug messages to syslog, unless the
+application overrides this variable.
+
+The debug parameter allows the application to turn debug messages
+on/off. By default, debugging is on when USL is compiled with -DDEBUG.
+
+

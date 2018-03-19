@@ -1,0 +1,79 @@
+#!/usr/bin/env sh
+
+BOOTER_DIR=$1
+INBAND_ADDRESS=$2
+
+# expand to null if no match
+shopt -s nullglob
+
+# Patch the config for a single booter, both for bin and sprom.
+patch_config_booter() {
+    patch_config=$1
+    config=$2
+
+    for f in $patch_config $config
+    do
+        if ! test -f $f; then
+            echo "[$0] $f not available no booter patch config done."
+            return
+        fi
+    done
+
+    version=`echo $patch_config | cut -d'_' -f 2-4`
+    build=`echo $patch_config | cut -d'_' -f 5 | cut -d'.' -f 1`
+
+    for m in bin sprom
+    do
+        e="$version"_"$build"."$m"
+        booter_in="hmibooter_""$e"
+        booter_out="hmibooter_"`echo $2 | sed 's/.cfg/_cfg/'`"_""$e"
+        if [ "$m" == sprom ]; then
+            cmd="./$patch_config -i $booter_in -o $booter_out -p -c $config"
+        else
+            cmd="./$patch_config -i $booter_in -o $booter_out -c $config"
+        fi
+        if test -f $booter_in; then
+            echo "[$0] $cmd"
+            $cmd
+        fi
+    done
+}
+
+if ! test -d $BOOTER_DIR; then
+    echo "[$0] $BOOTER_DIR not available, no booter patch config done."
+    exit 1
+fi
+cd $BOOTER_DIR
+
+# change G.999.1 inband address in the available booter config files
+cfg_files=(*g9991*.cfg)
+for c in ${cfg_files[*]}
+do
+    if [ -n "${c#*400X.cfg}" ]; then # skip 400X config as inband is always std ethernet
+	echo "[$0] Set G.999.1 booter inband address to $INBAND_ADDRESS in $c"
+	sed --in-place='' "s/\(inband_addr\)\(\s*\)\S*/\1\2$INBAND_ADDRESS/" $c
+    fi
+done
+
+# patchConfig booters with modified config files
+patch_configs=(patchConfig*.linexe)
+for p in ${patch_configs[*]}
+do
+    build=`echo $p | cut -d'_' -f 5 | cut -d'.' -f 1`
+    case $build in
+        v36kco)
+	    cfg_files=(*FCOPE_g9991.cfg *DPF2_g9991.cfg *g9991*DPF*.cfg)
+	    for c in ${cfg_files[*]}
+	    do
+		patch_config_booter $p  $c
+	    done
+            ;;
+        v16sco)
+	    cfg_files=(rgmii*_g9991*.cfg)
+	    for c in ${cfg_files[*]}
+	    do
+		patch_config_booter $p  $c
+	    done
+            ;;
+    esac
+done

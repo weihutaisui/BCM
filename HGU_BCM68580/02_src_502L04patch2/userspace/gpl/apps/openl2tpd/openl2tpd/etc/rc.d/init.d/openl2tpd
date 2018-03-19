@@ -1,0 +1,107 @@
+#! /bin/bash
+#
+# openl2tpd          Start/Stop the OpenL2TP protocol daemon.
+#
+# chkconfig: 2345 57 76
+# description: OpenL2TP is a complete implementation of RFC2661 - Layer Two Tunneling
+#	       Protocol Version 2, able to operate as both a server and a client.  It
+#              can be used to implement L2TP VPNs. As a server, it can handle
+#              hundreds of tunnels and sessions.
+# processname: openl2tpd
+# config: /etc/sysconfig/openl2tpd
+# pidfile: /var/run/openl2tpd.pid
+
+# Source function library.
+. /etc/init.d/functions
+. /etc/sysconfig/openl2tpd
+ 
+# See how we were called.
+  
+prog="openl2tpd"
+
+start() {
+	echo -n $"Starting $prog: "	
+        if [ -e /var/lock/subsys/openl2tpd ]; then
+	    if [ -e /var/run/openl2tpd.pid ] && [ -e /proc/`cat /var/run/openl2tpd.pid` ]; then
+		echo -n $"cannot start openl2tpd: openl2tpd is already running.";
+		failure $"cannot start openl2tpd: openl2tpd already running.";
+		echo
+		return 1
+	    fi
+	fi
+	modprobe -s pppol2tp
+	RETVAL=$?
+	if [ $RETVAL -eq 0 ]; then
+	    daemon openl2tpd $OPENL2TPDARGS
+	fi
+	RETVAL=$?
+	echo
+	if [ $RETVAL -eq 0 ]; then
+	    touch /var/lock/subsys/openl2tpd
+	    if [ -n "$OPENL2TPD_CONFIG_FILE" ]; then
+		sleep 1
+		echo $"Restoring saved openl2tpd configuration..."
+		/usr/bin/l2tpconfig config restore file=$OPENL2TPD_CONFIG_FILE
+		RETVAL=$?
+	    fi
+	fi
+	return $RETVAL
+}
+
+stop() {
+	echo -n $"Stopping $prog: "
+        if [ ! -e /var/lock/subsys/openl2tpd ]; then
+	    echo -n $"cannot stop openl2tpd: openl2tpd is not running."
+	    failure $"cannot stop openl2tpd: openl2tpd is not running."
+	    echo
+	    return 1;
+	fi
+	killproc openl2tpd
+	modprobe -s -r pppol2tp
+	echo
+	rm -f /var/run/openl2tpd.pid
+        rm -f /var/lock/subsys/openl2tpd
+	return 0
+}	
+
+rhstatus() {
+	status openl2tpd
+}	
+
+restart() {
+  	stop
+	start
+}	
+
+reload() {
+	echo -n $"Reloading openl2tp daemon configuration: "
+	stop
+	start
+	RETVAL=$?
+	echo
+	return $RETVAL
+}	
+
+case "$1" in
+  start)
+  	start
+	;;
+  stop)
+  	stop
+	;;
+  restart)
+  	restart
+	;;
+  reload)
+  	reload
+	;;
+  status)
+  	rhstatus
+	;;
+  condrestart)
+  	[ -f /var/lock/subsys/openl2tpd ] && restart || :
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|status|reload|restart|condrestart}"
+	exit 1
+esac

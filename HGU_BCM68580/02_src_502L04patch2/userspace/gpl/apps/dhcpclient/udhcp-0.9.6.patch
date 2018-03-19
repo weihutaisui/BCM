@@ -1,0 +1,352 @@
+diff -Naur udhcp-0.9.6/clientpacket.c udhcp-0.9.6.modified/clientpacket.c
+--- udhcp-0.9.6/clientpacket.c	2001-09-26 10:12:22.000000000 -0700
++++ udhcp-0.9.6.modified/clientpacket.c	2017-02-28 14:48:55.608855566 -0800
+@@ -189,8 +189,10 @@
+ 	/* Make sure its the right packet for us, and that it passes sanity checks */
+ 	if (packet.ip.protocol != IPPROTO_UDP || packet.ip.version != IPVERSION ||
+ 	    packet.ip.ihl != sizeof(packet.ip) >> 2 || packet.udp.dest != htons(CLIENT_PORT) ||
+-	    ntohs(packet.ip.tot_len) != bytes || bytes > (int) sizeof(struct udp_dhcp_packet) ||
+-	    ntohs(packet.udp.len) != (short) (bytes - sizeof(packet.ip))) {
++	    ntohs(packet.ip.tot_len) > bytes ||
++	    ntohs(packet.udp.len) > (short) (bytes - sizeof(packet.ip)) ||
++	    (sizeof(struct udp_dhcp_packet) - 308) > (unsigned int) bytes) {  
++
+ 	    	DEBUG(LOG_INFO, "unrelated/bogus packet");
+ 	    	return -1;
+ 	}
+diff -Naur udhcp-0.9.6/debug.h udhcp-0.9.6.modified/debug.h
+--- udhcp-0.9.6/debug.h	2001-08-27 14:23:45.000000000 -0700
++++ udhcp-0.9.6.modified/debug.h	2017-02-28 14:48:55.608855566 -0800
+@@ -2,18 +2,7 @@
+ #define _DEBUG_H
+ 
+ #include <stdio.h>
+-#ifdef SYSLOG
+-#include <syslog.h>
+-#endif
+-
+ 
+-#ifdef SYSLOG
+-# define LOG(level, str, args...) do { printf(str, ## args); \
+-				printf("\n"); \
+-				syslog(level, str, ## args); } while(0)
+-# define OPEN_LOG(name) openlog(name, 0, 0)
+-#define CLOSE_LOG() closelog()
+-#else
+ # define LOG_EMERG	"EMERGENCY!"
+ # define LOG_ALERT	"ALERT!"
+ # define LOG_CRIT	"critical!"
+@@ -21,12 +10,9 @@
+ # define LOG_ERR	"error"
+ # define LOG_INFO	"info"
+ # define LOG_DEBUG	"debug"
+-# define LOG(level, str, args...) do { printf("%s, ", level); \
+-				printf(str, ## args); \
+-				printf("\n"); } while(0)
++# define LOG(level, str, args...) do {;} while(0)
+ # define OPEN_LOG(name) do {;} while(0)
+ #define CLOSE_LOG() do {;} while(0)
+-#endif
+ 
+ #ifdef DEBUG
+ # undef DEBUG
+diff -Naur udhcp-0.9.6/dhcpc.c udhcp-0.9.6.modified/dhcpc.c
+--- udhcp-0.9.6/dhcpc.c	2001-10-01 12:16:49.000000000 -0700
++++ udhcp-0.9.6.modified/dhcpc.c	2017-02-28 14:48:55.608855566 -0800
+@@ -56,6 +56,7 @@
+ #define LISTEN_KERNEL 1
+ #define LISTEN_RAW 2
+ static int listen_mode = LISTEN_RAW;
++static int old_mode = LISTEN_RAW;
+ 
+ #define DEFAULT_SCRIPT	"/usr/share/udhcpc/default.script"
+ 
+@@ -305,10 +306,18 @@
+ 	run_script(NULL, "deconfig");
+ 
+ 	for (;;) {
+-		if (fd > 0) {
+-			close(fd);
+-			fd = -1;
+-		}
++		// brcm
++		if ((old_mode != listen_mode) || (fd == -1)) {
++		    old_mode = listen_mode;
++		
++		/*
++		* After dhcpc runs as daemon(backgroud)mode, fd 0-2 be closed.  
++		*  The sock fd may be 0.
++		*/
++		    if (fd >= 0) {
++			    close(fd);
++			    fd = -1;
++		    }
+ 		
+ 		if (listen_mode == LISTEN_KERNEL) {
+ 			if ((fd = listen_socket(INADDR_ANY, CLIENT_PORT, client_config.interface)) < 0) {
+@@ -321,6 +330,7 @@
+ 				exit_client(0);
+ 			}			
+ 		} else fd = -1;
++		}
+ 
+ 		tv.tv_sec = timeout - time(0);
+ 		tv.tv_usec = 0;
+@@ -485,6 +495,10 @@
+ 
+ 					state = BOUND;
+ 					listen_mode = LISTEN_NONE;
++					
++					// brcm
++					close(fd);
++					fd = -1;
+ 					background();
+ 					
+ 				} else if (*message == DHCPNAK) {
+diff -Naur udhcp-0.9.6/script.c udhcp-0.9.6.modified/script.c
+--- udhcp-0.9.6/script.c	2001-09-21 13:14:07.000000000 -0700
++++ udhcp-0.9.6.modified/script.c	2017-02-28 14:50:19.913763851 -0800
+@@ -37,6 +37,102 @@
+ #include "options.h"
+ #include "debug.h"
+ 
++#include <sys/socket.h>
++#include <net/if.h>
++#include <sys/ioctl.h>
++#include <net/route.h>
++
++typedef struct
++{
++   int addressAssigned;
++   int isExpired;
++   char ip[32];
++   char mask[32];
++   char gateway[32];
++   char nameserver[64];
++   char hostName[32];
++   char domain[32];
++} DhcpcInfo_t;
++
++int create_socket(void)
++{
++   int sockfd = 0;
++  
++   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
++   if(sockfd == -1)
++   {
++      fprintf(stderr, "Could not get socket.\n");
++      return -1;
++   }
++  
++   return sockfd;
++}
++
++int set_route(int sockfd, char *gateway_addr, char *ifname) 
++{
++   struct rtentry route;
++   struct sockaddr_in *addr;
++   int err = 0;
++
++   memset(&route, 0, sizeof(route));
++   addr = (struct sockaddr_in*) &route.rt_gateway;
++   addr->sin_family = AF_INET;
++   addr->sin_addr.s_addr = inet_addr(gateway_addr);
++
++   addr = (struct sockaddr_in*) &route.rt_dst;
++   addr->sin_family = AF_INET;
++   addr->sin_addr.s_addr = INADDR_ANY;
++
++   addr = (struct sockaddr_in*) &route.rt_genmask;
++   addr->sin_family = AF_INET;
++   addr->sin_addr.s_addr = INADDR_ANY;
++
++   route.rt_flags = RTF_UP | RTF_GATEWAY;
++   route.rt_dev = ifname;
++  
++   if ((err = ioctl(sockfd, SIOCADDRT, &route)) < 0)
++      return -1;
++
++   return 1;
++}
++
++int set_ip(char *iface_name, char *ip_addr, char *gateway_addr)
++{
++   if(!iface_name)
++      return -1;
++    
++   struct ifreq ifr;
++   struct sockaddr_in sin;
++   int sockfd = create_socket();
++  
++   sin.sin_family = AF_INET;
++   inet_aton(ip_addr,&sin.sin_addr);
++   strncpy(ifr.ifr_name, iface_name, IFNAMSIZ);
++  
++   memcpy(&ifr.ifr_addr, &sin, sizeof(struct sockaddr)); 
++  
++   // Set interface address
++   if (ioctl(sockfd, SIOCSIFADDR, &ifr) < 0)
++     return -1;
++  
++   // Set route
++   set_route(sockfd, gateway_addr, iface_name);
++  
++   return 0;
++}
++
++// brcm
++static DhcpcInfo_t dhcpc_opt = 
++    {0, 0, "", "", "", "", "", ""};
++
++void configDhcpInfo(int assigned, int isExpired, DhcpcInfo_t *options)
++{
++   if (assigned)
++      set_ip(client_config.interface, options->ip, options->gateway);
++
++   return;
++}
++
+ /* get a rough idea of how long an option will be (rounding up...) */
+ static int max_option_length(char *option, struct dhcp_option *type)
+ {
+@@ -83,6 +179,8 @@
+ 	u_int32_t val_u32;
+ 	int32_t val_s32;
+ 	int len = option[OPT_LEN - 2];
++        // brcm
++	char tmp[128]="";
+ 
+ 	dest += sprintf(dest, "%s=", type_p->name);
+ 
+@@ -94,6 +192,20 @@
+ 			dest += sprintf(dest, "%d.%d.%d.%d",
+ 					option[0], option[1],
+ 					option[2], option[3]);
++			// brcm
++			sprintf(tmp, "%d.%d.%d.%d",
++				option[0], option[1],
++				option[2], option[3]);
++			if (!strcmp(type_p->name, "dns")) {
++				if (strlen(dhcpc_opt.nameserver) > 0)
++					strcat(dhcpc_opt.nameserver, ",");
++
++				strcat(dhcpc_opt.nameserver, tmp);
++			}
++			if (!strcmp(type_p->name, "router"))
++				strcpy(dhcpc_opt.gateway, tmp);
++			if (!strcmp(type_p->name, "subnet"))
++				strcpy(dhcpc_opt.mask, tmp);
+  			break;
+ 		case OPTION_IP_PAIR:
+ 			dest += sprintf(dest, "%d.%d.%d.%d, %d.%d.%d.%d",
+@@ -126,6 +238,24 @@
+ 			break;
+ 		case OPTION_STRING:
+ 			memcpy(dest, option, len);
++
++			if ( !strcmp(type_p->name, "hostname") )
++			{
++				int copyLen = sizeof(dhcpc_opt.hostName) - 1;
++
++				if (copyLen > len) copyLen=len;
++				memcpy(dhcpc_opt.hostName, option, copyLen);
++				dhcpc_opt.hostName[copyLen] = '\0';
++			}
++			else if ( !strcmp(type_p->name, "domain") )
++			{
++				int copyLen = sizeof(dhcpc_opt.domain) - 1;
++
++				if (copyLen > len) copyLen=len;
++				memcpy(dhcpc_opt.domain, option, copyLen);
++				dhcpc_opt.domain[copyLen] = '\0';
++			}
++
+ 			dest[len] = '\0';
+ 			return;	 /* Short circuit this case */
+ 		}
+@@ -167,7 +297,7 @@
+ 			if (get_option(packet, options[i].code))
+ 				num_options++;
+ 		if (packet->siaddr) num_options++;
+-		if ((temp = get_option(packet, DHCP_OPTION_OVER)))
++		if ((temp = (char *)get_option(packet, DHCP_OPTION_OVER)))
+ 			over = *temp;
+ 		if (!(over & FILE_FIELD) && packet->file[0]) num_options++;
+ 		if (!(over & SNAME_FIELD) && packet->sname[0]) num_options++;		
+@@ -188,11 +318,18 @@
+ 	addr = (unsigned char *) &packet->yiaddr;
+ 	sprintf(envp[1], "ip=%d.%d.%d.%d",
+ 		addr[0], addr[1], addr[2], addr[3]);
++	// brcm
++	sprintf(dhcpc_opt.ip, "%d.%d.%d.%d",
++		addr[0], addr[1], addr[2], addr[3]);
++	strcpy(dhcpc_opt.nameserver, "");
++	memset(dhcpc_opt.hostName, 0, sizeof(dhcpc_opt.hostName));
++	memset(dhcpc_opt.domain, 0, sizeof(dhcpc_opt.domain));
++
+ 	for (i = 0, j = 4; options[i].code; i++) {
+-		if ((temp = get_option(packet, options[i].code))) {
++		if ((temp = (char *)get_option(packet, options[i].code))) {
+ 			envp[j] = malloc(max_option_length(temp, &options[i]) + 
+ 					strlen(options[i].name) + 2);
+-			fill_options(envp[j], temp, &options[i]);
++			fill_options(envp[j], (unsigned char *)temp, &options[i]);
+ 			j++;
+ 		}
+ 	}
+@@ -205,16 +342,19 @@
+ 	if (!(over & FILE_FIELD) && packet->file[0]) {
+ 		/* watch out for invalid packets */
+ 		packet->file[sizeof(packet->file) - 1] = '\0';
+-		envp[j] = malloc(sizeof("boot_file=") + strlen(packet->file));
++		envp[j] = malloc(sizeof("boot_file=") + strlen((char *)(packet->file)));
+ 		sprintf(envp[j++], "boot_file=%s", packet->file);
+ 	}
+ 	if (!(over & SNAME_FIELD) && packet->sname[0]) {
+ 		/* watch out for invalid packets */
+ 		packet->sname[sizeof(packet->sname) - 1] = '\0';
+-		envp[j] = malloc(sizeof("sname=") + strlen(packet->sname));
++		envp[j] = malloc(sizeof("sname=") + strlen((char *)(packet->sname)));
+ 		sprintf(envp[j++], "sname=%s", packet->sname);
+ 	}	
+ 	envp[j] = NULL;
++
++	configDhcpInfo(TRUE, FALSE, &dhcpc_opt);
++
+ 	return envp;
+ }
+ 
+@@ -225,25 +365,20 @@
+ 	int pid;
+ 	char **envp;
+ 
+-	if (client_config.script == NULL)
+-		return;
+-
+ 	/* call script */
+ 	pid = fork();
+ 	if (pid) {
+ 		waitpid(pid, NULL, 0);
+ 		return;
+ 	} else if (pid == 0) {
+-		envp = fill_envp(packet);
+-		
+-		/* close fd's? */
+-		
+-		/* exec script */
+-		DEBUG(LOG_INFO, "execle'ing %s", client_config.script);
+-		execle(client_config.script, client_config.script,
+-		       name, NULL, envp);
+-		LOG(LOG_ERR, "script %s failed: %s",
+-		    client_config.script, strerror(errno));
++		if (!strcmp(name, "bound"))
++		{
++			envp = fill_envp(packet);
++			free(*envp);
++		}else if (!strcmp(name, "deconfig")) {
++			/* brcm: Expired, set the connection down */
++			configDhcpInfo(FALSE, TRUE, &dhcpc_opt);
++		}
+ 		exit(1);
+ 	}			
+ }

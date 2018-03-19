@@ -1,0 +1,11 @@
+--- sqlite-autoconf-3080600/configure	2014-08-15 07:09:18.000000000 -0700
++++ sqlite/configure	2016-07-13 17:39:36.169212191 -0700
+@@ -2280,6 +2280,8 @@
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: $INSTALL" >&5
+ $as_echo "$INSTALL" >&6; }
+ 
++INSTALL="${INSTALL} -p"
++
+ # Use test -z because SunOS4 sh mishandles braces in ${var-val}.
+ # It thinks the first close brace ends the variable substitution.
+ test -z "$INSTALL_PROGRAM" && INSTALL_PROGRAM='${INSTALL}'

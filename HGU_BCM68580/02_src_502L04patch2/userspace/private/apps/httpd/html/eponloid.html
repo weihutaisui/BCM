@@ -1,0 +1,108 @@
+<html>
+<head>
+<meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+<link rel=stylesheet href='stylemain.css' type='text/css'>
+<link rel=stylesheet href='colors.css' type='text/css'>
+
+<script language="javascript">
+<!-- hide
+
+
+function trim(str)
+	 {
+	 return str.replace(/(^\s*)|(\s*$)/g, "");
+	 }
+	
+function isCfgValid (cfgVar)
+	 {
+	 var reg_re = new RegExp ("[!@#$%\\^&\\*\\(\\)]","gi"); 
+	 var reg_space = new RegExp ("[\\s]","gi");
+	 var reg_validate = new RegExp ("^[0-9a-zA-Z_./]+$","g"); 
+	 var err = "";
+	
+	 while ((arr = reg_re.exec (cfgVar)) != null)
+	    err += arr;
+	
+	 if (err != "") 
+		  {
+		  alert ("The Authentication should not include:" + err.replace(/&/g, "&amp;"));
+		  return false;
+		  } 
+	 else if (reg_space.test (cfgVar)) 
+		  {		
+		  alert ('The Authentication should not include blank charter!');
+		  return false;
+		  }
+	
+	 if (!reg_validate.test (cfgVar))
+		  {
+		  alert ('The Authentication should only include 0~9,a~z,A~Z, \'.\' and \'_\'!');
+		  return false;
+		  }		
+	 return true;
+	 }
+
+function frmLoad() {
+   
+}
+
+function btnApply() {
+   var loc = 'eponloid.cmd?';
+	
+   with ( document.forms[0] ) {
+   	  var new_loid = trim(oamAuthLoid.value);
+	    var new_pass = trim(oamAuthPass.value);
+	    
+   	  if (new_loid == "" || new_loid == null) {
+		     alert ('Please input LOID!');
+		     oamAuthLoid.select();
+		     oamAuthLoid.focus();
+		     return;
+		  }
+      
+      if (false == isCfgValid(new_loid)) {		
+		     return;
+		  }
+	
+	    if (new_pass != "" && new_pass != null) {
+		     if (false == isCfgValid(new_pass)) {
+			      return;
+			   }
+			}
+      
+      loc += "&eponLoidVal=" + new_loid;
+      loc += "&eponLoidPassVal=" + new_pass;
+   }
+
+   loc += '&sessionKey=<%ejGetOther(sessionKey)%>';
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+// done hiding -->
+</script>
+</head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form>
+            <br> <br>
+            <strong><b>EPON LOID Authentication</b></strong><br>
+            <br>
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+               <tr>
+                  <td width="30%">LOID:</td>
+                  <td><input type='text' name='oamAuthLoid' value='<%ejGet(oamAuthLoid)%>'></td>
+               </tr>
+               <tr>
+                  <td>Password:</td>
+                  <td><input type='text' name='oamAuthPass' value='<%ejGet(oamAuthPass)%>'></td>
+               </tr>
+            </table><br>
+            <br> <br>
+            <center>
+               <input type='button' onClick='btnApply()' value='Apply/Save'> 
+            </center>
+         </form>
+      </blockquote>
+   </body>
+</html>

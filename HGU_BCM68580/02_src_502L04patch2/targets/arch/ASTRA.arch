@@ -1,0 +1,23 @@
+<PUBLISH>
+--- 963138GW.old	2017-01-13 09:30:35.763354799 -0800
++++ 963138GW	2017-01-13 10:20:21.562160576 -0800
+@@ -90,6 +90,7 @@
+ BCM_KERNEL_CMDLINE="console=ttyS0,115200 debug irqaffinity=0"
+ # BCM_KERNEL_CMDLINE_OVERRIDE is not set
+ # BRCM_ANDROID is not set
++BRCM_ASTRA=y
+ # BRCM_WAN_2_WAN_FWD_ENABLED is not set
+ # BRCM_KERNEL_BONDING is not set
+ 
+@@ -359,7 +360,6 @@
+ # BUILD_DPI is not set
+ BUILD_MAP=y
+ BRCM_DRIVER_MAP=m
+ 
+ #
+ # Packet Acceleration
+@@ -610,4 +610,3 @@
+ # BUILD_HOMEPLUG_DEBUG is not set
+ # BRCM_HOMEPLUG_NO_SNR_ASCII is not set
+ # BRCM_DRIVER_SYSPERF is not set
+

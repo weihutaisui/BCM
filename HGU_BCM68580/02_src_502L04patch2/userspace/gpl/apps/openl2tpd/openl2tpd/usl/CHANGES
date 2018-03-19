@@ -1,0 +1,59 @@
+# -*- indented-text -*- # 
+
+This file is a history of changes made in each USL release.
+
+----------------------------------------------------------------------------
+V0.7, 07-MAY-2008
+
+- Change GNU-specific __FUNCTION__ strings in the source code to
+  __func__ since the former is now deprecated. This change does not
+  alter the generated code.
+
+----------------------------------------------------------------------------
+V0.6, 24-FEB-2008
+
+- Add memory barrier to low level list operations to prevent gcc
+  optimisations reordering functions around list manipulations.
+
+- Fix uninitialised variable which could result in pid callbacks being
+  called.
+
+- Fix uninitialised sigset_t variable when setting up signal masks.
+
+----------------------------------------------------------------------------
+V0.5, 10-NOV-2007
+
+- Modify usp_pid API to add the pid value in the callback
+  parameters. This is useful when the same callback routine is used
+  for each process of a given type.
+
+----------------------------------------------------------------------------
+V0.4, 01-OCT-2006
+
+- Move some private USL definitions from usl.h into a new
+  usl_private.h which is not exported.
+
+- Add documentation for USL API routines.
+
+----------------------------------------------------------------------------
+V0.3, 05-SEP-2006
+
+- Add SIGHUP handler hook for application use.
+
+----------------------------------------------------------------------------
+V0.2, 01-OCT-2004
+
+- Add usl_fd_poll_hook() to allow apps to do something on every poll
+  (every time select() returns in the main loop).
+
+- Update FSM state _before_ calling registered action routine when 
+  handling FSM events. This allows actions to generate other immediate
+  events.
+
+- Add usl_timer_expiry_set() to allow apps to change the expiry time
+  of a timer.
+
+----------------------------------------------------------------------------
+V0.1, 07-SEP-2004
+
+- Initial version released with OpenL2TP distribution.

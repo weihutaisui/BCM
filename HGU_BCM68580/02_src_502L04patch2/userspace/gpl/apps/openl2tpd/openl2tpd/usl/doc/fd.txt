@@ -1,0 +1,73 @@
+The usl_fd (file descriptor) subsystem provides a mechanism for
+applications to register callback handlers on file descriptors which
+are called by the USL main loop when data arrives. This is
+particularly useful when an application waits on data from multiple
+file descriptors simultaneously. Since the callbacks are called by the
+USL main loop, callbacks happen synchronously with other USL events
+such as timers. This simplifies application design because it reduces
+or eliminates the need for locks around global data structures.
+
+The following hooks are available:
+
+    void (*usl_fd_poll_hook)(void);
+
+    Called every time a file descriptor callback is called. This may
+    be used by the application for testing or run-time verification.
+
+The following functions are provided:
+
+int usl_fd_add_fd(int fd, usl_fd_callback_fn_t callback, void *arg);
+
+Adds the given fd to the set of fd's managed by the USL main loop. The
+specified callback is called with arg when the fd has something to
+read. The callback should read() the fd.
+
+RETURNS
+
+Returns 0 on success, or a negative error number on error.
+
+int usl_fd_modify_fd(int fd, usl_fd_callback_fn_t callback, void *arg);
+
+Change the callback or callback arg of an fd that is already
+registered with USL.
+
+RETURNS
+
+Returns 0 on success, or a negative error number on error.
+
+int usl_fd_remove_fd(int fd);
+
+Remove the specified fd from the set that is managed by USL. The fd
+should usually be closed by the application after making this call.
+
+RETURNS
+
+Returns 0 on success, or a negative error number on error.
+
+size_t usl_fd_read(int fd, void *buf, size_t count);
+
+This is a helper function for read(). It handles common error cases,
+such as retrying on EINTR and doing multiple read() calls while the
+number of bytes returned by read() is less than the caller's count. An
+application might use this function in its fd callback functions to
+read available data.
+
+RETURNS
+
+Number of bytes read into the caller's buffer, or negative error
+number in case of error.
+
+int usl_fd_init(void);
+
+Must be called to init the usl_fd subsystem before any other usl_fd
+call.
+
+RETURNS
+
+Returns 0 on success, or a negative error code in case of failure.
+
+void usl_fd_cleanup(void);
+
+Called to shutdown the usl_fd mechanism. All open file descriptors are
+closed.
+

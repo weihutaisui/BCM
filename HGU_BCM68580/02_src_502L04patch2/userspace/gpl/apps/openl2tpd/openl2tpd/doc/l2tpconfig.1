@@ -1,0 +1,1205 @@
+.ig \"-*- nroff -*-
+Copyright (c) 2004,2005,2006,2007,2008 Katalix Systems Ltd.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this
+manual into another language, under the above conditions for modified
+versions, except that this permission notice may be included in
+translations approved by Katalix Systems Ltd instead of in
+the original English.
+..
+.\"
+.\" MAN PAGE COMMENTS to openl2tp-docs@lists.sourceforge.net
+.\"
+.TH l2tpconfig 1 "13 August 2007" "OpenL2TP" "OpenL2TP Manual"
+.PD
+.SH NAME
+l2tpconfig \- command-line configuration for OpenL2TP
+.PD
+.SH SYNOPSIS
+.hy 0
+.na
+.B l2tpconfig [\-q] [\-R \<ipaddr\>] [\-t] [command]
+.ad b
+.hy 1
+.PD
+.SH DESCRIPTION
+.B OpenL2TP
+is controlled using a Remote Procedure Call (RPC) interface documented in
+.BR openl2tp_rpc ( 4 ). 
+.BR l2tpconfig
+is an RPC client application implementing this interface, providing
+the user with an intuitive command line interface.
+.PP
+For information about the general features of
+.B OpenL2TP
+please refer to the
+.BR openl2tp ( 7 )
+manual page.
+.PD
+.SH OPTIONS
+.TP 10
+.B \-q
+Quiet mode. Suppresses information messages, such as \fI"Created xyz"\fP.
+.TP
+.B \-t
+TCP mode. Uses TCP rather than UDP (default) to communicate with
+\fIopenl2tpd\fP. Use this option when the number of sessions handled
+by \fIopenl2tpd\fP is large. TCP has the advantage that RPC packets
+may be larger than 8K, which avoids RPC errors in the \fIl2tpconfig\P
+\fI"list"\fP commands when there are so many items to list that 8K is
+not enough space. A disadvantage of TCP is that there is more protocol
+overhead with TCP. Note that this affects only the management protocol
+between l2tpconfig and openl2tpd, it does not change L2TP itself. This
+option is intended mostly for use in ISP environments.
+.TP
+.B \-R \fIipaddr\fP
+Send commands to 
+.B openl2tpd
+running at \fIipaddr\fP rather than to the local host. Remote management
+must be enabled for
+.B openl2tpd
+at the remote host for this option to work. \fIipaddr\fP may be
+specified as an IP address or a hostname.
+.TP
+.B \fIcommand\fP
+the specified command is executed and then
+.B l2tpconfig
+terminates.  When no command is given,
+.B l2tpconfig
+enters interactive mode, presenting the user with a Command Line
+Interface (CLI) providing command line editing, context sensitive help
+and TAB completion.
+.PD
+.SH ENVIRONMENT
+.B openl2tpd
+must be running before the first 
+.B l2tpconfig
+command is issued.
+.PD
+.B OpenL2TP
+uses 
+.B Sun RPC
+to communicate with
+.B openl2tpd,
+so the system must be capable of running 
+.B RPC.
+.PD
+.SH COMMANDS
+Commands are grouped according to the object type being managed. The
+general format of a command is
+.LP
+.nf
+<object-type> <operation> [param1[=<value1>]]...
+.fi
+.sp
+Note that the syntax for specifying all parameters is the
+same, whether or not the parameter is mandatory or optional.
+Parameters may be given in any order.
+.PP
+Each object type supports one or more of the following operations:
+.TP
+.B CREATE
+Creates an instance of the object type. Parameters must uniquely
+identify the object instance being created. Additional optional
+parameters may override create-time defaults.
+.TP
+.B DELETE
+Deletes an instance of the object type. Parameters must uniquely
+identify the object instance being deleted.
+.TP
+.B MODIFY
+Modifies an instance which already exists of the object
+type. Parameters must uniquely identify the object instance being
+modified and additional optional parameters determine the attributes
+and values being changed.
+.TP
+.B SHOW
+Shows detail about a single object instance. Parameters must uniquely
+identify the object instance.
+.TP
+.B LIST
+Lists a summary of all instances of the object. This command may need
+additional arguments according to context.
+.TP
+.B UNSET
+The unset operation is valid only for profiles. It allows previously
+set or modified profile parameters to be unset, i.e. returned to
+default values. This is useful because profile parameters may be
+inherited. Unsetting a parameter of a profile means that it will not
+override the value from another profile.
+.br
+.LP
+Only one operation is performed on an object with a single command,
+although in the case of CREATE and MODIFY operations, multiple
+parameters may be set in one command.  When invoking most operations
+on an object, parameters must be specified to identify the object
+instance. (LIST is an exception because depending on context, it may
+not take parameters.)
+.PD
+.SH OBJECT TYPES
+The following object types exist in
+.B OpenL2TP:
+.TP 16
+.B SYSTEM
+Contains attributes that may be used to control the system behavior of
+.B OpenL2TP,
+i.e. tunnel instance limits, UDP port number etc. There is always one
+instance of this object; instances cannot be created or deleted.
+.TP
+.B TUNNEL PROFILE
+Provides a named set of L2TP tunnel parameters which may be used when
+creating tunnels locally (by specifying the tunnel profile name when
+the tunnel is created) or when tunnels are created by remote request.
+.TP
+.B SESSION PROFILE
+Provides a named set of L2TP session parameters which may be used when
+creating sessions locally (by specifying the tunnel profile name when
+the tunnel is created) or when sessions are created by remote request.
+.TP
+.B PPP PROFILE
+Provides a named set of PPP parameters which are to be used when
+creating PPP sessions in L2TP sessions.
+.TP
+.B PEER PROFILE
+Identifies parameters to be used when connecting to an L2TP
+peer. Peers are identified by name or by IP address / netmask.  The
+peer profile specifies default tunnel, session and PPP profile names
+which are to be used for the peer, unless overridden by other
+settings.
+.TP
+.B TUNNEL
+Contains parameters of an L2TP tunnel, such as tunnel secret, AVP
+hiding, L2TP hello timeout etc. A tunnel is identified by a
+system-unique 16-bit identifier (tunnel_id) which is automatically
+generated. One instance of this object type exists for each L2TP
+tunnel.
+.TP
+.B SESSION
+Contains parameters of an L2TP session, such as whether to use data
+sequence numbers. A session is identified by a tunnel-unique 16-bit
+identifier (session_id) and the tunnel's tunnel_id. One instance of
+this object type exists for each L2TP session.
+.LP
+.PD
+.SH INTERACTIVE MODE
+.B l2tpconfig
+provides a context-sensitive Command Line Interface (CLI). Hitting <TAB>
+at the prompt shows a list of keywords applicable. Entering a few letters of
+a keyword and hitting TAB again completes the keyword (if possible). Hitting 
+TAB again shows a list of next valid keywords. When valid object type name 
+and operation are present, <TAB> shows a list of valid parameters for
+the operation. Entering a few letters of a parameter and hitting <TAB>
+completes the parameter name if possible and appends a 
+.I '=' 
+sign after the name if the parameter takes a value.
+.PP
+The 
+.B \<?\>
+key behaves similarly to <TAB> in that it displays possible
+completions but it also gives descriptive help about each option.
+.PD
+.SS KEY BINDINGS
+.B l2tpconfig
+provides intuitive command line editing with history. Key bindings are
+the same as 
+.BR bash ( 1 )
+by default, although they can be changed using
+.B l2tpconfig
+entries in a
+.B .inputrc
+file. See the
+.BR readline ( 3 )
+manual page for more information.
+.PP
+Commonly used default key bindings are:
+.TP 10
+.B <ctrl-a>
+beginning of line
+.TP
+.B <ctrl-e>
+end of line
+.TP 
+.B <ctrl-k>
+kill characters from cursor to end of line
+.TP
+.B <ctrl-y>
+yank characters last killed into line at cursor position
+.TP
+.B <meta-f>
+forward a word
+.TP
+.B <meta-b>
+back a word
+.TP
+.B <meta-t>
+transpose word at cursor position with previous word.
+.PP
+On keyboards without a Meta (Alt) key, the Escape key can be used.
+.SS COMMAND HISTORY
+In interactive mode,
+.B l2tpconfig
+writes command history data to
+.I ~/.l2tp_history
+when the application exits. This gives the operator the ability to recall
+commands from a previous session.
+.PP
+If desired, the environment variable 
+.I L2TP_HISTFILE
+can be used to point to an alternative history file and
+.I L2TP_HISTFILESIZE
+can be used to limit the history file to
+.I nnn
+entries. If
+.I L2TP_HISTFILE
+is set to an empty string, the writing of history information to a
+file is disabled.
+.PD
+.SH PERSISTENT CONFIGURATION
+.B OpenL2TP
+does not use configuration files; all configuration is done using 
+an RPC client application such as
+.BR l2tpconfig .
+However, it is useful to save and restore configuration snapshots.
+.B l2tpconfig
+provides
+.HP
+.nf 
+config save file=<filename>
+.fi
+.LP
+and
+.HP
+.nf
+config restore file=<filename>
+.fi
+.LP
+commands for this purpose. Configuration data is written to the file in
+plain text so may be edited by hand if desired. Note that this feature is
+implemented in
+.BR l2tpconfig ,
+not the
+.BR openl2tpd
+daemon. Future versions may add an RPC interface to allow RPC client
+applications the ability to retrieve and restore configuration in a
+binary format.
+.SH SYNTAX SUMMARY
+The following output is taken from the context sensitive help in 
+.BR l2tpconfig 's.
+interactive mode. Use the
+.I <?>
+key to ask for context sensitive help.
+.SS COMMAND SUMMARY
+.nf
+l2tp> ?
+exit    - exit application
+peer    - peer commands
+ppp     - ppp commands
+session - session commands
+tunnel  - tunnel commands
+system  - system commands
+debug   - debug commands
+server  - server configuration
+config  - configuration save/restore
+quit    - exit application
+
+l2tp> peer ?
+profile - peer profile commands
+
+l2tp> peer profile ?
+create - create a new L2TP peer profile
+list   - list all L2TP peer profiles
+show   - show an L2TP peer profile
+modify - modify an L2TP peer profile
+delete - delete an L2TP peer profile
+unset  - unset parameters of an L2TP peer profile
+
+l2tp> ppp ?
+profile - ppp profile commands
+
+l2tp> ppp profile ?
+create - create a new L2TP ppp profile
+list   - list all L2TP ppp profiles
+show   - show an L2TP ppp profile
+modify - modify an L2TP ppp profile
+delete - delete an L2TP ppp profile
+unset  - unset parameters of an L2TP ppp profile
+
+l2tp> tunnel ?
+create  - create a new L2TP tunnel
+profile - tunnel profile commands
+list    - list all L2TP tunnels
+show    - show an L2TP tunnel
+modify  - modify an L2TP tunnel
+delete  - delete an L2TP tunnel
+
+l2tp> tunnel profile ?
+create - create a new L2TP tunnel profile
+list   - list all L2TP tunnel profiles
+show   - show an L2TP tunnel profile
+modify - modify an L2TP tunnel profile
+delete - delete an L2TP tunnel profile
+unset  - unset parameters of an L2TP tunnel profile
+
+l2tp> session ?
+create  - create a new L2TP session
+profile - session profile commands
+list    - list all L2TP sessions on a specified tunnel
+show    - show an L2TP session
+modify  - modify an L2TP session
+delete  - delete an L2TP session
+
+l2tp> session profile ?
+create - create a new L2TP session profile
+list   - list all L2TP session profiles
+show   - show an L2TP session profile
+modify - modify an L2TP session profile
+delete - delete an L2TP session profile
+unset  - unset parameters of an L2TP session profile
+
+l2tp> system ?
+modify - modify system parameters
+show   - show system configuration and statistics
+
+l2tp> debug ?
+modify - modify debug settings
+show   - show debug settings
+
+l2tp> server ?
+modify - modify server parameters
+show   - show server parameters
+
+l2tp> config ?
+save    - save configuration
+restore - restore configurationfrom file
+.fi
+.SS PEER PROFILE CREATE / MODIFY / UNSET
+.nf
+l2tp> peer profile create ? 
+profile_name         - Name of peer profile
+peer_ipaddr          - IP address of peer
+peer_port            - UDP port with which to connect to peer. 
+                       Default=1701.
+netmask              - IP netmask to be used when matching for 
+                       peer_ipaddr. Default=255.255.255.255.
+lac_lns              - We can operate as a LAC or LNS or both.
+tunnel_profile_name  - Name of default Tunnel Profile. 
+                       Default="default"
+session_profile_name - Name of default Session Profile. 
+                       Default="default"
+ppp_profile_name     - Name of default Ppp Profile. 
+                       Default="default"
+.fi
+.SS PEER PROFILE LIST
+.nf
+l2tp> peer profile list ?
+.fi
+.SS PEER PROFILE SHOW
+.nf
+l2tp> peer profile show ?
+profile_name - Name of peer profile
+.fi
+.SS PEER PROFILE DELETE
+.nf
+l2tp> peer profile delete ?
+profile_name - Name of peer profile
+.fi
+.SS PPP PROFILE CREATE / MODIFY / UNSET
+.nf
+l2tp> ppp profile create ?
+profile_name             - Name of ppp profile
+trace_flags              - Trace flags, for debugging network 
+                           problems
+asyncmap                 - Async character map. Valid only if PPP is 
+                           async mode.
+mtu                      - Maximum Transmit Unit (MTU) or maximum 
+                           packet size transmitted.
+mru                      - Maximum Receive Unit (MRU) or maximum packet 
+                           size passed when received.
+sync_mode                - Allow PPP sync/async operation.
+auth_pap                 - Allow PPP PAP authentication. Default: YES
+auth_chap                - Allow PPP CHAP authentication. Default: YES
+auth_mschapv1            - Allow PPP MSCHAP authentication. 
+                           Default: YES
+auth_mschapv2            - Allow PPP MSCHAPV2 authentication. 
+                           Default: YES
+auth_eap                 - Allow PPP EAP authentication. 
+                           Default: YES
+auth_none                - Allow unauthenticated peers. 
+                           Default: NO/YES (server/client)
+auth_peer                - Authenticate peer PPP user (server). 
+                           Default: YES/NO (server/client)
+chap_interval            - Rechallenge the peer every chap_interval seconds. 
+                           Default=0 (don't rechallenge).
+chap_max_challenge       - Maximum number of CHAP challenges to transmit 
+                           without successful acknowledgment before 
+                           declaring a failure. Default=10.
+chap_restart             - Retransmission timeout for CHAP challenges. 
+                           Default=3.
+pap_max_auth_reqs        - Maximum number of PAP authenticate-request 
+                           transmissions. Default=10.
+pap_restart_interval     - Retransmission timeout for PAP requests. 
+                           Default=3.
+pap_timeout              - Maximum time to wait for peer to authenticate 
+                           itself. Default=0 (no limit).
+idle_timeout             - Disconnect session if idle for more than N 
+                           seconds. Default=0 (no limit).
+ipcp_max_cfg_reqs        - Maximum number of IPCP config-requests to 
+                           transmit without successful acknowledgement
+                           before declaring a failure. Default=10.
+ipcp_max_cfg_naks        - Maximum number of IPCP config-naks to allow
+                           before starting to send config-rejects
+                           instead. Default=10.
+ipcp_max_term_reqs       - Maximum number of IPCP term-requests to send. 
+                           Default=3.
+ipcp_retransmit_interval - IPCP retransmission timeout. Default=3.
+lcp_echo_fail_count      - Number of LCP echo failures to accept before 
+                           assuming peer is down. Default=5.
+lcp_echo_interval        - Send LCP echo-request to peer every N 
+                           seconds. Default=0 (don't send).
+lcp_max_cfg_reqs         - Maximum number of LCP config-request 
+                           transmissions. Default=10.
+lcp_max_cfg_naks         - Maximum number of LCP config-requests to 
+                           transmit without successful acknowledgement 
+                           before declaring a failure. Default=10.
+lcp_max_term_reqs        - Maximum number of LCP term-requests to send. 
+                           Default=3.
+lcp_retransmit_interval  - LCP retransmission timeout. Default=3.
+max_connect_time         - Maximum connect time (in seconds) that the 
+                           PPP session may stay in use.Default=0 (no 
+                           limit)
+use_radius               - Says whether to use RADIUS for user 
+                           authentication. Support depends on the PPP 
+                           implementation being used, since it is PPP 
+                           that issues RADIUS requests, not OpenL2TP.
+radius_hint              - An arbitrary text string that is passed
+                           to the RADIUS client. The meaning of such 
+                           string is locally significant.
+ip_pool_name             - The name of an IP pool. This name is passed
+                           to PPP which can use the information as it
+                           chooses. IP address pools are not 
+                           controlled by OpenL2TP.
+default_route            - Says whether the PPP link should be used
+                           as the system's default route. Default: no.
+multilink                - Use multilink PPP. Default: no.
+local_name               - Name to use for authentication with the
+                           peer, unless overridden by user_name.
+remote_name              - Name to assume for the remote peer for
+                           authentication purposes.
+.fi
+.SS PPP PROFILE LIST
+.nf
+l2tp> ppp profile list ?
+.fi
+.SS PPP PROFILE SHOW
+.nf
+l2tp> ppp profile show ?
+profile_name - Name of ppp profile
+.fi
+.SS PPP PROFILE DELETE
+.nf
+l2tp> ppp profile delete ?
+profile_name - Name of ppp profile
+.fi
+.SS TUNNEL CREATE
+.nf
+l2tp> tunnel create ?
+dest_ipaddr          - Destination IP address
+config_id            - Optional configuration id, used to uniquify a 
+                       tunnel when there is more the one tunnel between 
+                       the same two IP addresses
+tunnel_id            - Optional tunnel id of new tunnel. Usually 
+                       auto-generated. Use is discouraged.
+profile_name         - Name of tunnel profile which will be used for 
+                       default values of this tunnel's parameters.
+src_ipaddr           - Source IP address
+udp_port             - UDP port number with which to contact peer 
+                       L2TP server. Default: 1701
+use_tiebreaker       - Enable use of a tiebreaker when setting up the 
+                       tunnel. Default: ON
+allow_ppp_proxy      - Allow PPP proxy
+framing_caps         - Framing capabilities:-
+                       sync:async
+bearer_caps          - Bearer capabilities:-
+                       digital:analog
+host_name            - Name to advertise to peer when setting up the 
+                       tunnel.
+secret               - Optional secret which is shared with tunnel peer. 
+                       Must be specified when hide_avps is enabled.
+auth_mode            - Tunnel authentication mode:-
+                       none      - no authentication, unless secret 
+                                   is given
+                       simple    - check peer hostname
+                       challenge - require tunnel secret
+hide_avps            - Hide AVPs. Default OFF
+pmtu_discovery       - Do Path MTU Discovery. Default: OFF
+trace_flags          - Trace flags, for debugging network problems
+use_udp_checksums    - Use UDP checksums in data frames. Default: ON
+persist              - Persist (recreate automatically if tunnel fails). 
+                       Default: OFF
+hello_timeout        - Set timeout used for periodic L2TP Hello messages
+                       (in seconds). Default: 0 (no hello messages 
+                       are generated.
+max_retries          - max retries
+rx_window_size       - Receive window size
+tx_window_size       - Transmit window size
+retry_timeout        - Retry timeout
+idle_timeout         - Idle timeout
+max_sessions         - Maximum number of sessions allowed on tunnel. 
+                       Default=0 (limited only by max_sessions limit in 
+                       system parameters).
+mtu                  - MTU for all sessions in tunnel. Default: 1460.
+tunnel_name          - Administrative name of this tunnel.
+peer_profile_name    - Name of peer profile which will be used for 
+                       default values of the tunnel's parameters.
+session_profile_name - Name of session profile which will be used for 
+                       default values of the tunnel's session parameters.
+.fi
+.SS TUNNEL MODIFY
+.PP
+Tunnel instances are identified by either
+.I tunnel_id
+or
+.I tunnel_name.
+.nf
+l2tp> tunnel modify ?
+tunnel_id            - Tunnel ID of tunnel.
+tunnel_name          - Administrative name of tunnel
+trace_flags          - Trace flags, for debugging network problems
+persist              - Persist (recreate automatically if tunnel fails). 
+                       Default: OFF
+udp_csum             - Use UDP checksums in data frames. Default: ON
+hello_timeout        - Set timeout used for periodic L2TP Hello 
+                       messages (in seconds). Default: 0 (no hello 
+                       messages are generated.
+max_retries          - max retries
+rx_window_size       - Receive window size
+tx_window_size       - Transmit window size
+retry_timeout        - Retry timeout
+idle_timeout         - Idle timeout
+max_sessions         - Maximum number of sessions allowed on tunnel. 
+                       Default=0 (limited only by max_sessions limit in 
+                       system parameters).
+mtu                  - MTU for all sessions in tunnel. Default: 1460.
+peer_profile_name    - Name of peer profile which will be used for 
+                       default values of the tunnel's parameters.
+session_profile_name - Name of session profile which will be used for 
+                       default values of the tunnel's session parameters.
+ppp_profile_name     - Name of ppp profile which will be used for 
+                       default values of the tunnel's session PPP 
+                       parameters.
+interface_name       - Name of system interface for the tunnel. 
+                       Default: l2tpN where N is tunnel_id.
+                       Not currently used.
+.fi
+.SS TUNNEL LIST
+.nf
+l2tp> tunnel list ?
+local_only  - List only locally created tunnels.
+remote_only - List only remotely created tunnels.
+names       - List only named tunnels.
+.fi
+.SS TUNNEL SHOW
+.PP
+Tunnel instances are identified by either
+.I tunnel_id
+or
+.I tunnel_name.
+.nf
+l2tp> tunnel show ?
+tunnel_id   - Tunnel ID of tunnel.
+tunnel_name - Administrative name of tunnel
+config      - Display only tunnel configuration/status information.
+transport   - Display only tunnel transport information.
+.fi
+.SS TUNNEL DELETE
+.PP
+Tunnel instances are identified by either
+.I tunnel_id
+or
+.I tunnel_name.
+.nf
+l2tp> tunnel delete ?
+tunnel_id   - Tunnel ID of tunnel.
+tunnel_name - Administrative name of tunnel
+.fi
+.SS TUNNEL PROFILE CREATE / MODIFY / UNSET
+.nf
+l2tp> tunnel profile create ?
+profile_name         - Name of tunnel profile
+dest_ipaddr          - Destination IP address
+src_ipaddr           - Source IP address
+udp_port             - UDP port number with which to contact peer 
+                       L2TP server. Default: 1701
+use_tiebreaker       - Enable use of a tiebreaker when setting up the 
+                       tunnel. Default: ON
+allow_ppp_proxy      - Allow PPP proxy
+framing_caps         - Framing capabilities:-
+                       sync:async
+bearer_caps          - Bearer capabilities:-
+                       digital:analog
+host_name            - Name to advertise to peer when setting up the 
+                       tunnel.
+secret               - Optional secret which is shared with tunnel peer. 
+                       Must be specified when hide_avps is enabled.
+auth_mode            - Tunnel authentication mode:-
+                       none      - no authentication, unless secret is 
+                                   given
+                       simple    - check peer hostname
+                       challenge - require tunnel secret
+hide_avps            - Hide AVPs. Default OFF
+pmtu_discovery       - Do Path MTU Discovery. Default: OFF
+trace_flags          - Trace flags, for debugging network problems
+udp_csum             - Use UDP checksums in data frames. Default: ON
+hello_timeout        - Set timeout used for periodic L2TP Hello 
+                       messages (in seconds). Default: 0 (no hello 
+                       messages are generated.
+max_retries          - max retries
+rx_window_size       - Receive window size
+tx_window_size       - Transmit window size
+retry_timeout        - Retry timeout
+idle_timeout         - Idle timeout
+max_sessions         - Maximum number of sessions allowed on tunnel. 
+                       Default=0 (limited only by max_sessions limit in 
+                       system parameters).
+mtu                  - MTU for all sessions in tunnel. Default: 1460.
+tunnel_name          - Administrative name of this tunnel.
+peer_profile_name    - Name of peer profile which will be used for 
+                       default values of the tunnel's parameters.
+session_profile_name - Name of session profile which will be used for 
+                       default values of the tunnel's session 
+                       parameters.
+ppp_profile_name     - Name of ppp profile which will be used for 
+                       default values of the tunnel's session PPP 
+                       parameters.
+interface_name       - Name of system interface for the tunnel. 
+                       Default: l2tpN where N is tunnel_id.
+                       Not currently used.
+.fi
+.SS TUNNEL PROFILE LIST
+.nf
+l2tp> tunnel profile list ?
+.fi
+.SS TUNNEL PROFILE SHOW
+.nf
+l2tp> tunnel profile show ?
+profile_name - Name of tunnel profile
+.fi
+.SS TUNNEL PROFILE DELETE
+.nf
+l2tp> tunnel profile delete ?
+profile_name - Name of tunnel profile
+.fi
+.SS SESSION CREATE
+.nf
+l2tp> session create ?
+tunnel_id                - Tunnel ID on which to create session.
+tunnel_name              - Administrative name of tunnel on which to 
+                           create session.
+profile_name             - Name of session profile
+ppp_profile_name         - Name of ppp profile to use for PPP parameters
+session_name             - Administrative name of this session
+trace_flags              - Trace flags, for debugging network problems
+sequencing_required      - The use of sequence numbers in the data 
+                           channel is mandatory.
+use_sequence_numbers     - Enable sequence numbers in the data channel 
+                           if peer supports them.
+no_ppp                   - Don't start PPP on the L2TP session.
+reorder_timeout          - Timeout to wait for out-of-sequence packets 
+                           before discarding.
+session_type             - Session type: LAC/LNS incoming/outgoing
+priv_group_id            - Private group ID, used to separate this 
+                           session into a named administrative group
+interface_name           - PPP interface name.Default: pppN
+user_name                - PPP user name
+user_password            - PPP user password
+framing_type             - Framing type: sync, async or any. 
+                           Default: any
+bearer_type              - Bearer type: digital, analog, any. 
+                           Default: any
+minimum_bps              - Minimum bits/sec acceptable. Default: 0
+maximum_bps              - Maximum bits/sec required. 
+                           Default: no limit
+connect_speed            - Specified as speed[:txspeed], indicates 
+                           connection speeds.
+session_id               - Session ID of session. Default: system 
+                           chooses random ID.
+.fi
+.SS SESSION MODIFY
+.PP
+Session instances are identified by a tunnel / session pair. The tunnel or session
+may be specified by id or name, i.e.
+.I tunnel_id / tunnel_name
+.BR
+.I session_id / session_name.
+.nf
+l2tp> session modify ?
+tunnel_id            - Tunnel ID on which session exists.
+tunnel_name          - Administrative name of tunnel on which session exists.
+session_id           - Session ID of session.
+session_name         - Administrative name of this session
+trace_flags          - Trace flags, for debugging network problems
+sequencing_required  - The use of sequence numbers in the data channel 
+                       is mandatory.
+use_sequence_numbers - Enable sequence numbers in the data channel if 
+                       peer supports them.
+reorder_timeout      - Timeout to wait for out-of-sequence packets 
+                       before discarding.
+.fi
+.SS SESSION LIST
+.nf
+l2tp> session list ?
+tunnel_id   - Tunnel ID on which to list sessions.
+tunnel_name - Administrative name of tunnel on which session exists.
+local_only  - Show only locally created sessions.
+remote_only - Show only remotely created sessions.
+names       - Show only named sessions.
+.fi
+.SS SESSION SHOW
+.PP
+Session instances are identified by a tunnel / session pair. The tunnel or session
+may be specified by id or name, i.e.
+.I tunnel_id / tunnel_name
+.BR
+.I session_id / session_name.
+.nf
+l2tp> session show ?
+tunnel_id    - Tunnel ID on which session exists.
+tunnel_name  - Administrative name of tunnel on which session exists.
+session_id   - Session ID of session.
+session_name - Administrative name of session.
+.fi
+.SS SESSION DELETE
+.PP
+Session instances are identified by a tunnel / session pair. The tunnel or session
+may be specified by id or name, i.e.
+.I tunnel_id / tunnel_name
+.BR
+.I session_id / session_name.
+.nf
+l2tp> session delete ?
+tunnel_id    - Tunnel ID on which session exists.
+tunnel_name  - Administrative name of tunnel on which session exists.
+session_id   - Session ID of session.
+session_name - Administrative name of session.
+.fi
+.SS SESSION PROFILE CREATE / MODIFY / UNSET
+.nf
+l2tp> session profile create ?
+profile_name         - Name of session profile
+ppp_profile_name     - Name of ppp profile to use for PPP parameters
+session_name         - Administrative name of this session
+trace_flags          - Trace flags, for debugging network problems
+sequencing_required  - The use of sequence numbers in the data channel 
+                       is mandatory.
+use_sequence_numbers - Enable sequence numbers in the data channel if 
+                       peer supports them.
+no_ppp               - Don't start PPP on the L2TP session.
+reorder_timeout      - Timeout to wait for out-of-sequence packets 
+                       before discarding.
+session_type         - Session type: LAC/LNS incoming/outgoing
+priv_group_id        - Private group ID, used to separate this session 
+                       into a named administrative group
+framing_type         - Framing type: sync, async or any. 
+                       Default: any
+bearer_type          - Bearer type: digital, analog, any. 
+                       Default: any
+minimum_bps          - Minimum bits/sec acceptable. Default: 0
+maximum_bps          - Maximum bits/sec required. Default: no limit
+connect_speed        - Specified as speed[:txspeed, indicates 
+                       connection speeds.
+.fi
+.SS SESSION PROFILE LIST
+.nf
+l2tp> session profile list ?
+.fi
+.SS SESSION PROFILE SHOW
+.nf
+l2tp> session profile show ?
+profile_name - Name of session profile
+.fi
+.SS SESSION PROFILE DELETE
+.nf
+l2tp> session profile delete ?
+profile_name - Name of session profile
+.fi
+.SS USER LIST
+.nf
+l2tp> user list ?
+.fi
+.SS SYSTEM MODIFY
+.nf
+l2tp> system modify ?
+trace_flags                  - Default trace flags to use if not 
+                               otherwise overridden.
+max_tunnels                  - Maximum number of tunnels permitted. 
+                               Default=0 (no limit).
+max_sessions                 - Maximum number of sessions permitted. 
+                               Default=0 (no limit).
+drain_tunnels                - Enable the draining of existing tunnels 
+                               (prevent new tunnels from being created.
+tunnel_establish_timeout     - Timeout for tunnel establishment. 
+                               Default=120 seconds..
+session_establish_timeout    - Timeout for session establishment. 
+                               Default=120 seconds..
+tunnel_persist_pend_timeout  - Timeout to hold persistent tunnels before 
+                               retrying. Default=300 seconds.
+session_persist_pend_timeout - Timeout to hold persistent sessions before 
+                               retrying. Default=60 seconds.
+deny_local_tunnel_creates    - Deny the creation of new tunnels by local 
+                               request.
+deny_remote_tunnel_creates   - Deny the creation of new tunnels by remote 
+                               peers.
+reset_statistics             - Reset statistics.
+.fi
+.SS SYSTEM SHOW
+.nf
+l2tp> system show ?
+configuration - show system configuration
+version       - show system version
+statistics    - show system statistics
+status        - show system status
+.fi
+.SS DEBUG MODIFY
+May be used to modify an object's trace_flags instead of manipulating
+the trace_flags directly with one of the above modify commands. The
+debug commands hide the detail of the trace_flags bitmask from the
+operator since trace options are controlled by CLI keywords. Only one
+object may be modified with one command.
+.nf
+l2tp> debug modify ?
+tunnel_id            - tunnel_id of entity being modified
+tunnel_name          - tunnel_name of entity being modified
+session_id           - session_id of entity being modified
+session_name         - session_name of entity being modified
+tunnel_profile_name  - Name of tunnel profile being modified
+session_profile_name - Name of session profile being modified
+ppp_profile_name     - Name of ppp profile being modified
+app                  - Modify application debug settings
+protocol             - L2TP protocol events
+fsm                  - Finite State Machine events (e.g. state changes)
+api                  - Management interface interactions
+transport            - Log tunnel transport activity, e.g. packet 
+                       sequence numbers, packet receive and transmit, to 
+                       debug 
+                       tunnel link establishment or failures
+data                 - Log L2TP data channel activity. Only L2TP control 
+                       messages are logged, never user data packets.
+ppp_control          - Enables trace of PPP packets from the PPP subsystem
+avp_data             - L2TP Attribute Value Pairs (AVPs) data contentsFor 
+                       detailed message content trace
+avp_hide             - Show AVP hiding details
+avp_info             - High level AVP info (shows AVPs present, not their 
+                       contents)
+func                 - Internal functional behavior
+system               - Low level system activity, e.g. timers, sockets etc
+.fi
+.SS DEBUG SHOW
+.nf
+l2tp> debug show ?
+tunnel_id            - tunnel_id of entity being shown
+tunnel_name          - tunnel_name of entity being shown
+session_id           - session_id of entity being shown
+session_name         - session_name of entity being shown
+tunnel_profile_name  - Name of tunnel profile being shown
+session_profile_name - Name of session profile being shown
+ppp_profile_name     - Name of ppp profile being shown
+app                  - Show application debug settings
+.fi
+.SS SERVER MODIFY
+.nf
+l2tp> server modify ?
+name - IP address or hostname of L2TP daemon to attach to. Default=localhost.
+.fi
+.SS CONFIG SAVE
+.nf
+l2tp> config save ?
+file   - Filename for save/restore operation.
+.fi
+.SS CONFIG RESTORE
+.nf
+l2tp> config restore ?
+file   - Filename for save/restore operation.
+.fi
+.SH EXAMPLES
+.hy 0
+.na
+.HP 0
+.TP 0
+.IP "\fBCreate an L2TP tunnel to a remote LNS 1.2.3.4 which requires no \
+authentication. Add a session using PPP username/password myuser/mypassword\fP" 4
+.LP
+.nf
+l2tp> tunnel create dest_ipaddr=1.2.3.4
+Created tunnel 39767
+
+l2tp> session create tunnel_id=39767 user_name=myuser \\
+	password=mypassword 
+Created session 39767/10287
+.fi
+.IP "\fBCreate an L2TP tunnel to a remote LNS which requires \
+authentication using shared secret 'mypassword'.\fP"
+.LP
+.nf
+l2tp> tunnel create dest_ipaddr=1.2.3.4 secret=mypassword
+Created tunnel 4964
+
+l2tp> session create tunnel_id=39767 user_name=myuser \\
+	password=mypassword 
+Created session 4964/54933
+.fi
+.IP "\fBSetup an LNS that accepts tunnels only from IP addresses \
+in the subnet 1.2.3.0/24 and from hostname 'one'. For hostname 'one', \
+enable L2TP data sequence numbers, use tunnel authentication, enable AVP \
+hiding and send a PPP LCP echo every 5 seconds.\fP"
+.LP
+.nf
+l2tp> peer profile create profile_name=mysubnet \\
+	ip_addr=1.2.3.0 netmask=255.255.255.0
+Created peer profile mysubnet
+
+l2tp> peer profile create profile_name=one \\
+	default_tunnel_profile=one \\
+	default_session_profile=one \\
+	default_ppp_profile=one
+Created peer profile one
+
+l2tp> tunnel profile modify profile_name=default \\
+	auth_mode=simple
+Modified tunnel profile default
+
+l2tp> tunnel profile create profile_name=one \\
+	hide_avps=yes secret=mysecret auth_mode=challenge
+Created tunnel profile one
+
+l2tp> session profile create profile_name=one \\
+	use_data_sequencing=yes
+Created session profile one
+
+l2tp> ppp profile create profile_name=one \\
+	lcp_echo_interval=5
+Created ppp profile one
+
+.fi
+.IP "\fBEnable debug trace for tunnels from peer 'one' to debug \
+tunnel setup problems.\fP"
+.LP
+.nf
+l2tp> tunnel profile modify profile_name=one \\
+	trace_flags=protocol,fsm,api,avp,data,ppp
+Modified tunnel profile one
+.fi
+.IP "\fBEnable PROTOCOL/FSM and disable DATA debug trace for tunnels from peer 'one', leaving \
+existing trace settings of the profile unchanged.\fP"
+.LP
+.nf
+l2tp> debug modify tunnel_profile_name=one \\
+	protocol=on fsm=on data=off
+.fi
+.IP "\fBDisplay a list of active tunnels and show detail about \
+one of them.\fP"
+.LP
+.nf
+l2tp> tunnel list
+   TunId             Peer            Local  PeerTId ConfigId            State
+*  53502      192.168.0.1      192.168.0.2    55348        1      ESTABLISHED
+   20903    192.168.0.253      192.168.0.2    33790        1      ESTABLISHED
+.fi
+.PP
+Tunnels marked with * in the first column are those created by remote
+request. Their parameters may be displayed or modified using the same
+commands as are used for locally created tunnels.
+
+.nf
+l2tp> tunnel show tunnel_id=20903
+Tunnel 20903, from 192.168.0.2 to 192.168.0.253:-
+  state: ESTABLISHED
+  created at:  Aug 31 11:04:55 2005
+  administrative name: 'one'
+  created by admin: YES, tunnel mode: LAC
+  peer tunnel id: 33790, host name: NOT SET
+  UDP ports: local 32771, peer 1701
+  authorization mode: NONE, hide AVPs: OFF, allow PPP proxy: OFF
+  tunnel secret: 'wibble'
+  session limit: 0, session count: 2
+  tunnel profile: default, peer profile: default
+  session profile: default, ppp profile: default
+  hello timeout: 60, retry timeout: 1, idle timeout: 0
+  rx window size: 10, tx window size: 10, max retries: 5
+  use udp checksums: OFF
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC, bearer capability: DIGITAL
+  use tiebreaker: OFF
+  trace flags: NONE
+  peer vendor name: Cisco Systems, Inc.
+  peer protocol version: 1.0, firmware 4384
+  peer framing capability: NONE
+  peer bearer capability: NONE
+  peer rx window size: 800
+  Transport status:-
+    ns/nr: 5/2, peer 5/2
+    cwnd: 6, ssthresh: 10, congpkt_acc: 0
+  Transport statistics:-
+    out-of-sequence control/data discards: 0/0
+    zlbs tx/txfail/rx: 2/0/3
+    retransmits: 0, duplicate pkt discards: 0, data pkt discards: 0
+    hellos tx/txfail/rx: 1/0/0
+    control rx packets: 5, rx bytes: 194
+    control tx packets: 7, tx bytes: 303
+    data rx packets: 15, rx bytes: 347, rx errors: 0
+    data tx packets: 15, tx bytes: 298, tx errors: 0
+    establish retries: 0
+
+l2tp> tunnel show tunnel_id=53502 config
+Tunnel 53502, from 192.168.0.2 to 192.168.0.1:-
+  state: ESTABLISHED
+  created at:  Aug 31 11:09:20 2005
+  created by admin: NO, tunnel mode: LNS
+  peer tunnel id: 55348, host name: NOT SET
+  UDP ports: local 32772, peer 34215
+  authorization mode: NONE, hide AVPs: OFF, allow PPP proxy: OFF
+  session limit: 0, session count: 0
+  tunnel profile: default, peer profile: default
+  session profile: default, ppp profile: default
+  hello timeout: 60, retry timeout: 1, idle timeout: 0
+  rx window size: 10, tx window size: 10, max retries: 5
+  use udp checksums: OFF
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC, bearer capability: DIGITAL
+  use tiebreaker: OFF
+  trace flags: NONE
+  peer vendor name: Katalix Systems Ltd. Linux-2.4.27 (i386)
+  peer protocol version: 1.0, firmware 1
+  peer framing capability: SYNC ASYNC
+  peer bearer capability: DIGITAL ANALOG
+  peer rx window size: 10
+
+l2tp> session list tunnel_name=one
+2 sessions on tunnel one:-
+	29680
+	4386
+
+l2tp> session show tunnel_name=one session_id=29680
+Session 29680 on tunnel 20903:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created at:  Aug 31 11:04:59 2005
+  administrative name: one
+  created by admin: YES, peer session id: 5
+  ppp user name: cisco
+  ppp user password: cisco
+  ppp profile name: one
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: NONE
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  call serial number: 4
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+    call serial number: 4
+  data rx packets: 1582, rx bytes: 1094667, rx errors: 0
+  data tx packets: 1582, tx bytes: 1088350, tx errors: 0
+
+.fi
+.IP "\fBDisplay a brief list of incoming tunnels.\fP"
+.LP
+.nf
+l2tp> tunnel list remote_only
+        53502
+.fi
+.PP
+This form of the \fItunnel list\fP command can be useful in scripts to
+derive active incoming tunnel_ids to pass to another command.
+.IP "\fBDisplay a brief list of outgoing tunnels.\fP"
+.LP
+.nf
+l2tp> tunnel list local_only
+        20903
+.fi
+.PP
+This form of the \fItunnel list\fP command can be useful in scripts to
+derive active outgoing tunnel_ids to pass to another command.
+.IP "\fBDisplay a brief list of outgoing tunnels.\fP"
+.LP
+.nf
+l2tp> tunnel list names
+        one
+.fi
+.PP
+This form of the \fItunnel list\fP command can be useful in scripts to
+derive active named tunnels to pass to another command. The
+\fInames\fP may be used in combination with \fIlocal_only\fP or
+\fIremote_only\fP to restrict the list to only named tunnels.
+.PP
+The \fIlocal_only\fP, \fIremote_only\fP and \fInames\fP keywords may
+also be used with the \fIsession list\fP command.
+.LP
+.nf
+l2tp> session list tunnel_name=one local_only names
+        one
+        two
+.fi
+.IP "\fBConfigure OpenL2TP for use only as a client. Do not accept any \
+incoming tunnel setup requests from the network, regardless of other \
+configuration.\fP"
+.LP
+.nf
+l2tp> system modify deny_remote_tunnel_creates=yes
+.fi
+.ad b
+.hy 1
+.IP "\fBConfigure OpenL2TP to use a fixed local UDP port. This is sometimes necessary \
+to pass through some firewalls and NAT implementations. Cisco use a fixed local UDP port \
+by default. OpenL2TP uses ephemeral ports by default, which allows multiple tunnels \
+between the same L2TP peers.\fP"
+.LP
+.nf
+l2tp> tunnel profile modify profile_name=default our_udp_port=1701
+.fi
+.ad b
+.hy 1
+.IP "\fBConfigure OpenL2TP to allocate IP addresses out of a local address pool called \fIone\fP."
+.LP
+Start
+.BR ippoold ( 8 )
+and configure a pool called \fIone\fP. Then
+.LP
+.nf
+l2tp> ppp profile modify profile_name=default ip_pool_name=one
+.fi
+.ad b
+.hy 1
+.IP "\fBConfigure OpenL2TP to use RADIUS to do PPP authentication. \
+Specify a non-default RADIUS client configuration parameter file.\fP"
+.LP
+.nf
+l2tp> ppp profile modify profile_name=default \\
+        use_radius=yes \\
+        radius_hint=/etc/radiusclient/myradiusclient.conf
+.fi
+.ad b
+.hy 1
+.PD
+.SH FILES
+.BR ~/.l2tp_history
+.PD
+.SH "REPORTING BUGS"
+Please report bugs to <openl2tp-bugs@lists.sourceforge.net>.
+
+.SH "SEE ALSO"
+.br
+.BR openl2tp ( 7 ),
+.BR openl2tpd ( 8 ),
+.BR readline ( 3 ).

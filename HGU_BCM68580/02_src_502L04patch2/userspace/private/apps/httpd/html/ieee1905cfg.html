@@ -1,0 +1,150 @@
+<html>
+   <head>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <meta http-equiv="Pragma" content="no-cache">
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript">
+
+<!-- hide
+
+var teststr='teststr';
+var isEnabled='<%ejGet(ieee1905IsEnabled)%>';
+var deviceFriendlyName='<%ejGet(ieee1905Dfname)%>';
+var isRegistrar='<%ejGet(ieee1905IsRegistrar)%>';
+var apFreq24Enable='<%ejGet(ieee1905ApFreq24En)%>';
+var apFreq5Enable='<%ejGet(ieee1905ApFreq5En)%>';
+
+var numWlAdaptor='<%ejGetOther(sysInfo, numWlAdaptor)%>';
+var showAp24='<%ejGet(ieee1905ShowApFreq24)%>';
+var showAp5='<%ejGet(ieee1905ShowApFreq5)%>';
+
+function showHideRow(rowId, d) {
+    var r=document.getElementById(rowId);
+    if (d=='1')
+       r.style.display = "table-row";
+    else
+       r.style.display = "none";    
+}
+
+function ieee1905ModeChange()
+{
+    if (document.getElementById('cbIeee1905Enabled').checked) {
+        isEnabled= '1';
+    }
+    else {
+        isEnabled= '0';
+    }
+    
+    showHideRow("trIeee1905Dfname", isEnabled);
+
+    if ( numWlAdaptor == '0' ) {
+        showHideRow("trIeee1905ApAutoConfigRole", 0);
+        showHideRow("trIeee1905ApFreqBandEn", 0);
+    }
+    else {
+        showHideRow("trIeee1905ApAutoConfigRole", isEnabled);
+        showHideRow("trIeee1905ApFreqBandEn", isEnabled);
+    }
+
+    showHideRow("cbIeee1905Ap24En", showAp24);
+    showHideRow("lbIeee1905Ap24En", showAp24);
+    showHideRow("cbIeee1905Ap5En", showAp5);
+    showHideRow("lbIeee1905Ap5En", showAp5);
+
+}
+
+function frmLoad() {
+    //hide the whole control so don't disable the control..
+    document.getElementById('cbIeee1905Enabled').checked = (isEnabled=='1');
+    document.getElementById('ieee1905ApAutoConfigRole').value = (isRegistrar=='1') ? "registrar" : "enrollee";
+    document.getElementById('ieee1905Dfname').value = deviceFriendlyName;
+    document.getElementById('cbIeee1905Ap24En').checked = (apFreq24Enable=='1');
+    document.getElementById('cbIeee1905Ap5En').checked = (apFreq5Enable=='1');
+
+    showHideRow("trIeee1905Dfname", isEnabled);
+    if ( numWlAdaptor == '0' ) {
+        showHideRow("trIeee1905ApAutoConfigRole", 0);
+        showHideRow("trIeee1905ApFreqBandEn", 0);
+    }
+    else {
+        showHideRow("trIeee1905ApAutoConfigRole", isEnabled);
+        showHideRow("trIeee1905ApFreqBandEn", isEnabled);
+    }
+    showHideRow("cbIeee1905Ap24En", showAp24);
+    showHideRow("lbIeee1905Ap24En", showAp24);
+    showHideRow("cbIeee1905Ap5En", showAp5);
+    showHideRow("lbIeee1905Ap5En", showAp5);
+}
+
+
+function btnApply()
+{
+    // This causes cgiDoIeee1905Config() to be invoked
+    
+    var loc = 'ieee1905cfg.cgi?';
+
+    var _isEnabled;
+    var _isRegistrar;
+    var _dvfn;
+    var _ap24En;
+    var _ap5En;
+
+    _isEnabled = document.getElementById('cbIeee1905Enabled').checked ? '1' : '0';
+    loc += 'ieee1905IsEnabled=' + _isEnabled;
+    if (_isEnabled=='1') {
+        _isRegistrar = document.getElementById('ieee1905ApAutoConfigRole').value == "registrar" ? '1' : '0';
+        _dvfn = document.getElementById('ieee1905Dfname').value;
+        _ap24En = document.getElementById('cbIeee1905Ap24En').checked ? '1' : '0';
+        _ap5En = document.getElementById('cbIeee1905Ap5En').checked ? '1' : '0';
+        loc += '&ieee1905IsRegistrar=' + _isRegistrar;
+        loc += '&ieee1905DeviceFriendlyName=' + _dvfn;
+        loc += '&ieee1905ApFreq24En=' + _ap24En;
+        loc += '&ieee1905ApFreq5En=' + _ap5En;
+    }
+    loc += '&sessionKey=<%ejGetOther(sessionKey)%>';
+    var code = 'location="' + loc + '"';
+    //alert(code);
+    eval(code);
+    
+}
+
+
+// done hiding -->
+</script>
+</head>
+   <body onLoad="frmLoad()">
+      <blockquote>
+         <form>
+             <b>nVoy (1905) Configuration -- <%ejGet(ieee1905Dfname)%></b><br>
+
+           
+             <table border="0" cellpadding="5" cellspacing="0" position="absolute" border-collapse="collapse">
+                 <tr id="trIeee1905Enabled" position="absolute">
+                   <td><input type="checkbox" name="cbIeee1905Enabled" id='cbIeee1905Enabled' onClick='ieee1905ModeChange()' > Enable </td>
+                 </tr>
+                 <tr id="trIeee1905Dfname" position="absolute">
+                   <td width="200">Device Friendly Name</td>
+                   <td><input type='text' name='ieee1905Dfname' id='ieee1905Dfname'></td>
+                 </tr>
+                 <tr id="trIeee1905ApAutoConfigRole" position="absolute">
+                   <td width="200">AP Autoconfig Role</td>
+                   <td><select name='ieee1905ApAutoConfigRole' id='ieee1905ApAutoConfigRole' size="1"> 
+                       <option value="registrar">Registrar</option> 
+                       <option value="enrollee">Enrollee</option>    
+                       </select></td>
+                 </tr>
+                 <tr id="trIeee1905ApFreqBandEn" position="absolute">
+                   <td width="200">AP Autoconfiguration frequency band support</td>
+                   <td><input type="checkbox" name="cbIeee1905Ap24En" id='cbIeee1905Ap24En' ><label id='lbIeee1905Ap24En'> 2.4GHz</label>
+                       <input type="checkbox" name="cbIeee1905Ap5En" id='cbIeee1905Ap5En' ><label id='lbIeee1905Ap5En'> 5GHz</label>
+                   </td>
+                 </tr>
+             </table></br>
+             <center><input type='button' 
+                           onClick='btnApply()'
+                           value='Apply/Save'></center>
+         </form>
+      </blockquote>
+   </body>
+</html>

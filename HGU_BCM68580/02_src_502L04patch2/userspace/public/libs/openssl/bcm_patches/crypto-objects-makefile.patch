@@ -1,0 +1,14 @@
+--- openssl-1.0.2a.orig/crypto/objects/Makefile	2015-03-19 15:31:02.000000000 +0200
++++ openssl-1.0.2a.orig/crypto/objects/Makefile.merge	2015-10-28 10:15:16.625329393 +0200
+@@ -44,11 +44,9 @@
+ # objects.pl both reads and writes obj_mac.num
+ obj_mac.h: objects.pl objects.txt obj_mac.num
+ 	$(PERL) objects.pl objects.txt obj_mac.num obj_mac.h
+-	@sleep 1; touch obj_mac.h; sleep 1
+ 
+ obj_xref.h: objxref.pl obj_xref.txt obj_mac.num
+ 	$(PERL) objxref.pl obj_mac.num obj_xref.txt > obj_xref.h
+-	@sleep 1; touch obj_xref.h; sleep 1
+ 
+ files:
+ 	$(PERL) $(TOP)/util/files.pl Makefile >> $(TOP)/MINFO

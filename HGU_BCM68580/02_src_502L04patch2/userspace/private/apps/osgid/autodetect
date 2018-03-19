@@ -1,0 +1,2 @@
+dependson: private/libs/cms_core private/libs/modsw private/libs/cms_dal public/libs/cms_msg public/libs/cms_util public/libs/curl
+condition: ifneq ($(and $(strip $(BUILD_BRCM_CMS)),$(strip $(BUILD_OSGI_FELIX))),)

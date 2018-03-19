@@ -1,0 +1,111 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript">
+<!-- hide
+
+var dbusRemoteEnable = '<%ejGet(dbusRemoteEnable)%>';
+var monitorPort = '<%ejGet(dbusPort)%>';
+var sessionKey='<%ejGetOther(sessionKey)%>';
+
+function frmLoad() {
+   with ( document.forms[0] ) {
+      if ( dbusRemoteEnable == '1' )
+         dbusStatus[1].checked = true;
+      else
+         dbusStatus[0].checked = true;
+
+      port.value = monitorPort;
+   }
+}
+
+function statusClick() {
+   with ( document.forms[0] ) {
+      if ( dbusStatus[0].checked == true ) {
+         port.disabled = 1;
+      } else {
+         port.disabled = 0;
+      }
+   }
+}
+
+function btnApply() {
+   var loc = 'dbusremotecfg.cgi?';
+
+   with ( document.forms[0] ) {
+      if ( dbusStatus[1].checked == true )
+      {
+         if(port.value.length > 0)
+         {
+            if ( (port.value == 0) || isValidPort(port.value) == false )
+            {
+               msg = 'monitor port "' + port.value + '" is invalid port number,should be[1 - 65535].';
+               alert(msg);
+               return;
+            }
+         }
+         else
+         {
+            alert('monitor port is required.');
+            return;
+         }
+
+         loc += 'dbusRemoteEnable=1';
+         loc += '&dbusPort=' + port.value;
+      }
+      else
+      {
+         loc += 'dbusRemoteEnable=0';
+      }
+   }
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+// done hiding -->
+</script>
+
+   </head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form>
+            <b>DBus Remote - Configuration<br>
+            </b>
+            <br>
+            DBus Remote allows LAN or WAN D-Feet to 
+            Monitor and debug service and client on DBus channel.<br>
+            <br>
+            Set correct TCP Port, enable or disable the feature and click "Apply" to configure the DBus Remote options.<br>
+            <br>
+            <br>
+            <b>Noted: This setting need reboot system to make DBus daemon remonitor this TCP socket. </b>
+            <br>
+ 
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="100">DBus Remote Status</td>
+				  <td><input name='dbusStatus' type='radio' onClick='statusClick()'>Disable</td>
+				  <td><input name='dbusStatus' type='radio' onClick='statusClick()'>Enable</td>
+               </tr>
+               <br>
+			</table>
+			<br>
+			<table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="100">TCP Port:</td>
+                  <td><input type='text' name='port' size="20" maxlength="256"></td>
+               </tr>
+            </table>
+            <p align="center">
+               <input type='button' onClick='btnApply()' value='Save/Apply'>
+			</p>
+         </form>
+         </blockquote>
+   </body>
+</html>
+

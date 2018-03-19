@@ -1,0 +1,118 @@
+#***********************************************************************
+#
+#  Copyright (c) 2006  Broadcom Corporation
+#  All Rights Reserved
+#
+#***********************************************************************/
+
+#
+# In most cases, you only need to modify this first section.
+#
+EXE = ssk
+OBJS = ssk.o \
+       ssk2_intfstack.o ssk2_linkstatus.o \
+       linkstatus_lan.o \
+       linkstatus_wan.o lanhosts.o \
+       ssk_voice.o ssk2_voice.o \
+       connstatus.o ssk_storageservice.o connstatus_n.o \
+       ssk2_usb.o \
+       mocastatus.o ssk2_mocastatus.o \
+       ssk2_connstatus.o ssk2_connstatus6.o \
+       ssk_periodic.o ssk2_periodic.o \
+       ssk_time.o ssk2_time.o lanhosts2.o ssk2_diag.o ssk2_xdsl.o ssk2_ppp.o \
+       ssk_selt.o \
+       ssk_sampleset.o ssk2_sampleset.o ssk2_wifi.o \
+       ssk2_system.o
+
+LIBS = -lcms_dal -lcms_msg $(CMS_CORE_LIBS) $(CMS_COMMON_LIBS) -lbridgeutil
+
+all dynamic install: $(EXE) generic_exe_install
+
+clean: generic_oalclean generic_clean
+	rm -f $(INSTALL_DIR)/bin/$(EXE)
+
+binaryonly_dist_clean: clean generic_binaryonly_dist_clean
+	rm -f Makefile.fullsrc
+
+
+#
+# Set our CommEngine directory (by splitting the pwd into two words
+# at /userspace and taking the first word only).
+# Then include the common defines under CommEngine.
+#
+CURR_DIR := $(shell pwd)
+BUILD_DIR:=$(subst /userspace, /userspace,$(CURR_DIR))
+BUILD_DIR:=$(word 1, $(BUILD_DIR))
+
+include $(BUILD_DIR)/make.common
+
+ifneq ($(strip $(BRCM_VOICE_SUPPORT)),)
+include $(BUILD_DIR)/make.voice
+endif
+
+CFLAGS += $(SSP_TYP_COMPILER_OPTS)
+LIBS += $(SSP_TYP_LIBS)
+
+
+#
+# Private apps and libs are allowed to include header files from the
+# private and public directories.
+#
+# WARNING: Do not modify this section unless you understand the
+# license implications of what you are doing.
+#
+ALLOWED_INCLUDE_PATHS := -I.\
+                         -I$(BUILD_DIR)/userspace/public/include  \
+                         -I$(BUILD_DIR)/userspace/public/include/$(OALDIR) \
+                         -I$(BUILD_DIR)/userspace/private/include  \
+                         -I$(BUILD_DIR)/userspace/private/include/$(OALDIR)  \
+                         -I$(BUILD_DIR)/userspace/private/libs/cms_core/linux/device2 
+
+
+ifeq ($(strip $(BUILD_IEEE1905)),y)
+ALLOWED_INCLUDE_PATHS += -I$(BUILD_DIR)/userspace/private/apps/ieee1905
+endif
+
+
+#
+# Private apps and libs are allowed to link with libraries from the
+# private and public directories.
+#
+# WARNING: Do not modify this section unless you understand the
+# license implications of what you are doing.
+#
+ALLOWED_LIB_DIRS := /lib:/lib/private:/lib/public
+
+
+# ssk.c needs cms_boardioctl.h, which needs these headers
+CFLAGS += -I$(INC_BRCMDRIVER_PUB_PATH)/$(BRCM_BOARD)  \
+          -I$(INC_BRCMDRIVER_PRIV_PATH)/$(BRCM_BOARD) \
+          -I$(INC_BRCMSHARED_PUB_PATH)/$(BRCM_BOARD)
+
+# treat all warnings as errors
+CUSTOM_CFLAGS += -Werror -Wfatal-errors
+
+
+#
+# Implicit rule will make the .c into a .o
+# Implicit rule is $(CC) -c $(CPPFLAGS) $(CFLAGS)
+# See Section 10.2 of Gnu Make manual
+# 
+$(EXE): $(OBJS) generic_oaldir
+	$(CC) $(BCM_LD_FLAGS) -o $@ $(OBJS) $(OALDIR)/oal.a -Wl,-rpath,$(CMS_LIB_RPATH) $(CMS_LIB_PATH) $(LIBS)
+
+
+
+#
+# Include the rule for making dependency files.
+# The '-' in front of the second include suppresses
+# error messages when make cannot find the .d files.
+# It will just regenerate them.
+# See Section 4.14 of Gnu Make.
+#
+
+include $(BUILD_DIR)/make.deprules
+
+-include $(OBJS:.o=.d)
+
+

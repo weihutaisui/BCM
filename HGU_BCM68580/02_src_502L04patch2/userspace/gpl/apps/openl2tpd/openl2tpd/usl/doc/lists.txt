@@ -1,0 +1,16 @@
+USL provides linked list support. The implementation is derived from
+the Linux kernel's list implementation which allows list elements to
+be removed from a list without having to know which list the item is
+on. APIs are provided to add/remove list items, as well as functions
+to walk lists.
+
+As an extension of the standard list, ordered lists are also
+supported. The application provides a comparison function which is
+used when adding an item to a list to find the correct (ordered)
+position in the list for insertion. Hash functions are also provided.
+
+The API is defined in usl_list.h. All operations are implemented
+inline. List nodes are not allocated - they are typically contained in
+the application's data structures.
+
+

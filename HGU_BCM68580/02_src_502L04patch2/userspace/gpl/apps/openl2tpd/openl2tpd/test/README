@@ -1,0 +1,79 @@
+This directory contains regression tests of OpenL2TP. In order to run
+the tests, openl2tpd must be built with L2TP_TEST enabled. See
+../INSTALL for how to do that. The daemon must be run with all
+debugging enabled and either the ppp_null plugin or the ppp_unix
+plugin with dummy pppd from this directory copied to the same
+directory as openl2tpd, i.e.
+
+	cd ..
+	./openl2tpd -d all -D -f -p plugins/ppp_null.so
+or
+	make
+	cp pppd_dummy ..
+	cd ..
+	./openl2tpd -d all -D -f -p plugins/ppp_unix.so
+
+pppd_dummy allows ppp_unix process spawning to be tested without
+the real PPP protocol getting in the way of the tests. With L2TP_TEST
+enabled, the ppp_unix plugin looks for a pppd_dummy executable in the
+same directory as openl2tpd and runs it instead of pppd if it finds
+it. Be aware though that if openl2tpd is run as a daemon, its working
+directory is /, regardless of the directory from where it was started.
+
+The tests are written using the tcltest package from the tcl
+distribution. The easiest way to run the tests is
+
+	make test
+
+in this directory after starting the daemon using one of the above
+methods. Tests take a long time to run (~1 hour) and results are
+written to the results/ subdirectory.
+
+The test host must be configured with an IP address of 192.168.0.1.
+This address may be used in addition to existing addresses. Use the
+command
+
+	ip addr add 192.168.0.1/24 brd + dev eth0 
+
+Currently, all tests use a single openl2tpd, creating tunnels and
+sessions with itself. Since tcltest tests results against expected
+text which is embedded in the test script, openl2tpd is run in a mode
+where normal "randomness" is disabled. The "test" command of
+l2tpconfig is used to enable certain test features, such as assigning
+tunnel_id and session_id linearly starting at 1 rather than using
+random values. Also note that it is possible to set the tunnel_id
+and/or session_id when creating tunnels and sessions with the test
+version of l2tpconfig.
+
+When making code changes to OpenL2TP, please re-run the regression
+tests before submitting patches.
+
+Running tests manually
+======================
+
+Before doing this, be aware that some tests depend on others. If in
+doubt, run tests 1.0 thru 1.3 and then your desired test, i.e.
+
+tclsh all.tcl -preservecore 3 -verbose bps -tmpdir ./results \
+	-outfile tmp.result \
+	-constraints "l2tpdRunning thirdpartylns kernelModuleLoaded interactive" \
+	-match 'thirdpartylns-1.[0-3] thirdpartylns-1.8' 
+
+To do list
+==========
+
+Some tests are still in development:-
+
+- Some tests assume that the test host has an interface 192.168.0.1
+  and a route to 10.0.0.0/16. Fix the scripts to remove that
+  dependency by deriving suitable IP addresses from the test host's
+  interface config.
+
+- UML datapath tests. Spawn two or more openl2tpd's on different
+  virtual linux boxes, then control them from a single test script
+  using l2tpconfig.  We need separate openl2tpd instances to do real
+  datapath testing since looped-back ppp interfaces on one host cannot
+  pass data as it is short-cut by the IP stack.
+
+- More error case tests. Need to inject bad L2TP frames and test for
+  behavior when wrong protocol messages are received.

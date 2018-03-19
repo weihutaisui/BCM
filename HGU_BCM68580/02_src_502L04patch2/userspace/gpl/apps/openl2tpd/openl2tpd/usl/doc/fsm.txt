@@ -1,0 +1,52 @@
+The FSM (Finite State Machine) subsystem is designed to support
+generic state machine that an application might implement.
+
+State machines are defined as a state/event table, where for each
+valid event in a given state, a function pointer is provided (which
+takes three void* arguments). Each FSM table event entry includes the
+next state. In this way, an application feeds events to state machine
+instances, which result in a state machine event handler function be
+called synchronously. USL can log all events and all state
+transitions.
+
+The FSM API is defined in usl_fsm.h. Each FSM instance is declared as
+a structure which includes members such as name (for logging
+purposes), an array of state names and an array of event names which
+are used for state/event logging, and an array of state/event
+handlers. The array of state/event handlers may be sparse, i.e. not
+all events need to be listed for each state. When the state/event
+table isn't fully populated, USL will emit warning messages about
+unhandled events.
+
+The state machine and event table data structures are exported in the
+API. This allows applications to contain FSM data structures inside
+application data structures, thereby reducing malloc overhead.
+
+The following API functions are provided:
+
+void usl_fsm_handle_event(struct usl_fsm_instance *fsmi,
+			  int event, void *arg1, void *arg2, void *arg3);
+
+Called by the application to handle a given event. Up to three
+arguments may be passed to the event handler. Any state changes are
+handled automatically by the USL FSM code.
+
+const char *usl_fsm_state_name(struct usl_fsm_instance *fsmi);
+
+This is used by the application to determine the current state of a
+given state machine instance. It is typically used to dump information
+about the system.
+
+RETURNS
+
+A pointer to a static (and constant) string representing the state name.
+
+const char *usl_fsm_event_name(struct usl_fsm_instance *fsmi, int event);
+
+This is used by the application to determine the event name of a given
+event id of a state machine instance. It is typically used to dump
+information about the system.
+
+RETURNS
+
+A pointer to a static (and constant) string representing the event name.

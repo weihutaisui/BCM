@@ -1,0 +1,40 @@
+The usl_pid subsystem simplifies spawning and managing child
+processes. An application may register a callback to be called when a
+specific process exits. USL takes care of process fork and child
+reaping complexities on behalf of the application. Callbacks are
+called by the USL main loop, i.e. the same context as USL timers,
+signal handlers and fd callbacks.
+
+int usl_pid_record_child(int pid, usl_pid_done_fn_t callback, void *arg);
+
+Register a callback function / arg for the specified pid which is
+called when the pid terminates. Callbacks are called by the USL main
+loop, i.e. the same context as USL timers, signal handlers and fd
+callbacks.
+
+RETURNS
+
+Returns 0 on success, or a negative error code in case of failure.
+
+pid_t usl_pid_safe_fork(void);
+
+Helper function to fork a child.
+
+RETURNS
+
+The pid of the new process, or a negative error code in case of
+failure.
+
+int usl_pid_init(void);
+
+Must be called to init the usl_fd subsystem before any other usl_pid
+call.
+
+RETURNS
+
+Returns 0 on success, or a negative error code in case of failure.
+
+void usl_pid_cleanup(void);
+
+Called to shutdown the usl_pid mechanism. If there are children still
+registered, they are killed and reaped.

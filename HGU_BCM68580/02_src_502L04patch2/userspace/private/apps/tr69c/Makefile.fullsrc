@@ -1,0 +1,210 @@
+#***********************************************************************
+#
+#  Copyright (c) 2006-2007  Broadcom Corporation
+#  All Rights Reserved
+#
+#***********************************************************************
+
+#
+# In most cases, you only need to modify this first section.
+# 
+EXE = tr69c
+
+DIRS = bcmLibIF main webproto SOAPParser stun
+DIR_LIBS = main/main.a webproto/webproto.a SOAPParser/SOAPParser.a bcmLibIF/bcmLibIF.a stun/stun.a
+
+LIBS = $(CMS_COMMON_LIBS) -lnanoxml -lcms_msg -lm -lresolv 
+
+all dynamic install: conditional_build
+
+
+binaryonly_dist_clean: clean generic_binaryonly_dist_clean
+	rm -f Makefile.fullsrc
+	rm -rf bcmLibIF main inc webproto SOAPParser stun
+
+tr69_dir_clean:
+	for dir in $(DIRS); do \
+		$(MAKE) -C $$dir clean; \
+	done
+
+.FORCE:
+
+
+#
+# Set our CommEngine directory (by splitting the pwd into two words
+# at /userspace and taking the first word only).
+# Then include the common defines under CommEngine.
+#
+CURR_DIR := $(shell pwd)
+BUILD_DIR:=$(subst /userspace, /userspace,$(CURR_DIR))
+BUILD_DIR:=$(word 1, $(BUILD_DIR))
+
+include $(BUILD_DIR)/make.common
+
+ifneq ($(strip $(BRCM_VOICE_SUPPORT)),)
+include $(BUILD_DIR)/make.voice
+endif
+
+
+ifneq ($(strip $(BUILD_TR69C)),)
+conditional_build: tr69c generic_exe_install
+
+clean: generic_clean tr69_dir_clean
+	rm -f $(INSTALL_DIR)/bin/$(EXE)
+
+else 
+ifneq ($(strip $(BUILD_TR69C_BEEP)),)
+PACKAGE_NAME = tr69c
+BEEPPKG_INFO = $(PACKAGE_NAME)$(BEEP_PKT_INFO_SUFIX)
+BEEP_TAR_GZ = $(BEEP_TAR_GZ_PREFIX)$(PACKAGE_NAME)$(BEEP_TAR_GZ_SUFIX)
+
+conditional_build: $(EXE) $(BEEPPKG_INFO)
+	mkdir -p ./pkg/bin
+	install -m 755 ./$(EXE) ./pkg/bin/$(EXE)
+	$(STRIP) ./pkg/bin/$(EXE)
+	mkdir -p ./pkg/lib
+	cp -f $(INSTALL_DIR)/lib/libnanoxml.so ./pkg/lib
+	cp -f $(INSTALL_DIR)/lib/libssl.so.1.0.0 ./pkg/lib
+	cp -f $(INSTALL_DIR)/lib/libcrypto.so.1.0.0 ./pkg/lib
+	cp -f $(INSTALL_DIR)/lib/libbcm_sslconf.so ./pkg/lib
+	if [ -a $(INSTALL_DIR)/lib/libstrophe.so ] ; then \
+		cp -f $(INSTALL_DIR)/lib/libstrophe.so ./pkg/lib ; \
+	fi;
+	mkdir -p ./pkg/etc/openssl
+	cp -f $(INSTALL_DIR)/etc/openssl/sslconf.xml ./pkg/etc/openssl
+	mkdir -p ./pkg/etc/ssl
+	cp -f $(INSTALL_DIR)/etc/ssl/openssl.cnf ./pkg/etc/ssl/openssl.cnf
+	tar zcf $(PACKAGE_NAME)$(BEEP_TAR_GZ_SUFIX) -C ./pkg .
+	mkdir -p $(USERSPACE_DL_MODULES_BEEP_DIR)
+	$(HOSTTOOLS_DIR)/beep/beepPkgBuilder -f $(BEEPPKG_INFO)
+	mv -f  $(BEEP_TAR_GZ_PREFIX)*$(PACKAGE_NAME)*$(BEEP_TAR_GZ_SUFIX) $(USERSPACE_DL_MODULES_BEEP_DIR);
+	rm -rf ./pkg
+	rm -f $(PACKAGE_NAME)$(BEEP_TAR_GZ_SUFIX)
+
+
+clean: generic_clean tr69_dir_clean
+	rm -f $(EXE)
+	rm -f $(USERSPACE_DL_MODULES_BEEP_DIR)/$(BEEP_TAR_GZ_PREFIX)*$(PACKAGE_NAME)*$(BEEP_TAR_GZ_SUFIX) 
+
+else
+conditional_build:
+	@echo "skipping  $(EXE) (not configured)"
+
+clean:
+
+endif # BUILD_TR69C_BEEP
+endif # BUILD_TR69C
+
+#
+# Private apps and libs are allowed to include header files from the
+# private and public directories.
+#
+# WARNING: Do not modify this section unless you understand the
+# license implications of what you are doing.
+#
+ALLOWED_INCLUDE_PATHS := -I.\
+                         -I$(BUILD_DIR)/userspace/public/include  \
+                         -I$(BUILD_DIR)/userspace/public/include/$(OALDIR) \
+                         -I$(BUILD_DIR)/userspace/private/include  \
+                         -I$(BUILD_DIR)/userspace/private/include/$(OALDIR) \
+                         -I$(BCM_FSBUILD_DIR)/public/include \
+                         -I$(BCM_FSBUILD_DIR)/private/include \
+                         -I$(INC_BRCMSHARED_PUB_PATH)/bcm963xx                          
+
+
+#
+# Private apps and libs are allowed to link with libraries from the
+# private and public directories.
+#
+# WARNING: Do not modify this section unless you understand the
+# license implications of what you are doing.
+#
+ALLOWED_LIB_DIRS := /lib:/lib/private:/lib/public
+
+
+# treat all warnings as errors
+CUSTOM_CFLAGS += -Werror -Wfatal-errors
+
+
+# Set flags if user wants to link with OpenSSL
+ifneq ($(strip $(BUILD_TR69C_SSL)),)
+LIBS   += -lssl -lcrypto -lexpat -lbcm_sslconf
+# Set flags to link with STROPHE for supporting XMPP
+ifneq ($(strip $(BUILD_XMPP)),)
+LIBS   += -lexpat -lstrophe
+endif
+endif
+
+# Set flags if user wants to link with BCM SSL
+ifneq ($(strip $(BUILD_TR69C_BCM_SSL)),)
+LIBS   += -lbcmssl -lbcmcrypto
+endif
+
+ifeq ($(strip $(BRCM_USER_SSP)),y)
+CFLAGS += $(SSP_TYP_COMPILER_OPTS)
+LIBS += -L$(INSTALL_DIR)/lib $(SSP_LIBS) 
+endif
+
+ifneq ($(strip $(BUILD_TR69C_BEEP)),)
+CFLAGS += -I$(BCM_FSBUILD_DIR)/public/lib/glib-2.0/include -I$(BCM_FSBUILD_DIR)/public/include/glib-2.0
+CFLAGS += -I$(BCM_FSBUILD_DIR)/public/include/gio-unix-2.0
+CFLAGS += -DBUILD_TR69C_BEEP
+
+LIBS += -L$(INSTALL_DIR)/lib 
+LIBS += -L$(INSTALL_DIR)/lib/public -lexpat -lffi 
+ifneq ($(findstring uclibc, $(TOOLCHAIN_PREFIX)),)
+LIBS += -lintl
+endif
+LIBS += -lgio-2.0 -lglib-2.0 -lgmodule-2.0 -lgobject-2.0 -lgthread-2.0 -lz
+ALLOWED_INCLUDE_PATHS += -I$(BCM_FSBUILD_DIR)/public/include -I$(BCM_FSBUILD_DIR)/private/include
+else
+LIBS += $(CMS_CORE_LIBS)
+endif
+
+
+# If use dmalloc, delete '#' before export NEED_MALLOC=true on next line
+#export NEED_DMALLOC=true
+# DMALLOC has not been ported to CMS.  Just left here for reference.
+ifdef NEED_DMALLOC
+	CFLAGS+=-DUSE_DMALLOC -I$(OPENSOURCE_DIR)/tools/dmalloc
+	LIBS+= $(OPENSOURCE_DIR)/tools/dmalloc/libdmalloc.a	
+endif 
+
+#
+# Implicit rule will make the .c into a .o
+# Implicit rule is $(CC) -c $(CPPFLAGS) $(CFLAGS)
+# See Section 10.2 of Gnu Make manual
+# Assemble the libraries.  Need to specify main.o one more time to resolve dependencies.
+#
+$(EXE): $(DIR_LIBS)
+	$(CC) $(BCM_LD_FLAGS) -o $@ $(DIR_LIBS) main/main.a -Wl,-rpath,$(CMS_LIB_RPATH) $(CMS_LIB_PATH) $(LIBS)
+
+
+bcmLibIF/bcmLibIF.a: .FORCE
+	$(MAKE) -C bcmLibIF
+
+main/main.a: .FORCE
+	$(MAKE) -C main
+
+webproto/webproto.a: .FORCE
+	$(MAKE) -C webproto
+
+SOAPParser/SOAPParser.a: .FORCE
+	$(MAKE) -C SOAPParser
+
+stun/stun.a: .FORCE
+	$(MAKE) -C stun
+
+
+#
+# Include the rule for making dependency files.
+# The '-' in front of the second include suppresses
+# error messages when make cannot find the .d files.
+# It will just regenerate them.
+# See Section 4.14 of Gnu Make.
+#
+
+include $(BUILD_DIR)/make.deprules
+
+-include $(OBJS:.o=.d)
+

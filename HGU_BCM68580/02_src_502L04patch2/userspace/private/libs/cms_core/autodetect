@@ -1,0 +1,5 @@
+# stl_diag.c in this lib depends on a header file installed by libtr143_utils, so build
+# in Layer1 after libtr143_utils 
+Layer1
+dependson: atmctl bcmipc bcmmcast bcmssl bcmtm bdmf bridgeutil bsa cmfapi cms_cli cms_dal cms_qdm dpictl eponctl eponsdk ethswctl fapctl fbctl fcctl gmacctl gponctl gponif homeplugctl homeplugctl_drv i5api iqctl mdk mdm mdm2 mocactl modsw nanoxml nfc omciutil pwrctl rdpactl samos_telephony seltctl simcardctl spdsvc spuctl tmctl tr143_utils vlanctl wlcsm xdslctl ethctl public/libs/bcm_util public/libs/cms_msg public/libs/cms_util public/libs/bcm_flashutil public/libs/bcm_boardctl
+

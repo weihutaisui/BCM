@@ -1,0 +1,111 @@
+--- DSL_support_delivery_cs00844_45/MCS6430F_Reference_Host_Code/basic/bcm_hwConfig.h	2017-05-22 12:03:12.000000000 +0300
++++ basic/bcm_hwConfig.h	2017-06-29 10:34:49.116551730 +0300
+@@ -60,6 +60,8 @@
+ # define BCM965400X             /* 4L G.fast 212 CO/CPE with 68380+65400 */
+ #elif 0
+ # define BCM968380              /* CO board with 68380 supporting mix of hw */
++#elif 0
++# define BCM955045DPU           /* CO board with BCM55045 and 2xBCM65400 */
+ #endif
+ /* }}} */
+ /*************************************************************** */
+@@ -1490,6 +1492,31 @@
+ #  define BCM_RX_SEG_LEN(devId) 104
+ /* }}} */
+ /*************************************** */
++/* {{{ BCM955045DPU settings */
++/*************************** */
++# elif defined BCM955045DPU
++#  if !defined(NB_BCM_DEV)
++#   define NB_BCM_DEV 2
++#  endif
++#  define BCM_TRAFFIC_CONFIG_B0_TRAFFIC_FLAGS 2 /* add crc after reassembly of G.999.1 fragments */
++#  define BCM_GFAST_ON_65414
++#  define BCM65400_AFE_CONFIG BCM65400_AFE_CONFIG_8
++#  define BCM_USE_BCM65060A1P212
++#  define BCM65400_BOOT_CONFIG BCM65400_BOOT_CONFIG_MODE2A_2x2G5
++#  define BCM_FRAMING_TYPE BCM_FRAMING_TYPE_G9991_NOETH
++#  define BCM_ACTIVE_BONDING_IFCES 1
++#  define BCM_G9991_ONE_SID_PER_LINE /* traffic: one SID per line */
++#  define BCM_DEVICE_CONFIG_FLAGS (1<<6) /* enable DFC frames padding */
++  /* limit rx fragments to 128 bytes */
++#  define BCM_RX_SEG_LEN(devId) 128
++#  define BCM_CUSTOM_UTOPIA_SETTING_FUNCTION bcm955045DPUcustomUtopiaConfiguration
++  /* custom bonding config : Serdes C2 <-> Serdes C3 */
++#  define BCM_GMII_CONFIG(d) ((d)%2)
++#  define BCM_GMII_CONFIG_CUSTOM                        \
++  {{ 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}},  \
++  {{ 0x55, 0x55, 0x55, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}}
++/* }}} */
++/**************************** */
+ # endif
+ /* }}} */
+ /*********************************** */
+--- DSL_support_delivery_cs00844_45/MCS6430F_Reference_Host_Code/services/bcm_configureDevice.c	2017-05-22 12:03:22.000000000 +0300
++++ src/services/bcm_configureDevice.c	2017-07-03 12:26:57.342569167 +0300
+@@ -312,6 +312,31 @@
+ }
+ #endif
+ /* }}} */
++/* {{{ bcm955045DPUcustomUtopiaConfiguration */
++
++#ifdef BCM955045DPU
++void bcm955045DPUcustomUtopiaConfiguration(DevObject *devPtr)
++{
++  SetDeviceConfigurationMsgReq *devCfgPtr = &devPtr->config;
++  uint16 i, linesPerLink;
++
++  /* Disable all ports by default */
++  for (i=0; i<BCM_DEV_NB_LINES; i++) {
++    devCfgPtr->lineConfig[i].bearerConfig[B0].utopiaAddr[0] = -1;
++    devCfgPtr->lineConfig[i].bearerConfig[B0].utopiaAddr[1] = -1;
++  }
++  /* 2x2G5: split first half on Serdes A0[0], second on Serdes A0[1] */
++  linesPerLink = BCM_DEV_AVL_LINES(devPtr->devId)/2;
++  for (i=0; i<BCM_DEV_AVL_LINES(devPtr->devId); i++) {
++    uint16 sid = i + (BCM_DEV_AVL_LINES(devPtr->devId) * devPtr->devId);
++# ifdef BCM_G9991_ONE_SID_PER_LINE
++    sid = ((sid & 3) << 8) + (sid >> 2);
++# endif
++    devCfgPtr->lineConfig[i].bearerConfig[B0].utopiaAddr[0] = ((i/linesPerLink)<<13)+sid;
++  }
++}
++#endif
++/* }}} */
+ 
+ /* }}} */
+ /* {{{ nextAddress */
+--- DSL_support_delivery_cs00844_45/MCS6430F_Reference_Host_Code/top_flags/6838.mak	2017-05-22 12:00:42.000000000 +0300
++++ src/top_flags/6838.mak	2017-06-21 16:18:54.369757206 +0300
+@@ -22,7 +22,9 @@
+ 
+ LDFLAGS+=-Wl,-allow-shlib-undefined
+ 
+-ADD_FLAGS+=-DBCM_BIG_ENDIAN
++ifeq ($(strip $(ARCH_ENDIAN)),big)
++	ADD_FLAGS+=-DBCM_BIG_ENDIAN
++endif
+ ADD_FLAGS+=-DBCM_PACKING_ATTRIBUTE="__attribute__ ((packed))"
+ 
+ # set flag to indicate that we don't want to ever call exit
+@@ -56,6 +58,7 @@
+ # when G9991 is not required, force std ethernet
+ ADD_FLAGS+=-DBCM_FRAMING_TYPE=$(if $(BRCM_XDSL_DISTPOINT_USE_G9991),BCM_FRAMING_TYPE_G9991_ETH,BCM_FRAMING_TYPE_STD_ETH)
+ 
++$(warning target: $(TARGET))
+ ifneq ($(filter xdslctl_fttdp1,$(TARGET)),)
+  ADD_FLAGS+=-DBCM_FTTDP_V1
+ else ifneq ($(filter xdslctl_fttdp2,$(TARGET)),)
+@@ -96,7 +99,12 @@
+   ADD_FLAGS+=-DBCM_DEFAULT_FW_IMAGE="\"/etc/xdsl/modem_f4yco.bin\""
+   VECTORING_FAST_SUPPORT = 1
+  endif
++else ifneq ($(filter xdslctl_955045dpu%,$(TARGET)),)
++ ADD_FLAGS+=-DBCM955045DPU
++ ADD_FLAGS+=-DBCM_DEFAULT_FW_IMAGE="\"/etc/xdsl/modem_f4zco.bin\""
++ VECTORING_FAST_SUPPORT = 1
+ else
++#$(error goo-$(TARGET)+)
+  ADD_FLAGS+=-DBCM968380
+  ifeq ($(strip $(BUILD_BRCM_XDSL_DISTPOINT_VECTORING)),vectoring)
+   # multi-channel with vectoring

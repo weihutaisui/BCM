@@ -1,0 +1,4 @@
+dependson: private/libs/cms_core private/libs/tmctl
+condition: ifneq ($(strip $(BUILD_ANY_CMS_UPNP)),)
+makeflags: $(BUILD_UPNP)
+

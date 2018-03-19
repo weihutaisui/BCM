@@ -1,0 +1,17 @@
+# Defaults for openl2tp initscript
+# sourced by /etc/init.d/openl2tp
+# installed at /etc/default/openl2tp by the maintainer scripts
+
+#
+# This is a POSIX shell fragment
+#
+
+# Additional options that are passed to the Daemon.
+# Use -R	      - allow remote RPC command.
+# Use -d nnn          - set debug trace mask to nnn
+# Use -L log-facility - set syslog facility (default LOG_DAEMON) 
+# Use -p ipsec.so     - enable ephemeral port tracking for IPSec.
+DAEMON_OPTS=""
+
+# Config file to load at openl2tpd startup
+DAEMON_CONFIG_FILE=

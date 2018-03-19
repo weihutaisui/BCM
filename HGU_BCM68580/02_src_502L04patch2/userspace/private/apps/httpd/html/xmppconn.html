@@ -1,0 +1,117 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript">
+<!-- hide
+
+function btnApply() {
+   var loc = 'xmppconncfg.cmd?action=add';
+
+   with (document.xmppConnFrm) {
+
+      if (xmppUser.value == '') {
+         alert('Username is required.');
+         return;
+      }
+      if (xmppUser.value.length > 256) {
+         alert('The length of Username (' + xmppUser.value.length + ') is too long [1-256].');
+         return;
+      }
+      if (xmppPwd.value == '') {
+         alert('Password is required.');
+         return;
+      }
+      if (xmppPwd.value.length > 256) {
+         alert('The length of Password (' + xmppPwd.value.length + ') is too long [1-256].');
+         return;
+      }
+      if (xmppDomain.value.length > 64) {
+         alert('The length of Domain (' + xmppDomain.value.length + ') is too long [1-64].');
+         return;
+      }
+      if (xmppResource.value.length > 64) {
+         alert('The length of Resource (' + xmppResource.value.length + ') is too long [1-64].');
+         return;
+      }
+
+      loc += '&username=' + encodeUrl(xmppUser.value);
+      loc += '&password=' + encodeUrl(xmppPwd.value);
+      loc += '&domain=' + encodeUrl(xmppDomain.value);
+      loc += '&resource=' + encodeUrl(xmppResource.value);
+      loc += '&serverAddr=' + encodeUrl(xmppServerAddr.value);
+      loc += '&serverPort=' + encodeUrl(xmppServerPort.value);
+      if (useTLS.checked == true)
+         loc += '&useTLS=1'
+      else
+         loc += '&useTLS=0'
+      if (enblConn.checked == true) 
+         loc += '&enblConn=1';
+	  else
+         loc += '&enblConn=0';
+
+   }
+
+   loc += '&sessionKey=<%ejGetOther(sessionKey)%>';
+
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+// done hiding -->
+</script>
+   </head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form name="xmppConnFrm">
+            <b>XMPP -- Connection Add</b><br>
+            <br>
+            The Connection represents a XMPP connection between the device and a server.
+            The Username, Domain and Resource comprise the full identity (JabberID) 
+            of this Connection for this device.<br><br>
+            To setup XMPP connection, username, and password are required,
+            but domain, resource, and use TLS can be optional.
+            After entering specific information, click "Apply/Save" to add XMPP connection.
+            <br><br>
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="240">XMPP Connection</td>
+                  <td width="70"><input type="checkbox" name="useTLS"> Use TLS </td>
+                  <td><input type="checkbox" name="enblConn"> Enable </td>
+               </tr>
+            </table>
+            <br>
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="240">Username:</td>
+                  <td><input type='text' name='xmppUser' size="20" maxlength="256"></td>
+               </tr>
+               <tr>
+                  <td>Password:</td>
+                  <td><input type='password' name='xmppPwd' size="20" maxlength="256"></td>
+               </tr>
+               <tr>
+                  <td>Domain:</td>
+                  <td><input type='text' name='xmppDomain' size="20" maxlength="64"></td>
+               </tr>
+               <tr>
+                  <td>Resource:</td>
+                  <td><input type='text' name='xmppResource' size="20" maxlength="64"></td>
+               </tr>
+               <tr>
+                  <td>XMPP Server Address:</td>
+                  <td><input type='text' name='xmppServerAddr' size="40" maxlength="256"></td>
+               </tr>
+               <tr>
+                  <td>XMPP Server Port:</td>
+                  <td><input type='text' name='xmppServerPort' size="20" maxlength="64"></td>
+               </tr>
+            </table>
+            <br>
+            <center><input type='button' onClick='btnApply()' value='Apply/Save'></center>
+         </form>
+      </blockquote>
+   </body>
+</html>

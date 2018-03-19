@@ -1,0 +1,221 @@
+<html>
+   <head>
+<meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+<link rel="stylesheet" href='stylemain.css' type='text/css'>
+<link rel="stylesheet" href='colors.css' type='text/css'>
+<script language="javascript" src="util.js"></script>
+<script language="javascript">
+
+var voiceRunning = '<%ejGetVoice(voiceStatus)%>';
+var sessionKey   = '<%ejGetOther(sessionKey)%>';
+
+var genLogLvl = '<%ejGetVoice(genLogLvl)%>';
+var modLogLvls = '<%ejGetVoice(modLogLvls)%>';
+
+var cctkTraceLvl = '<%ejGetVoice(cctkTraceLvl)%>';
+var cctkTraceGrp = '<%ejGetVoice(cctkTraceGrp)%>';
+
+var genLoglevelList = "Notice|Debug|Error";
+var tracelevelList = "Info|Warn|Debug|Off";
+
+function printCctkTraceLevelListBox(){
+   var tokTraceLevelList = tracelevelList.split("|");
+
+   for(var i = 0; i < tokTraceLevelList.length; i++)
+   { 
+      document.writeln("<option value=\"" + tokTraceLevelList[i] + "\" selected>"); 
+      document.writeln(tokTraceLevelList[i]);
+   }
+}
+
+function printGenLogLvlListBox(){
+   var tokGenLogLevelList = genLoglevelList.split("|");
+
+   for(var i = 0; i < tokGenLogLevelList.length; i++)
+   { 
+      document.writeln("<option value=\"" + tokGenLogLevelList[i] + "\" selected>"); 
+      document.writeln(tokGenLogLevelList[i]);
+   }
+}
+
+function btnStartSip() {
+   var loc = 'voicesipstart.cmd?';
+
+   loc += addParamsToQuery( loc, "debug" );
+   
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+
+function btnStopSip() {
+   var loc = 'voicesipstop.cmd?';
+
+   loc += addParamsToQuery( loc, "debug" );
+   
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+      
+   eval(code);
+}
+
+function btnDefaultSip() {
+   var loc = 'voicesipsetdefault.cmd?';
+
+   loc += addParamsToQuery( loc, "debug" );
+   
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+   
+   eval(code);
+}
+
+function btnApplySip() {
+   var loc = 'voicesipapply.cmd?';
+
+   loc += addParamsToQuery( loc, "debug" );
+
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+function addParamsToQuery( loc_init, current_view) {
+
+   var loc = loc_init;
+
+   with ( document.forms[0] )
+   {
+      loc += 'currentview=' + current_view;
+	  loc += '&genLogLvl=' + document.getElementById("genLogLevel").value;
+	  loc += '&modLogLvls=' + document.getElementById("modLogLevels").value;
+	  loc += '&cctkTraceGrp=' + document.getElementById("cctkTraceGroup").value;
+      loc += '&cctkTraceLvl=' + document.getElementById("cctkTraceLevel").value;	  
+   }
+
+   return loc;
+}
+
+
+function frmLoad(current_view)
+{
+   with ( document.forms[0] )
+   {
+      document.getElementById("genLogLevel").value = genLogLvl;
+      document.getElementById("modLogLevels").value = modLogLvls;
+      document.getElementById("cctkTraceGroup").value = cctkTraceGrp;
+      document.getElementById("cctkTraceLevel").value = cctkTraceLvl;	  
+   }
+}
+
+function enableVoiceButtons()
+{
+   var buttonStart = document.getElementById( "StartButton" );
+   var buttonStop = document.getElementById( "StopButton" );
+   var buttonApply = document.getElementById( "ApplyButton" );
+   var buttonDefault = document.getElementById( "DefaultButton" );
+
+   if ( voiceRunning == 1 ) {
+      buttonStart.disabled = true;
+      buttonStop.disabled = false;
+      buttonApply.disabled = false;
+      buttonDefault.disabled = false;
+   } else {
+      buttonStart.disabled = false;
+      buttonStop.disabled = true;
+      buttonApply.disabled = false;
+      buttonDefault.disabled = false;
+   }
+}
+
+function createDebug() {
+   document.writeln("<br>");
+   document.writeln("<br>");
+   document.writeln("<b>This page contains various debug settings. Please note that they require voice restart in order to take effect</b>");
+
+   document.writeln("<br>");
+   document.writeln("<br>");
+   
+   document.writeln("   <table border='0' cellpadding='0' cellspacing='0'>");
+   document.writeln("      <tr>");
+   document.writeln("         <td class='txt' width='200'>General Voice Logging Level:</td>");
+   document.writeln("         <td><select id='genLogLevel' size='1'>");
+                              printGenLogLvlListBox()
+   document.writeln("         </select></td>");
+   document.writeln("      </tr>");
+   document.writeln("   </table>"); 
+   document.writeln("   <br>");
+   
+   document.writeln("   <table border='0' cellpadding='0' cellspacing='0'>");
+   document.writeln("      <tr>");
+   document.writeln("         <td class='txt' width='200'>Voice Module Logging:</td>");
+   document.writeln("         <td><input type='text' size=50 id='modLogLevels'></td>");
+   document.writeln("      </tr>");
+   document.writeln("   </table>");
+   document.writeln("<i>Format: general=3,cmgr=7,disp=7,sipcctk=3,bos=3,ept=3,cms=3,prov=3,lhapi=3,istw=3,dsphal=4,slicslac=4</i>");
+   document.writeln("<br>");
+
+   document.writeln("   <br>");
+   document.writeln("   <table border='0' cellpadding='0' cellspacing='0'>");
+   document.writeln("      <tr>");
+   document.writeln("         <td class='txt' width='200'>CCTK Trace Group:</td>");
+   document.writeln("         <td><input type='text' size=25 id='cctkTraceGroup'></td>");
+   document.writeln("      </tr>");
+   document.writeln("   </table>");
+   document.writeln("<i>Permitted CCTK trace group values/combinations: CCTK|SCE|Trans|SDP|SIP|Misc|All|None</i>");
+   document.writeln("<br>");
+   
+   document.writeln("   <br>");
+   document.writeln("   <table border='0' cellpadding='0' cellspacing='0'>");
+   document.writeln("      <tr>");
+   document.writeln("         <td class='txt' width='200'>CCTK Trace Level:</td>");
+   document.writeln("         <td><select id='cctkTraceLevel' size='1'>");
+                               printCctkTraceLevelListBox()
+   document.writeln("         </select></td>");
+   document.writeln("      </tr>");
+   document.writeln("   </table>");
+     
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <center>");
+   document.writeln("       <input type='button' onClick='btnStartSip()' value='Start SIP client' id='StartButton' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnStopSip()' value='Stop SIP client' id='StopButton' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnDefaultSip()' value='Restore default setting' id='DefaultButton' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("       <br>");
+   document.writeln("       <input type='button' onClick='btnApplySip()' value='Apply' id='ApplyButton' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("    </center>");
+   document.writeln("    <br>");
+}
+
+</script>
+<body onLoad="frmLoad('debug')">
+   <blockquote>
+      <form>
+      <script TYPE="text/javascript">
+        createDebug();
+		enableVoiceButtons();
+     </script>
+     </form>
+   </blockquote>
+</body>
+</html>

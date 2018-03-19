@@ -1,0 +1,70 @@
+--- jamvm-1.5.4/configure	2009-12-31 10:41:44.000000000 -0800
++++ jamvm-1.5.4.new/configure	2013-07-19 14:10:25.589572428 -0700
+@@ -1014,7 +1014,7 @@
+ libdir='${exec_prefix}/lib'
+ localedir='${datarootdir}/locale'
+ mandir='${datarootdir}/man'
+-
++runtimeinstalldir='${prefix}'
+ ac_prev=
+ ac_dashdash=
+ for ac_option
+@@ -1122,6 +1122,11 @@
+   | --exec=* | --exe=* | --ex=*)
+     exec_prefix=$ac_optarg ;;
+ 
++  -runtimeinstalldir | --runtimeinstalldir)
++    ac_prev=runtimeinstalldir ;;
++  -runtimeinstalldir=* | --runtimeinstalldir=*)
++    runtimeinstalldir=$ac_optarg ;;
++
+   -gas | --gas | --ga | --g)
+     # Obsolete; use --with-gas.
+     with_gas=yes ;;
+@@ -1397,7 +1402,7 @@
+ for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
+ 		datadir sysconfdir sharedstatedir localstatedir includedir \
+ 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
+-		libdir localedir mandir
++		libdir localedir mandir runtimeinstalldir
+ do
+   eval ac_val=\$$ac_var
+   # Remove trailing slashes.
+@@ -1570,6 +1575,7 @@
+   --dvidir=DIR            dvi documentation [DOCDIR]
+   --pdfdir=DIR            pdf documentation [DOCDIR]
+   --psdir=DIR             ps documentation [DOCDIR]
++  --runtimeinstalldir=DIR runtime install dir if different from prefix [DIR]
+ _ACEOF
+ 
+   cat <<\_ACEOF
+@@ -2687,6 +2693,7 @@
+ i386-*-solaris*) host_cpu=x86 host_os=solaris ;;
+ x86_64-*-linux*) host_os=linux ;;
+ hppa*-*-linux*) host_cpu=parisc host_os=linux ;;
++mips-*-linux*) host_cpu=mips host_os=linux ;;
+ mipsel-*-linux*) host_cpu=mips host_os=linux ;;
+ x86_64-*-openbsd*) host_os=bsd libdl_needed=no ;;
+ x86_64-*-freebsd*) host_os=bsd libdl_needed=no ;;
+@@ -3009,10 +3016,10 @@
+ 
+ 
+ 
+-if test "$prefix" = "NONE"; then
++if test "$runtimeinstalldir" = "NONE"; then
+     install_dir=$ac_default_prefix
+ else
+-    install_dir=$prefix
++    install_dir=$runtimeinstalldir
+ fi
+ 
+ cat >>confdefs.h <<_ACEOF
+@@ -24367,7 +24374,7 @@
+ if test -n "$CONFIG_FILES"; then
+ 
+ 
+-ac_cr=''
++ac_cr=''
+ ac_cs_awk_cr=`$AWK 'BEGIN { print "a\rb" }' </dev/null 2>/dev/null`
+ if test "$ac_cs_awk_cr" = "a${ac_cr}b"; then
+   ac_cs_awk_cr='\\r'

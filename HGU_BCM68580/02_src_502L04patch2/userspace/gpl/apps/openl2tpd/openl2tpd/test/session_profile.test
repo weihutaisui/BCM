@@ -1,0 +1,1976 @@
+# -*- tcl -*-
+
+source test_procs.tcl
+
+############################################################################
+# Tests 1.* - basic list/create/modify/show/delete operations
+############################################################################
+
+test session_profile-1.1 { List session profiles } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-1.1
+	l2tpConfig session profile list
+    } \
+    {
+
+	default
+}
+
+test session_profile-1.2 { Create a session profile 'one' } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-1.2
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile list
+    } \
+    {
+
+Created session profile one
+	default
+	one
+}
+
+test session_profile-1.3 { Show session profile 'default' } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-1.3
+	l2tpConfig session profile show profile_name=default
+    } \
+    {
+
+Session profile default
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+}
+
+test session_profile-1.4 { Show session profile 'one' } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-1.4
+	l2tpConfig session profile show profile_name=one
+    } \
+    {
+
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+}
+
+test session_profile-1.5 { Modify session profile 'one' } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-1.5
+	l2tpConfig session profile modify profile_name=one reorder_timeout=59
+	l2tpConfig session profile show profile_name=one
+    } \
+    {
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  reorder timeout: 59 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+}
+
+test session_profile-1.6 { Unset session profile 'one' } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-1.5
+	l2tpConfig session profile modify profile_name=one reorder_timeout=59
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one reorder_timeout
+	l2tpConfig session profile show profile_name=one
+    } \
+    {
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  reorder timeout: 59 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+}
+
+test session_profile-1.7 { Delete a session profile 'one' } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-1.7
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile list
+    } \
+    {
+
+Deleted session profile one
+	default
+}
+
+test session_profile-1.8 { Create session profile that already exists } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-1.8
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile list
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile list
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+	default
+	one
+Error at or near 'create'
+Operation failed: Profile already exists
+	default
+	one
+Deleted session profile one
+}
+
+############################################################################
+# Tests 2.* - optional create parameters
+############################################################################
+
+test session_profile-2.1 { Create session profile reorder_timeout= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-2.1
+	l2tpConfig session profile create profile_name=one reorder_timeout=59
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  reorder timeout: 59 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-2.2 { Create session profile ppp_profile_name= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-2.2
+	l2tpConfig session profile create profile_name=one ppp_profile_name=wibble
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-2.3 { Create session profile trace_flags= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-2.3
+	l2tpConfig session profile create profile_name=one trace_flags=3
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-2.4 { Create session profile sequencing_required= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-2.4
+	l2tpConfig session profile create profile_name=one sequencing_required=yes
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-2.5 { Create session profile use_sequence_numbers= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-2.5
+	l2tpConfig session profile create profile_name=one use_sequence_numbers=yes
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: ON
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-2.6 { Create session profile no_ppp= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-2.6
+	l2tpConfig session profile create profile_name=one no_ppp=yes
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  ppp disabled: YES
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-2.7 { Create session profile framing_type= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-2.7
+	l2tpConfig session profile create profile_name=one framing_type=sync
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile create profile_name=one framing_type=async
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile create profile_name=one framing_type=none
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile create profile_name=one framing_type=any
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: NONE
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-2.8 { Create session profile bearer_type= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-2.8
+	l2tpConfig session profile create profile_name=one bearer_type=digital
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile create profile_name=one bearer_type=analog
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile create profile_name=one bearer_type=none
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile create profile_name=one bearer_type=any
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL
+  connect speed: 1000000
+
+Deleted session profile one
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: NONE
+  connect speed: 1000000
+
+Deleted session profile one
+Created session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-2.9 { Complex session profile create with all args } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-2.9
+	l2tpConfig session profile create profile_name=one \
+	  ppp_profile_name=wibble \
+	  trace_flags=1 \
+	  sequencing_required=yes \
+	  use_sequence_numbers=yes \
+	  no_ppp=no \
+	  framing_type=sync \
+	  bearer_type=digital \
+	  reorder_timeout=59
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 59 ms
+  framing types: SYNC
+  bearer types: DIGITAL
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+############################################################################
+# Tests 3.* - modify parameters
+############################################################################
+
+test session_profile-3.1 { Modify session profile reorder_timeout= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-3.1
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one reorder_timeout=59
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  reorder timeout: 59 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-3.2 { Modify session profile ppp_profile_name= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-3.2
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one ppp_profile_name=wibble
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-3.3 { Modify session profile trace_flags= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-3.3
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one trace_flags=3
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-3.4 { Modify session profile sequencing_required= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-3.4
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one sequencing_required=yes
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-3.5 { Modify session profile use_sequence_numbers= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-3.5
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one use_sequence_numbers=yes
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: ON
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-3.6 { Modify session profile framing_type= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-3.6
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one framing_type=sync
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one framing_type=async
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one framing_type=none
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one framing_type=any
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: NONE
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-3.7 { Modify session profile bearer_type= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-3.7
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one bearer_type=digital
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one bearer_type=analog
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one bearer_type=none
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one bearer_type=any
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: ANALOG
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: NONE
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+
+test session_profile-3.8 { Complex session profile modify with all args } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-3.8
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one \
+	  ppp_profile_name=wibble \
+	  trace_flags=1 \
+	  sequencing_required=yes \
+	  use_sequence_numbers=yes \
+	  framing_type=async \
+	  bearer_type=analog \
+	  reorder_timeout=59
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 59 ms
+  framing types: ASYNC
+  bearer types: ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+############################################################################
+# Tests 4.* - unset parameters
+############################################################################
+
+test session_profile-4.1 { Unset session profile reorder_timeout= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-4.1
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one reorder_timeout=59
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one reorder_timeout
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  reorder timeout: 59 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-4.2 { Unset session profile ppp_profile_name= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-4.2
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one ppp_profile_name=wibble
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one ppp_profile_name
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-4.3 { Unset session profile trace_flags= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-4.3
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one trace_flags=3
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one trace_flags
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-4.4 { Unset session profile sequencing_required= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-4.4
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one sequencing_required=yes
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one sequencing_required
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-4.5 { Unset session profile use_sequence_numbers= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-4.5
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one use_sequence_numbers=yes
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one use_sequence_numbers
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: ON
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-4.6 { Unset session profile framing_type= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-4.6
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one framing_type=sync
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one framing_type
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one framing_type=async
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one framing_type
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one framing_type=none
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one framing_type
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one framing_type=any
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one framing_type
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: NONE
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-4.7 { Unset session profile bearer_type= } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-4.7
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one bearer_type=digital
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one bearer_type
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one bearer_type=analog
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one bearer_type
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one bearer_type=none
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one bearer_type
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile modify profile_name=one bearer_type=any
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one bearer_type
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: NONE
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Modified session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+
+test session_profile-4.8 { Complex session profile unset with all args } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-4.8
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile modify profile_name=one \
+	  ppp_profile_name=wibble \
+	  trace_flags=1 \
+	  sequencing_required=yes \
+	  use_sequence_numbers=yes \
+	  framing_type=async \
+	  bearer_type=analog \
+	  reorder_timeout=59
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile unset profile_name=one \
+	  ppp_profile_name \
+	  trace_flags \
+	  sequencing_required \
+	  use_sequence_numbers \
+	  framing_type \
+	  bearer_type \
+	  reorder_timeout
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 59 ms
+  framing types: ASYNC
+  bearer types: ANALOG
+  connect speed: 1000000
+
+Unset parameters of session profile one
+Session profile one
+  ppp profile: default
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+############################################################################
+# Tests 5.* - config save/restore
+############################################################################
+
+test session_profile-5.1 { Save a created session profile } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.1
+	l2tpConfig test modify default_config
+        l2tpConfig session profile create profile_name=one
+	l2tpConfig config save file=results/session_profile-5.1.cfg
+	catFile results/session_profile-5.1.cfg
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created session profile one
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+$
+# session profiles$
+session profile create profile_name=one$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted session profile one
+}
+
+test session_profile-5.2 { Save all set parameters of a session profile } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.2
+	l2tpConfig test modify default_config
+        l2tpConfig session profile create profile_name=one \
+	  ppp_profile_name=wibble \
+	  trace_flags=1 \
+	  sequencing_required=yes \
+	  use_sequence_numbers=yes \
+	  no_ppp=no \
+	  framing_type=async \
+	  bearer_type=analog \
+	  reorder_timeout=42
+	l2tpConfig config save file=results/session_profile-5.2.cfg
+	catFile results/session_profile-5.2.cfg
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created session profile one
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+$
+# session profiles$
+session profile create profile_name=one$
+session profile modify profile_name=one \$
+	trace_flags=1 \$
+	sequencing_required=yes \$
+	ppp_profile_name=wibble \$
+	framing_type=async \$
+	bearer_type=analog \$
+	use_sequence_numbers=yes \$
+	no_ppp=no \$
+	reorder_timeout=42 \$
+$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted session profile one
+}
+
+test session_profile-5.3 { Save only non-default parameters of a created session profile } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.3
+	l2tpConfig test modify default_config
+        l2tpConfig session profile create profile_name=one \
+	  trace_flags=1 \
+	  reorder_timeout=42
+	l2tpConfig config save file=results/session_profile-5.3.cfg
+	catFile results/session_profile-5.3.cfg
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created session profile one
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+$
+# session profiles$
+session profile create profile_name=one$
+session profile modify profile_name=one \$
+	trace_flags=1 \$
+	reorder_timeout=42 \$
+$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted session profile one
+}
+
+test session_profile-5.4 { Save all modified values of a session profile } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.4
+	l2tpConfig test modify default_config
+        l2tpConfig session profile create profile_name=one
+        l2tpConfig session profile modify profile_name=one \
+	  ppp_profile_name=wibble \
+	  trace_flags=1 \
+	  sequencing_required=yes \
+	  use_sequence_numbers=yes \
+	  bearer_type=digital \
+	  framing_type=sync \
+	  reorder_timeout=42
+	l2tpConfig config save file=results/session_profile-5.5.cfg
+	catFile results/session_profile-5.5.cfg
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created session profile one
+Modified session profile one
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+$
+# session profiles$
+session profile create profile_name=one$
+session profile modify profile_name=one \$
+	trace_flags=1 \$
+	sequencing_required=yes \$
+	ppp_profile_name=wibble \$
+	framing_type=sync \$
+	bearer_type=digital \$
+	use_sequence_numbers=yes \$
+	reorder_timeout=42 \$
+$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted session profile one
+}
+
+test session_profile-5.5 { Save only non-default modified values of a session profile } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.5
+	l2tpConfig test modify default_config
+        l2tpConfig session profile create profile_name=one
+        l2tpConfig session profile modify profile_name=one \
+	  ppp_profile_name=wibble \
+	  use_sequence_numbers=yes
+	l2tpConfig config save file=results/session_profile-5.5.cfg
+	catFile results/session_profile-5.5.cfg
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created session profile one
+Modified session profile one
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+$
+# session profiles$
+session profile create profile_name=one$
+session profile modify profile_name=one \$
+	ppp_profile_name=wibble \$
+	use_sequence_numbers=yes \$
+$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted session profile one
+}
+
+test session_profile-5.6 { Save all created session profiles } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.6
+	l2tpConfig test modify default_config
+        l2tpConfig session profile create profile_name=one
+        l2tpConfig session profile create profile_name=two
+        l2tpConfig session profile create profile_name=three
+	l2tpConfig config save file=results/session_profile-5.6.cfg
+	catFile results/session_profile-5.6.cfg
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile delete profile_name=two
+	l2tpConfig session profile delete profile_name=three
+    } \
+    {
+
+Modified test config
+Created session profile one
+Created session profile two
+Created session profile three
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+$
+# session profiles$
+session profile create profile_name=three$
+session profile create profile_name=two$
+session profile create profile_name=one$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+Deleted session profile one
+Deleted session profile two
+Deleted session profile three
+}
+
+test session_profile-5.7 { Restore all parameters from a saved file } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.7
+	l2tpConfig test modify default_config
+        l2tpConfig session profile create profile_name=one \
+	  ppp_profile_name=wibble \
+	  trace_flags=1 \
+	  sequencing_required=yes \
+	  use_sequence_numbers=yes \
+	  framing_type=async \
+	  bearer_type=analog \
+	  no_ppp=yes \
+	  reorder_timeout=42
+	l2tpConfig config save file=results/session_profile-5.7.cfg
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig config restore file=results/session_profile-5.7.cfg
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile delete profile_name=one
+    } \
+    {
+
+Modified test config
+Created session profile one
+
+Deleted session profile one
+Created session profile one
+Modified session profile one
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42 ms
+  ppp disabled: YES
+  framing types: ASYNC
+  bearer types: ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+}
+
+test session_profile-5.8 { Restore multiple session profiles } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.8
+	l2tpConfig test modify default_config
+        l2tpConfig session profile create profile_name=one \
+	  ppp_profile_name=wibble
+        l2tpConfig session profile create profile_name=two \
+	  trace_flags=1 \
+	  reorder_timeout=42
+        l2tpConfig session profile create profile_name=three \
+	  ppp_profile_name=wibble \
+	  trace_flags=1 \
+	  sequencing_required=yes \
+	  use_sequence_numbers=yes \
+	  reorder_timeout=42
+	l2tpConfig config save file=results/session_profile-5.8.cfg
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile delete profile_name=two
+	l2tpConfig session profile delete profile_name=three
+	l2tpConfig config restore file=results/session_profile-5.8.cfg
+	l2tpConfig session profile list
+	l2tpConfig session profile show profile_name=one
+	l2tpConfig session profile show profile_name=two
+	l2tpConfig session profile show profile_name=three
+
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile delete profile_name=two
+	l2tpConfig session profile delete profile_name=three
+    } \
+    {
+
+Modified test config
+Created session profile one
+Created session profile two
+Created session profile three
+
+Deleted session profile one
+Deleted session profile two
+Deleted session profile three
+Created session profile three
+Modified session profile three
+Created session profile two
+Modified session profile two
+Created session profile one
+Modified session profile one
+	default
+	one
+	three
+	two
+Session profile one
+  ppp profile: wibble
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Session profile two
+  ppp profile: default
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  reorder timeout: 42 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Session profile three
+  ppp profile: wibble
+  trace flags: PROTOCOL
+  session type: unspecified
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42 ms
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+Deleted session profile one
+Deleted session profile two
+Deleted session profile three
+}
+
+############################################################################
+# Tests 5.* - debug control
+############################################################################
+
+test session_profile-5.1 { Debug modify session profile all=yes } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.1
+	l2tpConfig session profile create profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug all=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile delete profile_name=debug
+    } \
+    {
+
+Created session profile debug
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Deleted session profile debug
+}
+
+test session_profile-5.2 { Debug modify session profile all=no } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.2
+	l2tpConfig session profile create profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug all=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile delete profile_name=debug
+    } \
+    {
+
+Created session profile debug
+
+  trace flags: NONE
+Deleted session profile debug
+}
+
+test session_profile-5.3 { Debug modify session profile incremental changes } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.3
+	l2tpConfig session profile create profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug all=no
+	l2tpConfig debug modify session_profile_name=debug protocol=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug avp_info=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug avp_data=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug avp_hide=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug fsm=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug api=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug ppp_control=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug transport=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug func=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug data=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug system=yes
+	l2tpConfig debug show session_profile_name=debug
+	# check every flag is set
+	l2tpConfig debug modify session_profile_name=debug all=yes
+	l2tpConfig debug show session_profile_name=debug
+	# Turn each off again
+	l2tpConfig debug modify session_profile_name=debug protocol=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug avp_info=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug avp_data=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug avp_hide=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug fsm=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug api=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug ppp_control=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug transport=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug func=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug data=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug system=no
+	l2tpConfig debug show session_profile_name=debug
+	# check every flag is unset
+	l2tpConfig debug modify session_profile_name=debug all=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile delete profile_name=debug
+    } \
+    {
+
+Created session profile debug
+
+
+  trace flags: PROTOCOL
+
+  trace flags: PROTOCOL AVP
+
+  trace flags: PROTOCOL AVP AVPDATA
+
+  trace flags: PROTOCOL AVP AVPHIDE AVPDATA
+
+  trace flags: PROTOCOL FSM AVP AVPHIDE AVPDATA
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA XPRT PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API AVPHIDE FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: API FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FUNC XPRT DATA SYSTEM
+
+  trace flags: FUNC DATA SYSTEM
+
+  trace flags: DATA SYSTEM
+
+  trace flags: SYSTEM
+
+  trace flags: NONE
+
+  trace flags: NONE
+Deleted session profile debug
+}
+
+test session_profile-5.4 { Debug modify session profile group changes } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.4
+	l2tpConfig session profile create profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug all=no
+	l2tpConfig debug modify session_profile_name=debug protocol=yes avp_info=yes fsm=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug api=yes avp_hide=yes avp_data=yes system=yes ppp_control=yes func=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug protocol=no fsm=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug avp_info=no avp_data=no avp_hide=no
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile delete profile_name=debug
+    } \
+    {
+
+Created session profile debug
+
+
+  trace flags: PROTOCOL FSM AVP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC PPP SYSTEM
+
+  trace flags: API AVP AVPHIDE AVPDATA FUNC PPP SYSTEM
+
+  trace flags: API FUNC PPP SYSTEM
+Deleted session profile debug
+}
+
+test session_profile-5.5 { Debug modify session profile bad trace category } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.5
+	l2tpConfig session profile create profile_name=debug
+	l2tpConfig debug modify session_profile_name=debug all=no
+	l2tpConfig debug modify session_profile_name=debug wibble=yes
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile delete profile_name=debug
+    } \
+    {
+
+Created session profile debug
+
+Error at or near 'wibble=yes'
+  trace flags: NONE
+Deleted session profile debug
+}
+
+test session_profile-5.6 { Set session profile trace_flags symbolically } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.6
+	l2tpConfig session profile create profile_name=debug
+	l2tpConfig session profile modify profile_name=debug trace_flags=all
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile modify profile_name=debug trace_flags=protocol
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile modify profile_name=debug trace_flags=api,fsm
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile modify profile_name=debug trace_flags=avp_info,avp_data,avp_hide
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile modify profile_name=debug trace_flags=api,protocol,fsm,avp_info,avp_data,avp_hide,ppp_control,transport,system,data,func
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile modify profile_name=debug trace_flags=all
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile delete profile_name=debug
+    } \
+    {
+
+Created session profile debug
+Modified session profile debug
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Modified session profile debug
+  trace flags: PROTOCOL
+Modified session profile debug
+  trace flags: FSM API
+Modified session profile debug
+  trace flags: AVP AVPHIDE AVPDATA
+Modified session profile debug
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Modified session profile debug
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Deleted session profile debug
+}
+
+test session_profile-5.7 { Detect bad trace category in command } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.7
+	l2tpConfig session profile create profile_name=debug
+	l2tpConfig session profile modify profile_name=debug trace_flags=all
+	l2tpConfig session profile modify profile_name=debug trace_flags=api,protocol,fsm,avp_info,avp_data,avp_hide,wibble,data,func
+	l2tpConfig debug show session_profile_name=debug
+	l2tpConfig session profile delete profile_name=debug
+    } \
+    {
+
+Created session profile debug
+Modified session profile debug
+Error at or near 'modify'
+Unknown trace flag: wibble
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Deleted session profile debug
+}
+
+test session_profile-5.99 { Cleanup } \
+    { l2tpdRunning && sessionProfile } \
+    { \
+	clearResult
+	l2tpConfig test log message=session_profile-5.99
+	l2tpConfig test modify default_config
+    } \
+    {
+
+Modified test config
+}
+

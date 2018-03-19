@@ -1,0 +1,123 @@
+#***********************************************************************
+#
+#  Copyright (c) 2013  Broadcom Corporation
+#  All Rights Reserved
+#
+#***********************************************************************/
+
+#
+# In most cases, you only need to modify this first section.
+# This directory creates 3 executables
+#
+
+
+EXE_DOWNLOADDIAG=tr143DownloadDiag
+EXE_UPLOADDIAG=tr143UploadDiag
+EXE_UDPECHO=tr143EchoCfgServer
+
+OBJS = downloadDiag.o uploadDiag.o echoCfgServer.o
+EID_FILE = eid_tr143_diag.txt
+
+TR143_LIB := -ltr143_utils 
+LIBS = -lcms_msg $(CMS_COMMON_LIBS) -ldl $(CMS_CORE_LIBS) 
+
+all dynamic install: conditional_build
+
+clean: generic_clean generic_eid_file_clean
+	rm -f $(EXE_DOWNLOADDIAG) $(EXE_UPLOADDIAG) $(EXE_UDPECHO)
+
+binaryonly_dist_clean: clean generic_binaryonly_dist_clean
+	rm -f Makefile.fullsrc
+
+
+#
+# Set our CommEngine directory (by splitting the pwd into two words
+# at /userspace and taking the first word only).
+# Then include the common defines under CommEngine.
+# You do not need to modify this part.
+#
+CURR_DIR := $(shell pwd)
+BUILD_DIR:=$(subst /userspace, ,$(CURR_DIR))
+BUILD_DIR:=$(word 1, $(BUILD_DIR))
+
+include $(BUILD_DIR)/make.common
+
+
+
+ifneq ($(strip $(BUILD_BRCM_CMS)),)
+ifneq ($(strip $(BUILD_TR69_TR143)),)
+conditional_build: sanity_check $(EXE_DOWNLOADDIAG) $(EXE_UPLOADDIAG) $(EXE_UDPECHO) generic_eid_file_install
+	mkdir -p $(INSTALL_DIR)/bin
+	install -m 755 $(EXE_DOWNLOADDIAG) $(INSTALL_DIR)/bin
+	install -m 755 $(EXE_UPLOADDIAG) $(INSTALL_DIR)/bin
+	install -m 755 $(EXE_UDPECHO) $(INSTALL_DIR)/bin
+else
+conditional_build: sanity_check
+	@echo "Skipping $(EXE_DOWNLOADDIAG) $(EXE_UPLOADDIAG) $(EXE_UDPECHO) (not configured)"
+endif
+else
+conditional_build: sanity_check
+	@echo "Skipping $(EXE_DOWNLOADDIAG) $(EXE_UPLOADDIAG) $(EXE_UDPECHO) (CMS not configured)"
+endif
+
+#
+# Private apps and libs are allowed to include from private and public.
+#
+# WARNING: Do not modify this section unless you understand the
+# license implications of what you are doing.
+#
+ALLOWED_INCLUDE_PATHS := -I. -I.. \
+                         -I$(BUILD_DIR)/userspace/public/include  \
+                         -I$(BUILD_DIR)/userspace/public/include/$(OALDIR) \
+                         -I$(BUILD_DIR)/userspace/private/include  \
+                         -I$(BUILD_DIR)/userspace/private/include/$(OALDIR) \
+                         -I$(BCM_FSBUILD_DIR)/public/include  \
+                         -I$(BCM_FSBUILD_DIR)/private/include
+
+
+#
+# Private apps and libs are allowed to link with libraries from the
+# private and public directories.
+#
+# WARNING: Do not modify this section unless you understand the
+# license implications of what you are doing.
+#
+ALLOWED_LIB_DIRS := /lib:/lib/private:/lib/public
+
+
+# treat all warnings as errors
+CUSTOM_CFLAGS += -Werror -Wfatal-errors
+
+CUSTOM_CFLAGS +=$(SSP_TYP_COMPILER_OPTS)
+LIBS += $(SSP_TYP_LIBS)
+TR143_LIB += $(SSP_TYP_LIBS)
+
+#
+# Implicit rule will make the .c into a .o
+# Implicit rule is $(CC) -c $(CPPFLAGS) $(CFLAGS)
+# See Section 10.2 of Gnu Make manual
+# 
+$(EXE_DOWNLOADDIAG): downloadDiag.o
+	$(CC) -o $@ downloadDiag.o -Wl,-rpath,$(CMS_LIB_RPATH) $(CMS_LIB_PATH) $(TR143_LIB) -lcms_msg $(CMS_COMMON_LIBS)
+
+$(EXE_UPLOADDIAG): uploadDiag.o
+	$(CC) -o $@ uploadDiag.o -Wl,-rpath,$(CMS_LIB_RPATH) $(CMS_LIB_PATH) $(TR143_LIB) -lcms_msg $(CMS_COMMON_LIBS)
+
+$(EXE_UDPECHO): echoCfgServer.o
+	$(CC) -o $@ echoCfgServer.o -Wl,-rpath,$(CMS_LIB_RPATH) $(CMS_LIB_PATH) $(LIBS)
+
+
+
+#
+# Include the rule for making dependency files.
+# The '-' in front of the second include suppresses
+# error messages when make cannot find the .d files.
+# It will just regenerate them.
+# See Section 4.14 of Gnu Make.
+#
+
+include $(BUILD_DIR)/make.deprules
+
+-include $(OBJS:.o=.d)
+
+

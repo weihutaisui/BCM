@@ -1,0 +1,231 @@
+<html>
+   <head>
+      <meta http-equiv="Pragma" content="no-cache">
+      <LINK href="stylemain.css" type="text/css" rel="stylesheet">
+         <LINK href="colors.css" type="text/css" rel="stylesheet">
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript" src="portName.js"></script>
+            <script language="javascript">
+<!-- hide
+function btnApply() {
+   var loc = 'cellularapn.cmd?action=add';
+   var i, first;
+   
+   with ( document.forms[0] ) {
+      // Sanity checks
+      if ( cellularApnName.value == '' ) {
+         msg = 'Please enter Access Point Name.';
+         alert(msg);
+         return;
+      }
+
+      for (i = 0; i < cellularApnType.length; i++) {
+         if (cellularApnType[i].checked)	  	
+            break;		 	
+      }
+      if (i == cellularApnType.length ) {
+         msg = 'Please select APN type';
+         alert(msg);
+         return;
+      }
+	  
+      if (cellularApnMcc.value == '' || 
+          cellularApnMcc.value.length != 3 || 
+          isValidDecNum(cellularApnMcc.value) == false){
+            msg = 'Mcc "' + cellularApnMcc.value + '" is invalid number';
+            alert(msg);
+            return;
+      }
+
+      if (cellularApnMnc.value == '' || 
+          cellularApnMnc.value.length < 2 || 
+          cellularApnMnc.value.length > 3 || 
+          isValidDecNum(cellularApnMnc.value) == false){
+            msg = 'Mnc "' + cellularApnMnc.value + '" is invalid number';
+            alert(msg);
+            return;
+      }
+
+      if (cellularApnMmsproxy.value != '' && isValidIpAddress6(cellularApnMmsproxy.value) == false && isValidIpAddress(cellularApnMmsproxy.value) == false) {
+         msg = 'Mms proxy server IP address "' + cellularApnMmsproxy.value + '" is invalid.';
+         alert(msg);
+         return;
+      }
+
+      if (cellularApnMmsport.value != '' && isValidPort(cellularApnMmsport.value) == false ) {
+         msg = 'Mms Proxy server port "' + cellularApnMmsport.value + '" is invalid port number';
+         alert(msg);
+         return;
+      }
+
+      if (cellularApnProxy.value != '' && isValidIpAddress6(cellularApnProxy.value) == false && isValidIpAddress(cellularApnProxy.value) == false) {
+         msg = 'Proxy server IP address "' + cellularApnProxy.value + '" is invalid.';
+         alert(msg);
+         return;
+      }
+
+      if (cellularApnProxyPort.value != '' && isValidPort(cellularApnProxyPort.value) == false ) {
+         msg = 'Proxy server port "' + cellularApnProxyPort.value + '" is invalid port number';
+         alert(msg);
+         return;
+      }
+	
+      loc += '&cellularApnEnable=' + cellularApnEnable.options[cellularApnEnable.selectedIndex].value;
+
+      loc += '&cellularApnName=' + encodeUrl(cellularApnName.value);
+
+      loc += '&cellularApnType=';
+      for (i = 0, first = true; i < cellularApnType.length; i++) {
+        if (cellularApnType[i].checked) {
+           if (first) {
+               loc += cellularApnType[i].value;
+               first = false; 
+            } else {
+               loc += ',' + cellularApnType[i].value;
+            }
+         }
+      }
+	  
+      loc += '&cellularApnMcc=' + cellularApnMcc.value;
+	  
+      loc += '&cellularApnMnc=' + cellularApnMnc.value;
+	  
+      loc += '&cellularEnblIpVer=' + cellularEnblIpVer.value;
+	  
+      loc += '&cellularApnCarrier=' + encodeUrl(cellularApnCarrier.value);
+	  
+      loc += '&cellularApnMmsproxy=' + cellularApnMmsproxy.value;
+	  
+      loc += '&cellularApnMmsport=' + cellularApnMmsport.value;
+	  
+      loc += '&cellularApnMmsc=' + cellularApnMmsc.value;
+	  
+      loc += '&cellularApnAuthtype=' + cellularApnAuthtype.options[cellularApnAuthtype.selectedIndex].value;
+
+      loc += '&cellularApnUsername=' + encodeUrl(cellularApnUsername.value);
+
+      loc += '&cellularApnPassword=' + encodeUrl(cellularApnPassword.value);
+
+      loc += '&cellularApnProxy=' + cellularApnProxy.value;
+
+      loc += '&cellularApnProxyPort=' + cellularApnProxyPort.value;
+
+   }
+   loc += '&sessionKey=<%ejGetOther(sessionKey)%>';
+
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+// done hiding -->
+</script>
+
+  </head>
+  <body>
+  <blockquote>
+  <form>
+               
+    <p><b>Add Cellular Access Point</b><br>
+      <br>
+      This screen add a cellular access point.<br>
+      Info field with (*) are mandantory, others are optional.<br>
+      <br>
+      Click 'Apply/Save' to save the APN.<br>
+    </p>
+    <table cellSpacing="0" cellPadding="0" border="0">
+      <tr>
+        <td width="150">Access Point Name(*):</td>
+        <td><input type="text" size="25" name="cellularApnName" maxlength="64"></td>
+      </tr>
+      <tr>
+        <td>Enable(*):</td>
+        <td>
+            <select size="1" name='cellularApnEnable'>
+            <option value="0"> Disable </option>
+            <option value="1" selected="selected"> Enable </option>
+            </select>
+        </td>
+      </tr>      
+      <tr> 
+        <td width="150">type(*):</td>
+        <td>
+          <input type='checkbox' name='cellularApnType' value='default' checked>Default
+          <input type='checkbox' name='cellularApnType' value='mms'>Mms
+          <input type='checkbox' name='cellularApnType' value='supl'>Supl
+          <input type='checkbox' name='cellularApnType' value='dun'>Dun
+          <input type='checkbox' name='cellularApnType' value='ims'>Ims
+        </td>
+      </tr>
+       <tr> 
+        <td width="150">Mcc(*):</td>
+        <td><input type="text" size="3" name="cellularApnMcc" maxlength="3"></td>
+      </tr>      
+      <tr> 
+        <td width="150">Mnc(*):</td>
+        <td><input type="text" size="3" name="cellularApnMnc" maxlength="3"></td>
+      </tr>      
+      <tr>
+        <td>IpProtocal(*):</td>
+        <td>
+           <select name='cellularEnblIpVer' id='cellularEnblIpVer'>
+           <option value="0" selected="selected">IPV4 Only</option>
+           <option value="1">IPv4 or IPv6</option>
+           <option value="2">IPv6 Only</option>
+           </select>
+        </td>
+      </tr>            
+      <tr> 
+        <td width="150">Carrier:</td>
+        <td><input type="text" size="25" name="cellularApnCarrier" maxlength="256"></td>
+      </tr>      
+      <tr> 
+        <tr> 
+        <td width="150">Mmsproxy:</td>
+        <td><input type="text" size="25" name="cellularApnMmsproxy" maxlength="256"></td>
+      </tr>            
+      <tr> 
+        <tr> 
+        <td width="150">Mmsport:</td>
+        <td><input type="text" size="5" name="cellularApnMmsport" maxlength="5"></td>
+      </tr>            
+      <tr> 
+        <tr> 
+        <td width="150">Mmsc:</td>
+        <td><input type="text" size="25" name="cellularApnMmsc" maxlength="256"></td>
+      </tr>            
+      <tr> 
+        <tr> 
+        <td width="150">Authtype:</td>
+        <td>
+            <select size="1" name='cellularApnAuthtype'>
+            <option value="-1" selected="selected"> N/A </option>
+            <option value="0"> Disable </option>
+            <option value="1"> PAP </option>
+            <option value="2"> CHAP </option>
+            <option value="3"> PAP/CHAP </option>
+            </select>
+        </td>
+      </tr>            
+      <td width="150">Username:</td>
+        <td><input type="text" size="25" name="cellularApnUsername" maxlength="256"></td>
+      </tr>      
+      <tr> 
+        <td width="150">Password:</td>
+        <td><input type="text" size="25" name="cellularApnPassword" maxlength="256"></td>
+      </tr>
+      <tr> 
+        <td>Proxy server IP address:</td>
+        <td><input type="text" size="25" name="cellularApnProxy"></td>
+      </tr>
+      <tr> 
+        <td>Proxy server port:</td>
+        <td><input type="text" size="5" name="cellularApnProxyPort" maxlength="5"></td>
+      </tr>
+    </table>
+    <br>
+    
+    <center><input type='button' onClick='btnApply()' value='Apply/Save'></center>
+    
+   </form>
+   </blockquote>
+   </body>
+</html>

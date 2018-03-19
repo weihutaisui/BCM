@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<head>
+<title>QRCode Sample</title>
+
+<style>#qrcode {
+  width:160px;
+  height:160px;
+  margin-top:25px;
+  margin-left:25px;
+  margin-bottom:25px;
+  margin-right:25px};
+</style>
+
+</head>
+
+<body>
+<p id="dbg1"> QRCODE </p>
+</body>
+
+<div id="qrcode"></div>
+
+<script src="qrcode/qrcode.js"></script>
+
+<script>
+var qrcodeTxt = '<%ejGetOther(qrcodeTxt, from_demo_files)%>';
+if ( qrcodeTxt.length < 1 ) { qrcodeTxt = "http://www.broadcom.com"; }
+
+document.getElementById("dbg1").innerHTML = "QRText: \"" + qrcodeTxt + "\"";
+
+var qrcode = new QRCode("qrcode", { width: 350, height: 350 });
+
+function makeCode() {
+    qrcode.makeCode(qrcodeTxt);
+}
+
+makeCode();
+</script>
+
+
+
+

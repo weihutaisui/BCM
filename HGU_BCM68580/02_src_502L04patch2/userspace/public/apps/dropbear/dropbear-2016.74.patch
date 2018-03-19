@@ -1,0 +1,98 @@
+diff -Naurp orig_dropbear-2016.74/buffer.c dropbear-2016.74/buffer.c
+--- orig_dropbear-2016.74/buffer.c	2016-07-21 23:17:09.000000000 +0800
++++ dropbear-2016.74/buffer.c	2016-08-11 09:57:09.646051769 +0800
+@@ -247,7 +247,7 @@ void buf_eatstring(buffer *buf) {
+ 
+ /* Get an uint32 from the buffer and increment the pos */
+ unsigned int buf_getint(buffer* buf) {
+-	unsigned int ret;
++	unsigned int ret=0;
+ 
+ 	LOAD32H(ret, buf_getptr(buf, 4));
+ 	buf_incrpos(buf, 4);
+diff -Naurp orig_dropbear-2016.74/options.h dropbear-2016.74/options.h
+--- orig_dropbear-2016.74/options.h	2016-07-21 23:17:09.000000000 +0800
++++ dropbear-2016.74/options.h	2016-08-11 09:57:09.646051769 +0800
+@@ -21,13 +21,13 @@
+ 
+ /* Default hostkey paths - these can be specified on the command line */
+ #ifndef DSS_PRIV_FILENAME
+-#define DSS_PRIV_FILENAME "/etc/dropbear/dropbear_dss_host_key"
++#define DSS_PRIV_FILENAME "/var/tmp/dropbear_dss_host_key"
+ #endif
+ #ifndef RSA_PRIV_FILENAME
+-#define RSA_PRIV_FILENAME "/etc/dropbear/dropbear_rsa_host_key"
++#define RSA_PRIV_FILENAME "/var/tmp/dropbear_rsa_host_key"
+ #endif
+ #ifndef ECDSA_PRIV_FILENAME
+-#define ECDSA_PRIV_FILENAME "/etc/dropbear/dropbear_ecdsa_host_key"
++#define ECDSA_PRIV_FILENAME "/var/tmp/dropbear_ecdsa_host_key"
+ #endif
+ 
+ /* Set NON_INETD_MODE if you require daemon functionality (ie Dropbear listens
+diff -Naurp orig_dropbear-2016.74/sshpty.c dropbear-2016.74/sshpty.c
+--- orig_dropbear-2016.74/sshpty.c	2016-07-21 23:17:09.000000000 +0800
++++ dropbear-2016.74/sshpty.c	2016-08-11 09:57:09.646051769 +0800
+@@ -17,6 +17,7 @@
+ 
+ /*RCSID("OpenBSD: sshpty.c,v 1.7 2002/06/24 17:57:20 deraadt Exp ");*/
+ 
++#define _GNU_SOURCE
+ #include "includes.h"
+ #include "dbutil.h"
+ #include "errno.h"
+@@ -380,6 +380,8 @@ pty_setowner(struct passwd *pw, const ch
+ 				tty_name, strerror(errno));
+ 	}
+ 
++// BRCM begin:  commented below
++#if 0
+ 	if (st.st_uid != pw->pw_uid || st.st_gid != gid) {
+ 		if (chown(tty_name, pw->pw_uid, gid) < 0) {
+ 			if (errno == EROFS &&
+@@ -409,4 +411,6 @@ pty_setowner(struct passwd *pw, const ch
+ 			}
+ 		}
+ 	}
++#endif
++// BRCM end.
+ }
+diff -Naurp orig_dropbear-2016.74/svr-auth.c dropbear-2016.74/svr-auth.c
+--- orig_dropbear-2016.74/svr-auth.c	2016-07-21 23:17:09.000000000 +0800
++++ dropbear-2016.74/svr-auth.c	2016-08-11 09:57:09.646051769 +0800
+@@ -145,7 +145,7 @@ void recv_msg_userauth_request() {
+ 
+ 	/* user wants to know what methods are supported */
+ 	if (methodlen == AUTH_METHOD_NONE_LEN &&
+-			strncmp(methodname, AUTH_METHOD_NONE,
++			strncmp((char *)methodname, AUTH_METHOD_NONE,
+ 				AUTH_METHOD_NONE_LEN) == 0) {
+ 		TRACE(("recv_msg_userauth_request: 'none' request"))
+ 		if (valid_user
+@@ -174,7 +174,7 @@ void recv_msg_userauth_request() {
+ 			!(svr_opts.norootpass && ses.authstate.pw_uid == 0) ) {
+ 		/* user wants to try password auth */
+ 		if (methodlen == AUTH_METHOD_PASSWORD_LEN &&
+-				strncmp(methodname, AUTH_METHOD_PASSWORD,
++				strncmp((char *)methodname, AUTH_METHOD_PASSWORD,
+ 					AUTH_METHOD_PASSWORD_LEN) == 0) {
+ 			if (valid_user) {
+ 				svr_auth_password();
+@@ -202,7 +202,7 @@ void recv_msg_userauth_request() {
+ #ifdef ENABLE_SVR_PUBKEY_AUTH
+ 	/* user wants to try pubkey auth */
+ 	if (methodlen == AUTH_METHOD_PUBKEY_LEN &&
+-			strncmp(methodname, AUTH_METHOD_PUBKEY,
++			strncmp((char *)methodname, AUTH_METHOD_PUBKEY,
+ 				AUTH_METHOD_PUBKEY_LEN) == 0) {
+ 		if (valid_user) {
+ 			svr_auth_pubkey();
+@@ -248,7 +248,7 @@ static int checkusername(char *username,
+ 			}
+ 			authclear();
+ 			fill_passwd(username);
+-			ses.authstate.username = m_strdup(username);
++			ses.authstate.username = m_strdup((char*)username);
+ 	}
+ 
+ 	/* check that user exists */

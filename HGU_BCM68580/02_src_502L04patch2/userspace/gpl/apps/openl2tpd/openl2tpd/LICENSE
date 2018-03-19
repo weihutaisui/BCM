@@ -1,0 +1,66 @@
+The Katalix Systems OpenL2TP software is Dual Licensed.  Users can
+choose to use the OpenL2TP software as an Open Source/Free Software
+product under the terms of the GNU General Public License
+(http://www.fsf.org/licenses/) or can purchase a commercial license
+from Katalix Systems Ltd.
+
+The OpenL2TP software is released under the GNU General Public License
+(GPL). This means that the OpenL2TP software can be used free of
+charge under the GPL. If you do not want to be bound by the GPL terms
+(such as the requirement that your application must also be GPL), you
+may purchase a commercial license for the same product from Katalix
+Systems Ltd.  Since Katalix Systems Ltd owns the copyright to the
+OpenL2TP source code, we are able to employ Dual Licensing, which
+means that the same product is available under GPL and under a
+commercial license. This does not in any way affect the Open Source
+commitment of Katalix Systems Ltd.
+
+Users cannot change the vendor string which is published in the L2TP
+control message protocol without purchasing a commercial license. For
+all GPL installations, the vendor string shall be "Katalix Systems
+Ltd. Linux".
+
+The OpenL2TP software is released under the GNU General Public License
+(GPL). The formal terms of the GPL license can be found at
+http://www.fsf.org/licenses/.  See also
+http://www.fsf.org/licenses/gpl-faq.html.
+
+The GPL license is contagious in the sense that when a program is
+linked to a GPL program, all the source code for all the parts of the
+resulting product must also be released under the GPL. If you do not
+follow this GPL requirement, you break the license terms and forfeit
+your right to use the GPL program altogether. You also risk damages.
+You need a commercial license under these conditions:
+
+- When you link a program with any GPL code from the OpenL2TP software
+  and don't want the resulting product to be licensed under GPL,
+  perhaps because you want to build a commercial product or keep the
+  added non-GPL code closed source for other reasons. When purchasing
+  commercial licenses, you are not using the OpenL2TP software under
+  GPL even though it's the same code.
+
+- When you distribute a non-GPL application that works only with the
+  OpenL2TP software and ship it with the OpenL2TP software. This type of
+  solution is considered to be linking even if it's done over a
+  network.
+
+- When you distribute copies of the OpenL2TP software without providing
+  the source code as required under the GPL license.
+
+- When you change the advertised L2TP vendor string.
+
+A special exception is made for OpenL2TP plugins. Such plugins may be
+closed source and not come under GPL provided that they use OpenL2TP's
+standard plugin interface. It is not permitted to make open source
+changes to OpenL2TP in order to add new interfaces to OpenL2TP and
+then write a closed source plugin that uses the new interface.
+
+If you require a commercial license, you will need one license for
+each installation of the OpenL2TP server software. One license is
+required for each CPU / memory subsystem that runs OpenL2TP
+binaries. Multiple CPU "Symmetric Multi-Processor" (SMP) systems
+require only one license per SMP CPU group.
+
+OpenL2TP uses an implementation of MD5 Message Digest Algorithm by RSA
+Data Security, Inc.
+

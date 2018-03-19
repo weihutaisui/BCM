@@ -1,0 +1,47 @@
+<html>
+   <head>
+      <meta http-equiv='Pragma' content='no-cache'>
+      <meta http-equiv="refresh" content="30">
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+      <link rel="stylesheet" href='colors.css' type='text/css'>
+      <script language="javascript">
+<!-- hide
+
+function resetClick() {
+   var loc = 'statsqueuereset.cmd';
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+// done hiding -->
+</script>
+   </head>
+   <body>
+      <blockquote>
+         <form>
+            <b>Statistics -- Queue</b><br>
+            <br>
+            <table border="1" cellpadding="2" cellspacing="0">
+               <tr align='center'>
+                  <td class='hd'>Interface</td>
+                  <td class='hd'>Qid</td>
+                  <td class='hd'>Out pkts</td>
+                  <td class='hd'>Out bytes</td>
+                  <td class='hd'>Drop pkts</td>
+                  <td class='hd'>Drop bytes</td>
+               </tr>
+               <tr>
+               <%ejGetOther(stsqueueget,0,0)%>
+
+<script language="javascript">
+<!-- hide
+// done hiding -->
+</script>
+            </table>
+            <br>
+            <br>
+            <input type='button' onClick='resetClick()' value='Reset Statistics'>
+         </form>
+      </blockquote>
+   </body>
+</html>

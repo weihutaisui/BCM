@@ -1,0 +1,54 @@
+#!/bin/sh
+
+proc_i2c=/proc/i2c_gpon/gponPhyTest
+max9611_i2c_addr=112
+r_sense=0.005
+
+max9611_i2c_write()
+{
+    offset=$1
+    length=$2
+    value=$3
+	echo "a $max9611_i2c_addr $offset $length $value" > $proc_i2c
+}
+
+max9611_i2c_read()
+{
+    offset=$1
+    length=$2
+	dmesg -c > /dev/null
+	echo "a $max9611_i2c_addr $offset $length" > $proc_i2c
+	dmesg | awk '/^<4>/ {print}'
+}
+
+read_voltage()
+{
+	# select channel D : voltage SET
+    max9611_i2c_write 0xa 1 5
+
+    # read SET register	
+	raw_regs=`max9611_i2c_read 6 2|awk '{ gsub (" ", "", $0); print}'|awk -F'x' '{print $3}'|awk '{ printf "%s", $0 }'`
+	set=$((0x${raw_regs:0:3}))
+
+    # decode SET register to get voltage
+    echo "${set}" | awk '{print $0/4096.0*1.1*4}'
+}
+
+read_current()
+{
+    # select channel A with gain 8x
+    max9611_i2c_write 0xa 1 2
+    
+    # read CSA register
+	raw_regs=`max9611_i2c_read 0 2|awk '{ gsub (" ", "", $0); print}'|awk -F'x' '{print $3}'|awk '{ printf "%s", $0 }'`
+	csa=$((0x${raw_regs:0:3}))
+
+	# decode CSA register to get current
+	echo "${csa}" | awk -v r_sense="${r_sense}" '{print ($0/4095.0)*0.055/r_sense}'
+}
+
+voltage=`read_voltage`
+current=`read_current`
+power=`echo "" | awk -v v="${voltage}" -v i="${current}" '{print v*i}'`
+echo "MAX9611 (i2c address = ${max9611_i2c_addr}, sense resistor = ${r_sense} Ohm)"
+echo "voltage=${voltage}V, current=${current}A, power=${power}W"

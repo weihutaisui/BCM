@@ -1,0 +1,2 @@
+dependson: public/libs/jpeg public/libs/sqlite
+

@@ -1,0 +1,61 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript">
+<!-- hide
+
+function frmLoad() {
+    var nfcInfo = '<%ejGetOther(nfcInfo)%>';
+
+    with ( document.forms[0] ) {
+        if (nfcInfo == 1)
+        {
+            nfcswitch.checked = true;
+        }
+        else
+        {
+            nfcswitch.checked = false;
+        }
+    }
+}
+
+function applyClick() {
+    var loc = 'nfc.cmd?';
+
+    with ( document.forms[0] ) {
+        if (nfcswitch.checked)
+        {
+            loc += 'enablenfc=1';
+        }
+        else
+            loc += 'enablenfc=0';
+    }
+
+    loc += '&sessionKey=<%ejGetOther(sessionKey)%>';
+    var code = 'location="' + loc + '"';
+    eval(code);
+}
+
+// done hiding -->
+</script>
+   </head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form>
+            <b> NFC Settings</b><br>
+            <table border="0" cellpadding="4" cellspacing="0">
+               <tr>
+                  <td width='20'>&nbsp;</td>
+                  <td><input type="checkbox" name="nfcswitch"> Enabled</td>
+               <br>
+               </tr>
+            </table>
+            <center>
+               <input type='button' onClick='applyClick()' value='Apply/Save'>
+            </center>
+         </form>
+      </blockquote>
+   </body>
+</html>

@@ -1,0 +1,222 @@
+diff -ur ipsec-tools-0.8.0/configure ipsec-tools-0.8.0_mod/configure
+--- ipsec-tools-0.8.0/configure	2011-03-18 09:27:41.000000000 -0400
++++ ipsec-tools-0.8.0_mod/configure	2015-01-16 09:51:41.172557718 -0500
+@@ -11545,7 +11545,6 @@
+ 	LIBS="$LIBS -lresolv"
+ 	INSTALL_OPTS="-o bin -g bin"
+ 	INCLUDE_GLIBC="include-glibc"
+-	RPM="rpm"
+ 
+ 
+ 
+@@ -12487,19 +12486,6 @@
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ 
+-for ac_header in openssl/engine.h
+-do :
+-  ac_fn_c_check_header_mongrel "$LINENO" "openssl/engine.h" "ac_cv_header_openssl_engine_h" "$ac_includes_default"
+-if test "x$ac_cv_header_openssl_engine_h" = x""yes; then :
+-  cat >>confdefs.h <<_ACEOF
+-#define HAVE_OPENSSL_ENGINE_H 1
+-_ACEOF
+-
+-fi
+-
+-done
+-
+-
+ # checking rijndael
+ for ac_header in openssl/aes.h
+ do :
+@@ -12520,13 +12506,11 @@
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking sha2 support" >&5
+ $as_echo_n "checking sha2 support... " >&6; }
+ 
+-$as_echo "#define WITH_SHA2 /**/" >>confdefs.h
+-
+ { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+ $as_echo "yes" >&6; }
+ ac_fn_c_check_header_mongrel "$LINENO" "openssl/sha2.h" "ac_cv_header_openssl_sha2_h" "$ac_includes_default"
+ if test "x$ac_cv_header_openssl_sha2_h" = x""yes; then :
+-
++$as_echo "#define WITH_SHA2 /**/" >>confdefs.h
+ else
+ 
+ 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if sha2 is defined in openssl/sha.h" >&5
+@@ -12554,6 +12538,8 @@
+ 	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+ $as_echo "yes" >&6; }
+ 
++$as_echo "#define WITH_SHA2 /**/" >>confdefs.h
++
+ $as_echo "#define HAVE_SHA2_IN_SHA_H /**/" >>confdefs.h
+ 
+ 
+@@ -14645,7 +14631,7 @@
+ include_racoondir=${includedir}/racoon
+ 
+ 
+-ac_config_files="$ac_config_files Makefile package_version.h src/Makefile src/include-glibc/Makefile src/libipsec/Makefile src/setkey/Makefile src/racoon/Makefile src/racoon/samples/psk.txt src/racoon/samples/racoon.conf rpm/Makefile rpm/suse/Makefile rpm/suse/ipsec-tools.spec"
++ac_config_files="$ac_config_files Makefile package_version.h src/Makefile src/include-glibc/Makefile src/libipsec/Makefile src/setkey/Makefile src/racoon/Makefile src/racoon/samples/psk.txt src/racoon/samples/racoon.conf"
+ 
+ cat >confcache <<\_ACEOF
+ # This file is a shell script that caches the results of configure
+@@ -15635,9 +15621,6 @@
+     "src/racoon/Makefile") CONFIG_FILES="$CONFIG_FILES src/racoon/Makefile" ;;
+     "src/racoon/samples/psk.txt") CONFIG_FILES="$CONFIG_FILES src/racoon/samples/psk.txt" ;;
+     "src/racoon/samples/racoon.conf") CONFIG_FILES="$CONFIG_FILES src/racoon/samples/racoon.conf" ;;
+-    "rpm/Makefile") CONFIG_FILES="$CONFIG_FILES rpm/Makefile" ;;
+-    "rpm/suse/Makefile") CONFIG_FILES="$CONFIG_FILES rpm/suse/Makefile" ;;
+-    "rpm/suse/ipsec-tools.spec") CONFIG_FILES="$CONFIG_FILES rpm/suse/ipsec-tools.spec" ;;
+ 
+   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5 ;;
+   esac
+diff -ur ipsec-tools-0.8.0/src/racoon/algorithm.c ipsec-tools-0.8.0_mod/src/racoon/algorithm.c
+--- ipsec-tools-0.8.0/src/racoon/algorithm.c	2006-10-06 08:02:27.000000000 -0400
++++ ipsec-tools-0.8.0_mod/src/racoon/algorithm.c	2015-01-16 09:51:17.383175365 -0500
+@@ -111,9 +111,11 @@
+ 		eay_idea_encrypt,	eay_idea_decrypt,
+ 		eay_idea_weakkey,	eay_idea_keylen, },
+ #endif
++#if 0
+ { "blowfish",	algtype_blowfish,	OAKLEY_ATTR_ENC_ALG_BLOWFISH,	8,
+ 		eay_bf_encrypt,		eay_bf_decrypt,
+ 		eay_bf_weakkey,		eay_bf_keylen, },
++#endif		
+ #ifdef HAVE_OPENSSL_RC5_H
+ { "rc5",	algtype_rc5,		OAKLEY_ATTR_ENC_ALG_RC5,	8,
+ 		eay_rc5_encrypt,	eay_rc5_decrypt,
+@@ -122,9 +124,11 @@
+ { "3des",	algtype_3des,		OAKLEY_ATTR_ENC_ALG_3DES,	8,
+ 		eay_3des_encrypt,	eay_3des_decrypt,
+ 		eay_3des_weakkey,	eay_3des_keylen, },
++#if 0		
+ { "cast",	algtype_cast128,	OAKLEY_ATTR_ENC_ALG_CAST,	8,
+ 		eay_cast_encrypt,	eay_cast_decrypt,
+ 		eay_cast_weakkey,	eay_cast_keylen, },
++#endif		
+ { "aes",	algtype_aes,	OAKLEY_ATTR_ENC_ALG_AES,	16,
+ 		eay_aes_encrypt,	eay_aes_decrypt,
+ 		eay_aes_weakkey,	eay_aes_keylen, },
+@@ -150,12 +154,14 @@
+ 		NULL,			NULL,
+ 		NULL,			eay_rc5_keylen, },
+ #endif
++#if 0
+ { "cast",	algtype_cast128,	IPSECDOI_ESP_CAST,		8,
+ 		NULL,			NULL,
+ 		NULL,			eay_cast_keylen, },
+ { "blowfish",	algtype_blowfish,	IPSECDOI_ESP_BLOWFISH,		8,
+ 		NULL,			NULL,
+ 		NULL,			eay_bf_keylen, },
++#endif		
+ { "des-iv32",	algtype_des_iv32,	IPSECDOI_ESP_DES_IV32,		8,
+ 		NULL,			NULL,
+ 		NULL,			eay_des_keylen, },
+diff -ur ipsec-tools-0.8.0/src/racoon/cftoken.l ipsec-tools-0.8.0_mod/src/racoon/cftoken.l
+--- ipsec-tools-0.8.0/src/racoon/cftoken.l	2011-02-02 10:21:34.000000000 -0500
++++ ipsec-tools-0.8.0_mod/src/racoon/cftoken.l	2015-01-16 09:51:17.384175227 -0500
+@@ -106,6 +106,8 @@
+ static int yy_first_time = 1;
+ %}
+ 
++%option noyywrap
++
+ /* common seciton */
+ nl		\n
+ ws		[ \t]+
+diff -ur ipsec-tools-0.8.0/src/racoon/crypto_openssl.c ipsec-tools-0.8.0_mod/src/racoon/crypto_openssl.c
+--- ipsec-tools-0.8.0/src/racoon/crypto_openssl.c	2010-10-20 09:40:02.000000000 -0400
++++ ipsec-tools-0.8.0_mod/src/racoon/crypto_openssl.c	2015-01-16 09:52:16.018258514 -0500
+@@ -63,8 +63,10 @@
+ #ifdef HAVE_OPENSSL_ENGINE_H
+ #include <openssl/engine.h>
+ #endif
++#if 0
+ #include <openssl/blowfish.h>
+ #include <openssl/cast.h>
++#endif
+ #include <openssl/err.h>
+ #ifdef HAVE_OPENSSL_RC5_H
+ #include <openssl/rc5.h>
+@@ -1405,6 +1407,7 @@
+ }
+ #endif
+ 
++#if 0
+ /*
+  * BLOWFISH-CBC
+  */
+@@ -1439,6 +1442,7 @@
+ 		return -1;
+ 	return len;
+ }
++#endif
+ 
+ #ifdef HAVE_OPENSSL_RC5_H
+ /*
+@@ -1550,6 +1554,7 @@
+ 	return 192;
+ }
+ 
++#if 0
+ /*
+  * CAST-CBC
+  */
+@@ -1584,6 +1589,7 @@
+ 		return -1;
+ 	return len;
+ }
++#endif
+ 
+ /*
+  * AES(RIJNDAEL)-CBC
+diff -ur ipsec-tools-0.8.0/src/racoon/eaytest.c ipsec-tools-0.8.0_mod/src/racoon/eaytest.c
+--- ipsec-tools-0.8.0/src/racoon/eaytest.c	2010-01-17 18:02:48.000000000 -0500
++++ ipsec-tools-0.8.0_mod/src/racoon/eaytest.c	2015-01-16 09:51:17.386174947 -0500
+@@ -683,7 +683,7 @@
+ 			  &iv0, 16,
+ 			  eay_aes_encrypt, eay_aes_decrypt) < 0)
+ 	  return -1;
+-
++#if 0
+ 	if (ciphertest_1 ("BLOWFISH",
+ 			  &data, 8,
+ 			  &key, key.l,
+@@ -697,7 +697,7 @@
+ 			  &iv0, 8,
+ 			  eay_cast_encrypt, eay_cast_decrypt) < 0)
+ 	  return -1;
+-	
++#endif
+ #ifdef HAVE_OPENSSL_IDEA_H
+ 	if (ciphertest_1 ("IDEA",
+ 			  &data, 8,
+diff -ur ipsec-tools-0.8.0/src/racoon/strnames.c ipsec-tools-0.8.0_mod/src/racoon/strnames.c
+--- ipsec-tools-0.8.0/src/racoon/strnames.c	2008-07-14 01:40:13.000000000 -0400
++++ ipsec-tools-0.8.0_mod/src/racoon/strnames.c	2015-01-16 09:51:17.387174803 -0500
+@@ -691,9 +691,11 @@
+ { OAKLEY_ATTR_HASH_ALG_MD5,	"MD5",		NULL },
+ { OAKLEY_ATTR_HASH_ALG_SHA,	"SHA",		NULL },
+ { OAKLEY_ATTR_HASH_ALG_TIGER,	"Tiger",	NULL },
++#if defined(WITH_SHA2)
+ { OAKLEY_ATTR_HASH_ALG_SHA2_256,"SHA256",	NULL },
+ { OAKLEY_ATTR_HASH_ALG_SHA2_384,"SHA384",	NULL },
+ { OAKLEY_ATTR_HASH_ALG_SHA2_512,"SHA512",	NULL },
++#endif
+ };
+ 
+ char *
+diff -ur ipsec-tools-0.8.0/src/setkey/token.l ipsec-tools-0.8.0_mod/src/setkey/token.l
+--- ipsec-tools-0.8.0/src/setkey/token.l	2010-06-04 09:06:03.000000000 -0400
++++ ipsec-tools-0.8.0_mod/src/setkey/token.l	2015-01-16 09:51:17.387174803 -0500
+@@ -88,6 +88,8 @@
+ #endif
+ %}
+ 
++%option noyywrap
++
+ /* common section */
+ nl		\n
+ ws		[ \t]+

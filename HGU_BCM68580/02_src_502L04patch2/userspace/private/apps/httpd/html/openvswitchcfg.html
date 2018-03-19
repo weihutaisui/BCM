@@ -1,0 +1,260 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript">
+<!-- hide
+var wannterfaceInfo = '<%ejGetOther(wanInterfaceInfo, bridge)%>';
+var waninterfaces = wannterfaceInfo.split('|');
+var laninterfaceInfo = '<%ejGetOther(bridgeInterfaceInfo, all)%>';
+var laninterfaces = laninterfaceInfo.split('|');
+var openVSInfo = '<%ejGetOther(openVS)%>';if (openVSInfo == '&nbsp') openVSInfo = '';
+var openVSCfg = openVSInfo.split('|'); 
+var openVSPorts = openVSCfg[3];if (openVSPorts == '&nbsp') openVSPorts = '';
+var ofControllerAddr=openVSCfg[1];if (ofControllerAddr == '&nbsp') ofControllerAddr = '';
+var ofControllerPort=openVSCfg[2];if (ofControllerPort == '&nbsp') ofControllerPort = '';
+
+function chkopenvsClick(cb) {
+   if ( cb.checked == true )
+      hideNameInfo(0);
+   else
+      hideNameInfo(1);
+}
+   
+function hideNameInfo(hide) {
+   var status = 'visible';
+
+   if ( hide == 1 )
+      status = 'hidden';
+   if (document.getElementById)  // DOM3 = IE5, NS6
+      document.getElementById('hideinfo').style.visibility = status;
+   else {
+      if (document.layers == false) // IE4
+         document.all.hideinfo.style.visibility = status;
+   }
+}
+
+
+function reloading() {
+   var loc = 'openvswitchcfg.html';
+   var code = 'location="' + loc + '"';
+   window.defaultStatus = '';        
+   eval(code);
+}
+
+function btnApplySave() {
+   var loc = 'openVS.cmd?';
+
+   with ( document.forms[0] ) {
+      var tempList = '';
+      if (chkopenvs.checked == true){
+         loc += 'enblOpenVS=1';
+      if (controllerAddr.value ==''){
+         msg = 'Please input OF controller address.';
+         alert(msg);
+         return;
+      }
+      if (isValidIpAddress(controllerAddr.value) == false) {
+         msg = 'OF controller address "' + controllerAddr.value + '" is invalid.';
+         alert(msg);
+         return;
+      }
+	    if (controllerPort.value == ''){
+         msg = 'Please input OF controller port.';
+         alert(msg);
+         return;
+      }
+      if (isValidPort(controllerPort.value) == false ) {
+         msg = 'OF controller port "' + controllerPort.value + '" is invalid port number';
+         alert(msg);
+         return;
+      }
+      loc += '&ofControllerAddr=' + controllerAddr.value;	
+      loc += '&ofControllerPort=' + controllerPort.value;	
+      for (i = 0; i < selOpenVSIfcs.length; i++) {
+         if (i > 0)
+         tempList += ',';
+         tempList += selOpenVSIfcs.options[i].value;
+      }
+      loc += '&openVSPorts='	
+      if (tempList != '')
+         loc += tempList;
+      else
+         loc += ',';
+     }
+     else
+         loc += 'enblOpenVS=0';
+   }
+   
+   loc += '&sessionKey=<%ejGetOther(sessionKey)%>';
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+function frmLoad() {
+   with ( document.forms[0] ) {
+      if (openVSCfg[0] == 1)
+      {
+         chkopenvs.checked = true;
+         hideNameInfo(0);
+      }
+      else 
+      {
+         chkopenvs.checked = false;
+         hideNameInfo(1);
+      }
+
+      controllerAddr.value = ofControllerAddr;
+      controllerPort.value = ofControllerPort;
+   }
+}
+
+function btnRemove() {
+   with ( document.forms[0] ) {
+      var arrSelected = new Array();
+      var count = 0;
+      for ( i = 0; i < selOpenVSIfcs.options.length; i++ ) {
+         if ( selOpenVSIfcs.options[i].selected == true ) {
+            arrSelected[count] = selOpenVSIfcs.options[i].value;
+         }
+         count++;
+      }
+      var x = 0;
+      for (i = 0; i < selOpenVSIfcs.options.length; i++) {
+         for (x = 0; x < arrSelected.length; x++) {
+            if (selOpenVSIfcs.options[i].value == arrSelected[x]) {
+               varOpt = new Option(selOpenVSIfcs.options[i].text, selOpenVSIfcs.options[i].value);
+               availIfcs.options[availIfcs.length] = varOpt;
+               selOpenVSIfcs.options[i] = null;
+            }
+         }
+      }
+   }
+}
+
+function btnAdd() {
+   with ( document.forms[0] ) {
+      var arrSelected = new Array();
+      var count = 0;
+      for ( i = 0; i < availIfcs.options.length; i++ ) {
+         if ( availIfcs.options[i].selected == true ) {
+            arrSelected[count] = availIfcs.options[i].value;
+         }
+         count++;
+      }
+      var x = 0;
+      for (i = 0; i < availIfcs.options.length; i++) {
+         for (x = 0; x < arrSelected.length; x++) {
+            if (availIfcs.options[i].value == arrSelected[x]) {
+               varOpt = new Option(availIfcs.options[i].text, availIfcs.options[i].value);
+               selOpenVSIfcs.options[selOpenVSIfcs.length] = varOpt;
+               availIfcs.options[i] = null;
+            }
+         }
+      }
+   }
+}
+
+// done hiding -->
+</script>
+   </head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form>
+            <P>
+               <b>OpenVswitch Configuration</b><br><br>
+            </P>
+            <tr>
+               <td colspan="2">
+                  <input type='checkbox' name='chkopenvs' onClick='chkopenvsClick(this)'></td>
+               <td>
+                    <b>Enable OpenVswitch</b></td>
+            </tr>
+            <br>
+            <div id='hideinfo'>               
+              <br>	
+              <tr>
+                  <td width='140'><b>OF controller IP address:</d></td>
+                  <td><input type='text' name='controllerAddr'></td>
+                  <td width='6'><b> port:</d></td>
+                  <td><input type='text' name='controllerPort'></td>
+             </tr>
+             <br>
+             <br><b> Port List --Interfaces(ports) list</b><br>
+             <table border="0" cellpadding="0" cellspacing="0">
+                  <tr>
+                      <td width="150"><b>Selected Openvswtich Ports(Interfaces)</b></td>
+                      <td width="100"></td>
+                      <td width="150"><b>Available Ports(Interfaces) that can be added into openvswitch</b></td>
+                  </tr>
+                  <tr><td colspan="3">&nbsp;</td></tr>
+                      <tr>
+                          <td>
+                          <select multiple name="selOpenVSIfcs" size="10" style="width: 100">
+                              <script language="javascript">
+                              <!-- hide
+                              {
+                                 var i = 0;
+                                 var openVSPortsList;
+
+                                 openVSPortsList = openVSPorts.split(',');
+                                 for (i = 0; i < openVSPortsList.length; i++){
+                                    if ( openVSPortsList[i] != ""){
+                                       document.writeln("  <option value='" +openVSPortsList[i] + "'>"+ openVSPortsList[i]);
+                                    }
+                                 }
+                              }
+                              // done hiding -->
+                              </script>
+                         </select>
+                         </td>
+                         <td>
+                            <table border="0" cellpadding="0" cellspacing="5">
+                            <tr><td>
+                                <input type="button" value="->" onClick="btnRemove()" style="width: 30; height: 30">
+                            </td></tr>
+                            <tr><td>
+                                <input type="button" value="<-" onClick="btnAdd()" style="width: 30; height: 30">
+                           </td></tr>
+                           </table>
+                         </td>
+                         <td>
+                            <select multiple name="availIfcs" size="10" style="width: 100">
+                            <script language="javascript">
+                             <!-- hide
+                             {
+                                var i;
+
+                                for (i = 0; i < laninterfaces.length; i++) {
+                                   if (laninterfaces[i] != "") {
+                                       if (openVSPorts.search(laninterfaces[i]) == -1)
+                                           document.writeln("  <option value='" + laninterfaces[i] + "'>" + laninterfaces[i]);
+                                   }
+                                }
+
+                                for (i = 0; i < waninterfaces.length; i++) {
+                                   if (waninterfaces[i] != "") {
+                                      var names = waninterfaces[i].split('/');
+                                      if (openVSPorts.search(names[1]) == -1)
+                                         document.writeln("  <option value='" + names[1] + "'>" + names[1]);
+                                   }
+                                }
+                             }
+                           // done hiding -->
+                           </script>
+                           </select>
+                        </td>
+                     </tr>
+             </table>
+           </div>            
+            <br>
+            <br>
+            <center>
+               <input type='button' onClick='btnApplySave()' value='Apply/Save'>
+            </center>
+         </form>
+      </blockquote>
+   </body>
+</html>

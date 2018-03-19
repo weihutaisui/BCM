@@ -1,0 +1,59 @@
+<html>
+  <head>
+    <meta http-equiv='Pragma' content='no-cache'>
+    <link rel='stylesheet' href='tabletab.css' type='text/css'>
+    <link rel='stylesheet' href='treetable/css/jquery.treetable.css' />
+    <link rel='stylesheet' href='treetable/css/jquery.treetable.theme.default.css' />
+    <script src='jquery.js'></script>
+    <script src='treetable/jquery.treetable.js'></script>
+    <title>Containers Table</title>
+    <style>
+      table#tblContainer tr:nth-child(even) {
+        background-color: #f2f2f2
+      }
+      table#tblContainer tr:nth-child(odd) {
+        background-color: #f1f1c1
+      }
+    </style>
+    <script language="javascript">
+<!-- hide
+
+$(document).ready(function() {
+   $('#tblContainer').treetable({ expandable: true });
+   $('#tblContainer').treetable('expandAll');
+});
+
+function detailClick(name) {
+   var loc = 'containerdetail.cgi?containerName=' + name;
+   loc += '&sessionKey=<%ejGetOther(sessionKey)%>';
+
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+// done hiding -->
+    </script>
+  </head>
+  <body>
+    <blockquote>
+    <form>
+      <center><b>Containers Table</b><br><br>
+      List all existing containers with theirs state information.<br>
+      Click on "Show" button to view more detail information.<br><br>
+      <table id='tblContainer' border='1'cellpadding='4' cellspacing='0'>
+       <tbody>
+        <tr align='center' data-tt-id='0'>
+          <td class='hd'>Name</td>
+          <td class='hd'>ID</td>
+          <td class='hd'>Status</td>
+          <td class='hd'>Details</td>
+          <td class='hd'>Standard</td>
+          <td class='hd'>Execution Environment Name</td>
+        </tr>
+<%ejGetOther(container-table)%>
+       </tbody>
+      </table>
+    </form>
+    </blockquote>
+  </body>
+</html>

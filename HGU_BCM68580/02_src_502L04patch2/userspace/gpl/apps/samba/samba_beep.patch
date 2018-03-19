@@ -1,0 +1,1971 @@
+diff -ruN samba_beep/bin/mount_usb.sh beep_source/bin/mount_usb.sh
+--- samba_beep/bin/mount_usb.sh	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/bin/mount_usb.sh	2017-10-25 22:13:20.418064011 -0700
+@@ -0,0 +1,15 @@
++#!/bin/sh
++
++# pre-start script to mount usb storage device to rootfs of samba service
++echo "Mount usb device to rootfs"
++VOLUME=$(ls -d /mnt/disk*_*)
++
++rm -rf $LXC_ROOTFS_PATH/mnt/disk*_*
++
++if [ "$VOLUME" != "" ]; then
++  for file in $VOLUME; do
++    mkdir -p $LXC_ROOTFS_PATH/$file
++    chmod 777 $LXC_ROOTFS_PATH/$file -R
++    mount --rbind $file $LXC_ROOTFS_PATH/$file
++  done
++fi
+diff -ruN samba_beep/bin/umount_usb.sh beep_source/bin/umount_usb.sh
+--- samba_beep/bin/umount_usb.sh	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/bin/umount_usb.sh	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,11 @@
++#!/bin/sh
++
++# pre-start script to mount usb storage device to rootfs of samba service
++echo "Post Stop: umount usb device"
++VOLUME=$(ls -d $LXC_ROOTFS_PATH/mnt/disk*_*)
++if [ "$VOLUME" != "" ]; then
++  for file in $VOLUME; do
++    umount $file
++  done
++fi
++
+diff -ruN samba_beep/etc/smb.conf beep_source/etc/smb.conf
+--- samba_beep/etc/smb.conf	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/etc/smb.conf	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,70 @@
++#
++# Samba configuration script for Broadcom Linux Gateway
++#
++
++#======================= Global Settings =======================
++
++[global]
++
++# workgroup/NT-domain name your Samba server is part of
++  workgroup = WORKGROUP
++
++# server string is the equivalent of the NT Description field
++  netbios name = brcm-samba_test
++  server string = DSL Gateway
++
++# This will prevent nmbd to search for NetBIOS names through DNS.
++  dns proxy = no
++
++
++# log files are not necessary,and can be ignored for now 
++  log level = 0
++# log file = /var/samba/logsamba.%m
++  log file = /dev/null
++
++# The specific set of interfaces / networks to bind to
++  interfaces = br0
++
++  load printers = no
++  
++# security settings
++  security = user
++  encrypt passwords = yes
++  obey pam restrictions = yes
++
++  map to guest = bad user
++
++# Performance related settings
++  socket options = TCP_NODELAY SO_RCVBUF=262144 SO_SNDBUF=262144
++#  max xmit = 131072
++#  read size = 131072
++  use sendfile = yes
++#inactivity time out for client sessions 
++  deadtime = 5
++
++
++#======================= Share Definitions =======================
++# USB Key folder
++[storage]
++  comment = All Storage devices
++  valid users = admin  
++  writable = yes
++  browseable = no 
++  path = /mnt
++
++[homes]
++  comment = Home Directory
++# browseable=no here hides homes,but displays a scetion with username;(refer man smb.conf) 
++  browseable = no 
++  read only = no
++  create mask = 0775
++  directory mask = 0775
++  path = /var/samba/homes/%S
++  valid users = %S  
++
++[public]
++  comment = shared folders on each volume
++  browseable = yes
++  read only = no
++  path = /var/samba/share
++
+diff -ruN samba_beep/Makefile beep_source/Makefile
+--- samba_beep/Makefile	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/Makefile	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,87 @@
++#GLOBAL_RELEASE_SCRIPT_NOTOUCH
++
++
++.PHONY: install uninstall clean all
++
++EXE = sambaservice
++PACKAGE_NAME = sambaservice
++OBJS  = sambaservice_main.o samba.o sambaservice_util.o
++BEEPPKG_INFO = $(PACKAGE_NAME)$(BEEP_PKT_INFO_SUFIX)
++BEEP_TAR_GZ = $(BEEP_TAR_GZ_PREFIX)$(PACKAGE_NAME)$(BEEP_TAR_GZ_SUFIX)
++
++all dynamic install: conditional_build
++
++clean: generic_clean
++	rm -f $(USERSPACE_DL_MODULES_BEEP_DIR)/$(BEEP_TAR_GZ_PREFIX)*$(PACKAGE_NAME)*$(BEEP_TAR_GZ_SUFIX) 
++	rm ./bin/$(EXE)
++
++CURR_DIR := $(shell pwd)
++BUILD_DIR:=$(subst /userspace, ,$(CURR_DIR))
++BUILD_DIR:=$(word 1, $(BUILD_DIR))
++
++include $(BUILD_DIR)/make.common
++
++#
++# Private apps and libs are allowed to include from private and public.
++#
++# WARNING: Do not modify this section unless you understand the
++# license implications of what you are doing.
++#
++ALLOWED_INCLUDE_PATHS := -I. -I..\
++                         -I$(BUILD_DIR)/userspace/public/include  \
++			 -I$(BUILD_DIR)/userspace/public/include/linux/  \
++                         -I$(BCM_FSBUILD_DIR)/public/include 
++
++
++ALLOWED_LIB_DIRS := /lib:/lib/public
++
++CFLAGS += -I$(BCM_FSBUILD_DIR)/public/include/glib-2.0 -I$(BCM_FSBUILD_DIR)/public/lib/glib-2.0/include
++CFLAGS += -I$(BCM_FSBUILD_DIR)/public/include/gio-unix-2.0 -I$(BCM_FSBUILD_DIR)/public/include/glib-2.0/gobject
++
++LIBS += -L$(INSTALL_DIR)/lib -lpthread -lrt
++LIBS += -L$(INSTALL_DIR)/lib/public -lexpat -lffi
++ifneq ($(findstring uclibc, $(TOOLCHAIN_PREFIX)),)
++LIBS += -lintl
++endif
++LIBS += -lgio-2.0 -lglib-2.0 -lgmodule-2.0 -lgobject-2.0 -lgthread-2.0 -lz -lcrypt
++
++# treat all warnings as errors
++CUSTOM_CFLAGS += -Werror -Wfatal-errors
++
++
++#
++# Implicit rule will make the .c into a .o
++# Implicit rule is $(CC) -c $(CPPFLAGS) $(CFLAGS)
++# See Section 10.2 of Gnu Make manual
++# 
++$(EXE): $(OBJS) 
++	$(CC) $(BCM_LD_FLAGS) -o $@ $(OBJS) -Wl,-rpath, $(CFLAGS) $(LIBS)
++
++#
++# Include the rule for making dependency files.
++# The '-' in front of the second include suppresses
++# error messages when make cannot find the .d files.
++# It will just regenerate them.
++# See Section 4.14 of Gnu Make.
++#
++
++include $(BUILD_DIR)/make.deprules
++
++
++ifneq ($(strip $(BUILD_BEEP_SAMBA)),)
++conditional_build: $(BEEP_TAR_GZ)
++else
++conditional_build:
++	@echo "BEEP Samba Makefile skipping $(EXE) (not configured)"
++endif
++
++
++$(BEEP_TAR_GZ): $(EXE) $(BEEPPKG_INFO)
++	test -s lib/ || mkdir ./lib;
++	test -s lib/libnsl.so* || cp $(TOOLCHAIN_TOP)/$(TOOLCHAIN_LIBDIR)/libnsl.so.* ./lib;
++	mkdir -p $(USERSPACE_DL_MODULES_BEEP_DIR)
++	install -m 755 $(EXE) ./bin
++	tar zcf $(EXE)$(BEEP_TAR_GZ_SUFIX) bin/ etc/ lib/ webs/ 
++	$(HOSTTOOLS_DIR)/beep/beepPkgBuilder -f $(BEEPPKG_INFO) -a sha512
++	mv -f  $(BEEP_TAR_GZ_PREFIX)*$(PACKAGE_NAME)*$(BEEP_TAR_GZ_SUFIX) $(USERSPACE_DL_MODULES_BEEP_DIR)
++	rm $(EXE)$(BEEP_TAR_GZ_SUFIX)
+diff -ruN samba_beep/README beep_source/README
+--- samba_beep/README	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/README	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,12 @@
++WHAT IS SAMBA_BEEP
++==================
++It is a package that can be installed, updated and uninstalled in Broadcom
++Execution Environment Platform (BEEP).   SAMBA_BEEP offers services such as
++add user and delete user.  The services can be invoked via DBUS API.
++
++
++DEPENDENCIES
++============
++SAMBA_BEEP depends on storage service and BEEP. Enable "TR140-Storage Service"
++via menuconfig.   When BEEP is enabled, one can choose "Samba as BEEP package"
++to build SAMBA_BEEP package. 
+\ No newline at end of file
+diff -ruN samba_beep/samba.c beep_source/samba.c
+--- samba_beep/samba.c	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/samba.c	2017-10-25 22:13:28.696699311 -0700
+@@ -0,0 +1,661 @@
++/* 
++*  <:copyright-BRCM:2013:DUAL/GPL:standard
++*  Copyright (c) 2013 Broadcom 
++*  All Rights Reserved
++   
++*  This program is free software; you can redistribute it and/or modify
++*  it under the terms of the GNU General Public License as published by
++*  the Free Software Foundation; either version 2 of the License, or
++*  (at your option) any later version.
++   
++*  This program is distributed in the hope that it will be useful,
++*  but WITHOUT ANY WARRANTY; without even the implied warranty of
++*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++*   GNU General Public License for more details.
++*/
++
++/*
++ *  Configure samba
++ *
++ *  This module provides APIs to start/stop samba daemon and configure
++ *  Samba user accounts
++ *
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h> 
++#include <time.h>   
++#include <crypt.h>
++#include <string.h>
++#include <pwd.h>
++#include <fcntl.h>
++
++#include <sys/types.h> 
++#include <sys/wait.h>
++#include <sys/vfs.h>
++#include <sys/stat.h>
++
++#include "sambaservice_common.h"
++#include "sambaservice_util.h"
++#include "samba.h"
++
++#define FILE_ENVSETUP                "/data/env_setup"
++#define FILE_SAMBA_PW               "/var/samba/smbpasswd"
++#define FILE_USER_INFO               "/data/samba/users"
++#define LINUX_PASSWD_FILE     "/etc/passwd"
++#define FILE_DISK_INFO                "/etc/disk"
++#define FILE_CMD_OUTPUT        "/var/output"
++
++#define DEFAULT_DISK                  1
++#define DEFAULT_PARTITION   1
++
++#define SPLITTER_USER_INFO  "&"
++#define DISK_INFO_SPLITTER   "&"
++
++#define FILE_ALL_RW        (S_IRUSR |S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
++
++static pid_t smbd_pid = 0;
++static int smbd_started = 0;
++
++char *current_folder = NULL;
++char *current_volume = NULL;
++static GPtrArray *avl_disks = NULL;
++static GPtrArray *avl_volumes = NULL;
++static GPtrArray *user_info_array = NULL;
++
++static int i64c(int i)
++{
++    if (i <= 0)
++        return ('.');
++    if (i == 1)
++        return ('/');
++    if (i >= 2 && i < 12)
++        return ('0' - 2 + i);
++    if (i >= 12 && i < 38)
++        return ('A' - 12 + i);
++    if (i >= 38 && i < 63)
++        return ('a' - 38 + i);
++    return ('z');
++}
++
++static char * cryptMakeSalt(void)
++{
++    time_t now;
++    static unsigned long x;
++    static char result[]="$1$................";
++    int i;
++
++    for (i = 0; i < 16; i++)
++    {
++        time(&now);
++        x += now + getpid() + clock();
++        result[3+i] = i64c(((x >> 18) ^ (x >> 6)) & 077);
++        i++;
++        result[3+i] = i64c(((x >> 12) ^ x) & 077);
++    }
++    
++    return result;
++}
++
++static char *pwEncrypt(const char *clear, const char *salt)
++{
++    static char cipher[48];
++    char *cp;
++
++    cp = crypt(clear, salt) ;
++    /* if crypt (a nonstandard crypt) returns a string too large,
++       truncate it so we don't overrun buffers and hope there is
++       enough security in what's left */
++    if (strlen(cp) > sizeof(cipher)-1)
++    {
++        cp[sizeof(cipher)-1] = 0;
++    }
++    strcpy(cipher, cp);
++
++    return cipher;
++}
++
++static void dump_user_info()
++{
++   int i = 0;
++   char *line =  NULL;
++
++   util_log(SMBSRV_LOG_DEBUG, "current users:\n", i, line);
++   for(i = 0; i < user_info_array->len; i++)
++   {
++      line = g_ptr_array_index(user_info_array, i);
++      util_log(SMBSRV_LOG_DEBUG, "  %d: %s", i, line);
++   }
++}
++
++static gboolean user_exist(const char *name, char *folder)
++{
++   int i;
++   char *line;
++   gboolean found = FALSE;
++   
++   for(i = 0; i < user_info_array->len; i++)
++   {
++      char **user;
++      line = g_ptr_array_index(user_info_array, i);
++      user = g_strsplit(line, SPLITTER_USER_INFO, -1);
++      if(0 == g_strcmp0(user[0], name))
++      {
++         found = TRUE;
++         if(folder)
++         {
++            int len = strlen(user[2]);
++            if((user[2])[len-1] == '\n')
++               (user[2])[len-1] = '\0';
++            sprintf(folder, "%s", user[2]);
++         }
++         break;
++      }
++      g_strfreev(user);
++   }
++
++   return found;
++}
++
++/*Improve it later. 
++*  add check if the new user to add has alread been added to the list or not
++*/
++static int add_linux_user(const char *name, 
++      const char *password, 
++      const char *gecos, 
++      const char *home)
++{
++   gint ret = RESULT_OK;
++   struct passwd pw;
++   FILE *fp = NULL;
++
++   if(!name || !password || !home)
++      ret = RESULT_INVALID_PARAM;
++
++   /* create a linux account for the user */
++
++   fp = fopen(LINUX_PASSWD_FILE, "a");
++   if ( fp == NULL ) 
++   {
++      return RESULT_FILE_ERROR;
++   }
++   pw.pw_name = (char *)name;
++   pw.pw_passwd = pwEncrypt(password, cryptMakeSalt());
++   pw.pw_uid = 0;
++   pw.pw_gid = 0;
++   pw.pw_gecos = (char *)gecos;
++   pw.pw_dir = (char *)home;
++   pw.pw_shell = "/bin/sh";
++
++   if(putpwent(&pw, fp) < 0)
++   {
++      fclose(fp); 
++      return RESULT_FILE_ERROR;
++   }
++
++   fclose(fp); 
++
++   return ret;
++}
++
++static int add_samba_user(const char *name, const char *pw)
++{
++   char cmd[128] = {0};
++   int ret;
++   
++   sprintf(cmd,"(busybox echo %s; busybox echo %s) | smbpasswd -as %s >/dev/null", 
++         pw, pw, 
++         name);
++   ret = system(cmd);
++
++   return ret >>8;
++}
++
++static int add_user_info(const char *name, const char *pw, const char *folder)
++{
++   FILE *fp = NULL;
++   char line[128] = {0};
++   
++   fp = fopen(FILE_USER_INFO, "a");
++   if(NULL != fp)   
++   {
++      sprintf(line,"%s%s%s%s%s\n", name, SPLITTER_USER_INFO, 
++            pw, 
++            SPLITTER_USER_INFO, 
++            folder);
++      fprintf(fp, "%s", line);
++      
++      fclose(fp);
++      g_ptr_array_add(user_info_array, g_strdup(line));
++   }  
++
++   return 0;
++}
++
++
++static int delete_linux_user(const char *user)
++{
++   char cmd[64] = {0};
++   int ret;
++   sprintf(cmd,"busybox deluser %s",user);
++   ret = system(cmd);
++
++   return ret>>8;
++}
++
++static int delete_samba_user(const char *name)
++{
++   char cmd[64] = {0};
++   int ret;
++   
++   sprintf(cmd,"smbpasswd -x %s", name);
++   ret = system(cmd);
++
++   return ret >> 8;
++}
++
++static int delete_user_info(const char *name)
++{
++   FILE *fp = NULL;
++   char *line;
++   int i;
++   gboolean update = FALSE;
++
++   for(i = 0; i < user_info_array->len; i++)
++   {
++      char **user;
++      line = g_ptr_array_index(user_info_array, i);
++      user = g_strsplit(line, SPLITTER_USER_INFO, -1);
++      if(0 == g_strcmp0(user[0], name))
++      {
++         g_ptr_array_remove_index(user_info_array, i);
++         g_free(line);
++         update = TRUE;
++         break;
++      }
++
++      g_strfreev(user);
++   }
++
++   dump_user_info();
++
++   if(update)
++   {
++      util_log(SMBSRV_LOG_DEBUG, "%s: update user info file\n", __FUNCTION__);
++      fp = fopen(FILE_USER_INFO, "w");
++      if(NULL != fp)
++      {
++         rewind(fp);
++         util_log(SMBSRV_LOG_DEBUG, "  samba/user file opend\n");
++         for(i = 0; i < user_info_array->len; i++)
++         {
++            line = g_ptr_array_index(user_info_array, i);
++            util_log(SMBSRV_LOG_DEBUG, "  user line:%s.", line);
++            fprintf(fp, "%s", line);
++         }
++
++         fflush(fp);
++         fclose(fp);
++      }
++   }
++
++   return 0;   
++}
++
++
++static int init_user(void)
++{
++   FILE *fp = NULL;
++   gchar * line = NULL;
++   size_t len = 0;
++   ssize_t read;
++   char cmd[128];
++   
++   fp = fopen(FILE_USER_INFO, "r");
++   if(fp)
++   {
++      while((read = getline(&line, &len, fp)) != -1)
++      {
++         char *folder;         
++         g_ptr_array_add(user_info_array, g_strdup(line));
++         line[strlen(line)-1] = '\0';
++         gchar **user = g_strsplit(line, SPLITTER_USER_INFO, -1);
++         folder = g_strdup(user[2]);
++         util_log(SMBSRV_LOG_DEBUG, "user:%s. passwd:%s.folder:%s.\n", user[0], user[1], folder);
++         
++         add_samba_user(user[0], user[1]);
++
++         sprintf(cmd,"busybox  ln -s /mnt/%s/%s  var/samba/homes/%s", folder,user[0], user[0]);
++         util_log(SMBSRV_LOG_DEBUG, "init_user: link cmd: [%s]\n", cmd);
++         system(cmd);
++         g_free(folder);
++         
++         g_strfreev(user);
++      }
++
++      fclose(fp);
++      if(line) 
++         free(line);
++   }   
++
++   return 0;
++}
++
++
++
++guint samba_start(void)
++{
++   pid_t pid;
++   int status = 0;
++
++   if(1 == smbd_started)
++      return RESULT_OK;
++      
++   util_log(SMBSRV_LOG_DEBUG, "Start samba daemon\n");
++   
++   /*Spawn a child to run smbd.*/
++   pid=fork();
++   if (pid==0) 
++   { 
++      static char *argv[]={"smbd", "-D",NULL};
++      execv("/bin/smbd",argv);
++      exit(127); 
++   }
++   else
++   {
++      /**smbd started as a daemon. that is to say, the first smbd process
++     * will terminate.wait here for a few seconds.
++     */
++      wait(&status);
++      util_log(SMBSRV_LOG_DEBUG, "smbd exited with %d \n",status >> 8);
++   }
++
++   smbd_started = 1;
++   smbd_pid = pid + 1; /*that is pid of the new daemon process*/
++
++   return RESULT_OK;   
++}
++
++guint samba_stop(void)
++{
++   guint ret;
++   if(0 == smbd_started)
++      return RESULT_OK;
++
++   util_log(SMBSRV_LOG_DEBUG, "kill smbd %d \n",smbd_pid);
++   ret = kill(smbd_pid, SIGTERM);
++   smbd_started = 0;
++   
++   return ret;
++}
++
++
++/*Add a user account for usb storage
++*  -name: in. name of user
++*  -password: in. password of the user account
++*  -folder: in. folder to share
++*  return: result code: RESULT_OK: user account added succefully. others: 
++*     failed to add, check errmsg for detailed reason
++*/
++guint samba_user_add(const gchar *user_name, 
++      const gchar *password,
++      const gchar *volume)
++{
++   gint ret = RESULT_OK;
++   char cmd[128];
++
++   if(!user_name || !password || !volume)
++      ret = RESULT_INVALID_PARAM;   
++
++   if(user_exist(user_name, NULL))
++   {
++      util_log(SMBSRV_LOG_INFO, "%s exists\n", user_name);
++      return RESULT_USER_EXIST;
++   }
++
++   /*TBD: need to check if volume exists or not
++   *  option 1: if no such volume, return with error message. this means it is OK to 
++   *     add user only after storage device is inserted into the slot.
++   *  option 2: add this user no matter the USB disk is inserted or not
++   */
++
++   util_log(SMBSRV_LOG_DEBUG, "%s: add user %s with folder %s.\n", __FUNCTION__, user_name, volume);
++
++   ret = add_linux_user(user_name, password, "Samba User", volume);
++   if(ret != RESULT_OK)
++   {
++      util_log(SMBSRV_LOG_ERROR, "Failed to add user %s to linux\n", user_name);
++      return ret;
++   }
++   
++   /* add user to sambapasswd */
++   add_samba_user(user_name, password);
++   add_user_info(user_name, password, volume);
++
++   sprintf(cmd,"busybox mkdir -p /mnt/%s/%s",volume,user_name);
++   system(cmd);
++
++   sprintf(cmd,"busybox ln -s /mnt/%s/%s  var/samba/homes/%s",volume,user_name, user_name);
++   system(cmd);
++
++   return ret;
++}
++
++/*Delete user account for usb storage
++*  -name: in. name of account
++*  return: result code: RESULT_OK: user account added succefully. others: 
++*     failed to add, check errmsg for detailed reason
++*/
++guint samba_user_del(const gchar *user_name)
++{
++   char cmd[256];
++   char folder[64] = {0};
++   
++   if(!user_name)
++      return RESULT_INVALID_PARAM;
++
++   util_log(SMBSRV_LOG_DEBUG, "%s: delete user %s \n", __FUNCTION__, user_name);
++
++   if(!user_exist(user_name, folder))
++   {
++      util_log(SMBSRV_LOG_ERROR, "%s: user %s NOT exists\n", __FUNCTION__, user_name);
++      return RESULT_USER_NOT_EXIST;
++   }
++   
++   /*remove user from sambapasswd */
++   delete_samba_user(user_name);
++   delete_user_info(user_name);
++   delete_linux_user(user_name);
++
++
++   /* remove soft link in /var/samba/homes/ */
++   sprintf(cmd,"busybox rm  /var/samba/homes/%s",user_name);
++   system(cmd);
++/*
++   sprintf(cmd,"busybox rm -rf /mnt/%s/%s",folder,user_name);
++   util_log(SMBSRV_LOG_DEBUG, "  delete user: cmd:%s.\n", cmd);
++   system(cmd);
++*/
++   return RESULT_OK;
++}
++
++/*Delete user account for usb storage
++*  -user_list: out. string array of users. the caller need to free this string array
++*  -errmsg: out. failing reason
++*  return: result code: RESULT_OK
++*/
++guint samba_user_list(gchar ***user_list)
++{   
++   int i, index = 0;
++   gchar **users = NULL;
++   char *line;
++
++   users = g_new0(gchar *, user_info_array->len + 1);
++   for(i = 0; i < user_info_array->len; i++)
++   {
++      char **user;
++      line = g_ptr_array_index(user_info_array, i);
++      user = g_strsplit(line, SPLITTER_USER_INFO, -1);
++      users[index++] = g_strdup(user[0]); 
++      g_strfreev(user);
++   }
++
++   users[index] = NULL;
++   *user_list = users;
++
++   return RESULT_OK;
++}
++
++/*Delete user account for usb storage
++*  -volume_list: out. string array of volumes. the caller need to free this string array
++*  return: result code: RESULT_OK
++*/
++guint samba_volumes_get(gchar ***volume_list)
++{
++   int i;
++   char *volume = NULL;
++   gchar **volumes =  g_new0(gchar *, avl_volumes->len + 1);
++   if(!volumes)
++      return RESULT_NO_MEM;
++
++   for(i = 0; i < avl_volumes->len; i++)
++   {
++      volume = g_ptr_array_index(avl_volumes, i);
++      volumes[i] = g_strdup(volume);
++   }
++
++   *volume_list = volumes;
++   return RESULT_OK;
++}
++
++
++/*Setup Samba environment
++*  create samba folder and sub folder in var
++*  create passwd file in var and symoblic in etc
++*  share folder in mnt
++*/
++guint samba_env_setup(void)
++{
++   int ret = 0;
++   char cmd[256] = {0};
++   FILE *fp = NULL;
++   gchar * line = NULL;
++   size_t line_len = 0;
++   ssize_t read;
++
++   user_info_array = g_ptr_array_new();
++   avl_disks = g_ptr_array_new();
++   avl_volumes = g_ptr_array_new();
++
++   sprintf(cmd, "ls -d /mnt/disk*_* > %s", FILE_CMD_OUTPUT);
++   ret = system(cmd);
++   if(ret == 0)
++   {
++      fp = fopen(FILE_CMD_OUTPUT, "r");
++      if(fp)
++      {
++         while((read = getline(&line, &line_len, fp)) != -1)
++         {
++            gchar ** folders;
++            line[strlen(line)-1] = '\0';
++            sprintf(cmd,"%s/share", line);
++            if(0 == util_is_file_exist(cmd))
++               mkdir(cmd, S_IRUSR | S_IWUSR);
++               
++            g_ptr_array_add(avl_disks, g_strdup(line));
++            folders = g_strsplit(line,  "/", -1);
++            g_ptr_array_add(avl_volumes, g_strdup(folders[g_strv_length(folders)-1]));
++            g_strfreev(folders);
++         }
++
++         fclose(fp);
++         if(line)
++            free(line);
++      }
++   }
++
++   if(0 == avl_disks->len)
++   {
++      current_folder = g_strdup("mnt/fake1_1");
++      current_volume = g_strdup("fake1_1");
++   }
++   else
++   {
++      current_folder = g_strdup(g_ptr_array_index(avl_disks, 0));
++      current_volume = g_strdup(g_ptr_array_index(avl_volumes, 0));
++   }
++
++    util_log(SMBSRV_LOG_DEBUG, "  current disk folder=%s. current disk name=%s.\n", 
++         current_folder,
++         current_volume);
++   
++   if(0 == util_is_file_exist(FILE_ENVSETUP))
++   {
++      util_log(SMBSRV_LOG_DEBUG, "%s: setup samba environment\n", __FUNCTION__);
++      
++      mkdir("/data/samba", FILE_ALL_RW);
++      util_file_create(FILE_USER_INFO, FILE_ALL_RW);
++      
++      util_file_create(LINUX_PASSWD_FILE, FILE_ALL_RW);
++      add_linux_user("nobody", "nobody", "nobody for samba", "/");
++
++      ret = mkdir("/mnt/fake1_1", S_IRUSR | S_IWUSR);
++      ret = (ret == 0)? mkdir("/mnt/fake1_1/share", S_IRUSR | S_IWUSR) : ret;
++
++      sprintf(cmd,"busybox echo \"Inser a USB disk to use Samba service (recreate your user account)\" > /mnt/fake1_1/share/WARNING.txt");
++      ret = system(cmd);
++      if(-1 == ret)
++         util_log(SMBSRV_LOG_ERROR, "  Failed to create the warning file\n");
++
++      util_file_create(FILE_ENVSETUP, FILE_ALL_RW);
++   }
++
++   /*Create folder for samba*/
++   ret = mkdir("/var/samba", S_IRUSR | S_IWUSR);
++   sprintf(cmd,"%s", "busybox cp /etc/smb.conf  /var/samba/smb.conf");
++   ret = system(cmd);   
++   
++   ret = (ret == 0)? mkdir("/var/samba/share", S_IRUSR | S_IWUSR) : ret;
++   ret = (ret == 0)? mkdir("/var/samba/homes", S_IRUSR | S_IWUSR) : ret;
++   ret = (ret == 0)? mkdir("/var/samba/private", S_IRUSR | S_IWUSR) : ret;
++   ret = (ret == 0)? mkdir("/var/samba/locks", S_IRUSR | S_IWUSR) : ret;
++   util_file_create(FILE_SAMBA_PW, FILE_ALL_RW);
++
++    sprintf(cmd,"busybox ln -s %s/share  var/samba/share/%s_share", 
++            current_folder,
++            current_volume);
++   ret = system(cmd);
++   if(-1 == ret)
++      util_log(SMBSRV_LOG_ERROR, "  Failed to link Samba public place to the real folder\n");
++      
++   init_user();
++
++   return RESULT_OK; 
++}
++
++/*Update samba public place: /mnt/disk$(disk)_$(partiton)/share 
++* Parameters:
++*  @disk(IN): disk
++*  @partion (IN): partion of the logical volume
++*/
++guint samba_disk_removed(void)
++{
++   char cmd[256] = {0};
++   int ret;
++   
++   util_log(SMBSRV_LOG_DEBUG, "%s: enter\n", __FUNCTION__);
++
++   sprintf(cmd,"busybox rm /var/samba/share/%s_share", 
++         current_volume);
++   ret = system(cmd);
++   if(-1 == ret)
++      util_log(SMBSRV_LOG_ERROR, "  Failed to remove the link\n");
++
++   sprintf(cmd,"busybox ln -s /mnt/fake1_1/share  /var/samba/share/%s_share", current_volume);
++   ret = system(cmd);
++   if(-1 == ret)
++      util_log(SMBSRV_LOG_ERROR, "  Failed to link Samba public place to the real folder\n");
++
++   return 0;
++}
+diff -ruN samba_beep/samba.h beep_source/samba.h
+--- samba_beep/samba.h	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/samba.h	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,79 @@
++/* 
++*  <:copyright-BRCM:2013:DUAL/GPL:standard
++*  Copyright (c) 2013 Broadcom 
++*  All Rights Reserved
++   
++*  This program is free software; you can redistribute it and/or modify
++*  it under the terms of the GNU General Public License as published by
++*  the Free Software Foundation; either version 2 of the License, or
++*  (at your option) any later version.
++   
++*  This program is distributed in the hope that it will be useful,
++*  but WITHOUT ANY WARRANTY; without even the implied warranty of
++*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++*  GNU General Public License for more details.
++*/
++
++#ifndef __HEADER_SAMBACFG__
++#define __HEADER_SAMBACFG__
++
++#include <gio/gio.h>
++
++/* Start samba in container
++*  return: result code
++*/
++guint samba_start(void);
++
++/* Stop samba in container
++*  return: 0: samba stoped successfully; 1: failed. check contents in errmsg
++*/
++guint samba_stop(void);
++
++
++/*Add a user account for usb storage
++*  -name: in. name of user
++*  -password: in. password of the user account
++*  -folder: in. folder to share
++*  return: result code: RESULT_OK: user account added succefully. others: 
++*     failed to add, check errmsg for detailed reason
++*/
++guint samba_user_add(const gchar *name, 
++      const gchar *password,
++      const gchar *folder);
++
++/*Delete user account of usb storage
++* -name: name of account
++* return: 0: user account deleted succefully. 1: failed to delete, check errmsg for detailed reason
++*/
++guint samba_user_del(const gchar *name);
++
++/*List user account for usb storage
++*  -user_list: out. string array of users. the caller need to free this string array
++*  -errmsg: out. failing reason
++*  return: result code: RESULT_OK
++*/
++guint samba_user_list(gchar ***user_list);
++
++/*Delete user account for usb storage
++*  -volume_list: out. string array of volumes. the caller need to free this string array
++*  return: result code: RESULT_OK
++*/
++guint samba_volumes_get(gchar ***volume_list);
++
++
++/*Setup Samba environment
++*  create samba folder and sub folder in var
++*  create passwd file in var and symoblic in etc
++*  share folder in mnt
++*/
++guint samba_env_setup(void);
++
++/*Update samba public place: /mnt/disk$(disk)_$(partiton)/share 
++* Parameters:
++*  @disk(IN): disk
++*  @partion (IN): partion of the logical volume
++*/
++guint samba_disk_removed(void);
++
++
++#endif
+diff -ruN samba_beep/sambaservice_common.h beep_source/sambaservice_common.h
+--- samba_beep/sambaservice_common.h	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/sambaservice_common.h	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,45 @@
++/* 
++*  <:copyright-BRCM:2013:DUAL/GPL:standard
++*  Copyright (c) 2013 Broadcom 
++*  All Rights Reserved
++   
++*  This program is free software; you can redistribute it and/or modify
++*  it under the terms of the GNU General Public License as published by
++*  the Free Software Foundation; either version 2 of the License, or
++*  (at your option) any later version.
++   
++*  This program is distributed in the hope that it will be useful,
++*  but WITHOUT ANY WARRANTY; without even the implied warranty of
++*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++*   GNU General Public License for more details.
++*/
++
++#ifndef __HEADER_SAMBASERVICE_COMMON__
++#define __HEADER_SAMBASERVICE_COMMON__
++
++#define BUS_KNOWN_NAME_SAMBACFG  "com.broadcom.samba"
++#define BUS_OBJECT_PATH_SAMBACFG    "/com/broadcom/samba"
++
++/*result code*/
++#define RESULT_OK                                              0
++#define RESULT_GENERIC_FAILURE            1
++#define RESULT_INVALID_PARAM                2
++#define RESULT_NO_MEM                                 3
++#define RESULT_FILE_NOT_EXIST                4
++#define RESULT_FILE_ERROR                         5   /*File read, write error*/
++
++#define RESULT_CWMP_OFFLINE                  6   /*cwmp service not available*/
++#define RESULT_BUS_ERROR                          7   /*error happens when performing dbus method call*/
++#define RESULT_MDM_ERROR                       8  /*error when operating MDM*/
++#define RESULT_NO_PARAM                           9   /*no such parameter*/
++
++#define RESULT_NO_METHOD                        10 /*no such method in this interface*/
++
++#define RESULT_NOT_INITED                          11
++
++#define RESULT_USER_EXIST                           12   /*Trying to add user in the user list*/
++#define RESULT_USER_NOT_EXIST                13 /*trying to delete use not exists*/
++#define RESULT_SYSTEM_CALL                        14
++
++
++#endif
+diff -ruN samba_beep/sambaservice_main.c beep_source/sambaservice_main.c
+--- samba_beep/sambaservice_main.c	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/sambaservice_main.c	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,426 @@
++/* 
++*  <:copyright-BRCM:2013:DUAL/GPL:standard
++*  Copyright (c) 2013 Broadcom 
++*  All Rights Reserved
++   
++*  This program is free software; you can redistribute it and/or modify
++*  it under the terms of the GNU General Public License as published by
++*  the Free Software Foundation; either version 2 of the License, or
++*  (at your option) any later version.
++   
++*  This program is distributed in the hope that it will be useful,
++*  but WITHOUT ANY WARRANTY; without even the implied warranty of
++*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++*  GNU General Public License for more details.
++*/
++
++/*
++ *  This module provides wrapper function to connect to D-Bus, implement 
++ *  D-Bus APIs to start/stop samba daemon and configure samba
++ */
++
++#include <signal.h>
++#include <stdlib.h>
++#include <gio/gio.h>
++#include <glib/gprintf.h>
++
++#include "sambaservice_common.h"
++#include "sambaservice_util.h"
++
++#include "samba.h"
++
++/* the main event loop*/
++static GMainLoop *sambaservice_main_loop = NULL;
++static GDBusNodeInfo   *sambaservice_introspection_data = NULL;
++static guint sambaservice_registration_id = 0;
++
++static GDBusProxy      *pmd_proxy = NULL;
++
++/* Introspection data for the service we are exporting*/
++static const gchar sambaservice_spec_xml[] =
++  "<node>"
++  "  <interface name='com.broadcom.samba'>"
++  "    <method name='AddUser'>"
++  "      <arg direction='in' type='s' name='name'/>"
++  "      <arg direction='in' type='s' name='password'/>"
++  "      <arg direction='in' type='s' name='volume'/>"
++  "      <arg direction='out' type='u' name='result'/>"
++  "      <arg direction='out' type='s' name='errmsg'/>"
++  "    </method>"
++  "    <method name='DeleteUser'>"
++  "      <arg direction='in' type='s' name='name'/>"
++  "      <arg direction='out' type='u' name='result'/>"
++  "      <arg direction='out' type='s' name='errmsg'/>"
++  "    </method>"
++  "    <method name='ListUser'>"
++  "      <arg direction='out' type='as' name='users'/>"
++  "      <arg direction='out' type='u' name='result'/>"
++  "      <arg direction='out' type='s' name='errmsg'/>"
++  "    </method>"
++  "    <method name='getVolumes'>"
++  "      <arg direction='out' type='as' name='volumes'/>"
++  "      <arg direction='out' type='u' name='result'/>"
++  "      <arg direction='out' type='s' name='errmsg'/>"
++  "    </method>"
++  "    <method name='Start'>"
++  "      <arg direction='out' type='u' name='result'/>"
++  "      <arg direction='out' type='s' name='errmsg'/>"   
++  "    </method>"
++  "    <method name='Stop'>"
++  "      <arg direction='out' type='u' name='result'/>"
++  "      <arg direction='out' type='s' name='errmsg'/>"   
++  "    </method>"
++  "    <method name='SetLoglevel'>"
++  "      <arg direction='in' type='u' name='level'/>"
++  "    </method>"  
++  "  </interface>"
++  "</node>";
++
++/*Public signal. each beep application should subscribe this 
++*  signal. after receiving this signal, free system resources and 
++*  shutdown itself gracefully
++*/
++#define SIGNAL_PMD_TERMINATION  "PmdTermination"
++
++/* Signal Name: LogicalVolumeAdded
++ * Description:
++ *    USB storage logical volume added.
++ * Parameters:
++ *    int disk int: partition
++ */
++#define SIGNAL_LOGICAL_VOLUME_ADDED   "LogicalVolumeAdded"
++
++/* Signal Name: LogicalVolumeRemoved
++ * Description:
++ *    USB storage logical volume removed.
++ * Parameters:
++ *    int disk int: partition
++ */
++#define SIGNAL_LOGICAL_VOLUME_REMOVED   "LogicalVolumeRemoved"
++
++#define BUS_NAME_PMD                   "com.broadcom.pmd"
++#define BUS_INTERFACE_PMD       "com.broadcom.pmd"
++#define BUS_OBJECT_PATH_PMD  "/com/broadcom/pmd"
++#define BUS_METHOD_PMD_RESTARTEU  "RestartEU"
++
++typedef struct _SignalInfo {
++    gchar *signal;
++    gchar *bus;
++    gchar *iface;
++    gchar *object_path;
++}SignalInfo;
++
++
++static SignalInfo interested_signals[] =
++{
++    {SIGNAL_PMD_TERMINATION, BUS_NAME_PMD, BUS_INTERFACE_PMD, BUS_OBJECT_PATH_PMD},
++    {SIGNAL_LOGICAL_VOLUME_ADDED, BUS_NAME_PMD, BUS_INTERFACE_PMD, BUS_OBJECT_PATH_PMD},
++    {SIGNAL_LOGICAL_VOLUME_REMOVED, BUS_NAME_PMD, BUS_INTERFACE_PMD, BUS_OBJECT_PATH_PMD},
++    /*Add your interested signals*/
++};
++
++#define signal_cnt (sizeof(interested_signals)/sizeof(SignalInfo))
++
++static void _on_bus_acquired (GDBusConnection *connection,
++      const gchar     *name  __attribute__((unused)),
++      gpointer         user_data  __attribute__((unused)))
++{
++   util_dbus_connection_set((void *)connection);
++}
++
++static gboolean tasklet_start_samba(gpointer user_data)
++{
++   util_log(SMBSRV_LOG_DEBUG, "Start samba...\n");
++   samba_start();
++   return FALSE;
++}
++
++static guint start_samba(void)
++{
++   GSource * tasklet = NULL;
++
++   tasklet = g_idle_source_new ();
++   g_source_set_callback (tasklet,
++               tasklet_start_samba,
++               NULL,
++               NULL);
++   g_source_set_name (tasklet, "samba_start");
++   g_source_attach (tasklet, g_main_context_default());
++   g_source_unref (tasklet);
++   return 0;
++}
++
++static void _handle_method_call (GDBusConnection       *connection  __attribute__((unused)),
++      const gchar           *sender __attribute__((unused)),
++      const gchar           *object_path __attribute__((unused)),
++      const gchar           *interface_name __attribute__((unused)),
++      const gchar           *method_name,
++      GVariant              *parameters,
++      GDBusMethodInvocation *invocation,
++      gpointer               user_data __attribute__((unused)))
++{
++   gchar *errmsg = NULL;
++   guint ret = RESULT_OK; 
++   gchar *name = NULL;
++   GVariantBuilder *names_get = NULL;   
++   GVariantBuilder *volumes_get = NULL; 
++   gchar **volumes = NULL;
++   gchar **users = NULL;
++   gint index;
++   
++   if(0 == g_strcmp0(method_name, "AddUser"))
++   {
++      gchar *password = NULL, *folder = NULL;
++      g_variant_get(parameters, "(sss)", &name, &password, &folder);
++      ret = samba_user_add((const char *)name, (const char *)password, (const char *)folder);
++
++      util_log(SMBSRV_LOG_DEBUG, "AddUser: user=%s. passwd=%s. folder=%s.\n", name, password, folder);
++         
++      g_free(name);
++      g_free(password);
++      g_free(folder);
++   }
++   else if(0 == g_strcmp0(method_name, "DeleteUser"))
++   {
++      g_variant_get(parameters, "(s)", &name);   
++      ret = samba_user_del((const char *)name);
++   
++      g_free(name);
++   }
++   else if(0 == g_strcmp0(method_name, "ListUser"))
++   {
++      names_get = g_variant_builder_new (G_VARIANT_TYPE ("as"));
++            
++
++      ret = samba_user_list(&users);
++      if(RESULT_OK == ret)
++      {
++         for(index =0; users[index] != NULL; index++)
++         {
++            char *user = users[index];
++            g_variant_builder_add(names_get, "s", user);
++         }
++      } 
++   }
++   else if(0 == g_strcmp0(method_name, "getVolumes"))
++   {
++      volumes_get = g_variant_builder_new (G_VARIANT_TYPE ("as"));      
++      gint index;
++
++      ret = samba_volumes_get(&volumes);
++      if(RESULT_OK == ret)
++      {
++         for(index =0; volumes[index] != NULL; index++)
++         {
++            char *volume = volumes[index];
++            g_variant_builder_add(volumes_get, "s", volume);
++         }                 
++      } 
++   }
++   else if(0 == g_strcmp0(method_name, "Start"))
++   {
++      ret = start_samba();
++   }
++   else if(0 == g_strcmp0(method_name, "Stop"))
++   {
++      ret = samba_stop();
++   }
++   else if(0 == g_strcmp0(method_name, "SetLoglevel"))
++   {
++      guint level;
++      g_variant_get(parameters, "(u)", &level);
++      util_log_level_set(level);
++   }
++   else
++   {
++      ret = RESULT_NO_METHOD;
++   }
++
++   util_errmsg_compose(ret, &errmsg);
++   if(0 == g_strcmp0(method_name, "ListUser"))
++   {
++      g_dbus_method_invocation_return_value(invocation, g_variant_new("(asus)", names_get, ret, errmsg));
++      g_variant_builder_unref (names_get);
++      util_as_free(users);      
++   }
++   else if(0 == g_strcmp0(method_name, "getVolumes"))
++   {
++      g_dbus_method_invocation_return_value(invocation, g_variant_new("(asus)", volumes_get, ret, errmsg));
++      g_variant_builder_unref (volumes_get);
++      util_as_free(volumes);
++   }
++   else if(0 == g_strcmp0(method_name, "SetLoglevel"))
++   {
++      g_dbus_method_invocation_return_value(invocation, g_variant_new ("()"));
++   }
++   else
++   {
++      g_dbus_method_invocation_return_value(invocation, g_variant_new("(us)", ret, errmsg));
++   }
++   
++   if(errmsg)
++      g_free(errmsg);
++}
++
++static void _handle_signals(GDBusConnection  *connection __attribute__((unused)),
++      const gchar      *sender_name,
++      const gchar      *object_path __attribute__((unused)),
++      const gchar      *interface_name __attribute__((unused)),
++      const gchar      *signal_name,
++      GVariant         *parameters ,
++      gpointer         user_data __attribute__((unused)))
++{
++   guint disk = 0, partition = 0;
++  util_log(SMBSRV_LOG_DEBUG, "Samba service got signal %s\n", signal_name);
++   if(0 == g_strcmp0(signal_name, SIGNAL_PMD_TERMINATION))
++   {
++      g_printf("  Samba service:  Got PMD termination signal, exit.\n");
++      g_main_loop_quit(sambaservice_main_loop);
++   }
++   else if(0 == g_strcmp0(signal_name, SIGNAL_LOGICAL_VOLUME_ADDED))
++   {
++      /*Do nothing here*/
++      g_variant_get(parameters, "(uu)", &disk, &partition);
++      util_log(SMBSRV_LOG_DEBUG, "  Samba service: got LogicalVolumeAdded: disk%d_%d\n", disk, partition);
++      //samba_volume_change(disk, partition);
++
++      if(pmd_proxy)
++      {
++         char euid[64] = {0};
++         if(util_euid_get(euid, 64) == 0)
++         {
++            util_log(SMBSRV_LOG_DEBUG, "  EUID of samba service=%s.\n", euid);
++            g_dbus_proxy_call_sync (pmd_proxy,
++                  BUS_METHOD_PMD_RESTARTEU,
++                  g_variant_new ("(s)", euid),
++                  G_DBUS_CALL_FLAGS_NONE,
++                  -1,
++                  NULL,
++                  NULL);
++         }
++      }
++   }
++   else if(0 == g_strcmp0(signal_name, SIGNAL_LOGICAL_VOLUME_REMOVED))
++   {
++      g_variant_get(parameters, "(uu)", &disk, &partition);
++      util_log(SMBSRV_LOG_DEBUG, "  Samba service: got LogicalVolumeRemoved: disk%d_%d\n", disk, partition);
++      samba_disk_removed();
++   }
++}
++
++static const GDBusInterfaceVTable sambacfg_interface_vtable =
++{
++   _handle_method_call, 
++   
++   /*handler of get property. but there is no property 
++   * in Samba serviceto get*/
++   NULL,   
++   NULL,   /*set property*/
++   { NULL}
++};
++
++
++static void _on_name_acquired (GDBusConnection *connection,
++      const gchar *name,
++      gpointer user_data  __attribute__((unused)))
++{
++   GError *error = NULL;
++   guint32 index = 0;
++   
++   util_log(SMBSRV_LOG_DEBUG, "Samba service name %s acquired\n", name);
++
++   start_samba();  /*Start the samba daemon*/
++
++   pmd_proxy = g_dbus_proxy_new_sync (connection,
++            G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START,
++            NULL,            /* GDBusInterfaceInfo */
++            BUS_NAME_PMD,    /* name */
++            BUS_OBJECT_PATH_PMD, /* object path */
++            BUS_INTERFACE_PMD,   /* interface */
++            NULL,            /* GCancellable */
++            &error);
++    g_assert_no_error (error);
++   
++   /* Register callbacks for SambaService object at object_path 
++   "/com/broadcom/sambaservice" with
++    * the D-Bus interface "com.broadcom.sambaservice" 
++    */
++   sambaservice_registration_id = g_dbus_connection_register_object (connection,
++         BUS_OBJECT_PATH_SAMBACFG,
++         sambaservice_introspection_data->interfaces[0],
++         &sambacfg_interface_vtable,
++         NULL,  
++         NULL,  
++         &error); 
++
++   if((0 == sambaservice_registration_id) && error)
++   {
++      util_log(SMBSRV_LOG_ERROR, "%s Error!: %s\n", __FUNCTION__, error->message);
++      g_error_free(error);
++   }
++
++   for(index = 0; index < signal_cnt; index++)
++   {
++      g_dbus_connection_signal_subscribe (connection,
++                interested_signals[index].bus,
++                interested_signals[index].iface,
++                interested_signals[index].signal,
++                interested_signals[index].object_path,
++                NULL,
++                G_DBUS_SIGNAL_FLAGS_NONE,
++                _handle_signals,
++                NULL,
++                NULL);
++   }
++}
++
++static void _on_name_lost(GDBusConnection *connection,
++   const gchar *name,
++   gpointer user_data  __attribute__((unused)))
++{
++   util_log(SMBSRV_LOG_DEBUG, "Samba service losts name %s\n", name);
++   
++   util_dbus_connection_set(NULL);
++   
++   /*exit or trying to require the name again*/
++   if (pmd_proxy != NULL)
++        g_object_unref (pmd_proxy);
++        
++   g_main_loop_quit(sambaservice_main_loop);
++}
++
++
++int main(void)
++{
++   guint owner_id;
++   gint result = 0;
++   
++   util_log(SMBSRV_LOG_DEBUG, "Samba service starting...\n");
++   
++   /* Ignore broken pipes */
++   signal(SIGPIPE, SIG_IGN);
++
++   samba_env_setup();
++
++   sambaservice_introspection_data = g_dbus_node_info_new_for_xml (sambaservice_spec_xml, NULL);
++   g_assert (sambaservice_introspection_data != NULL);
++
++   sambaservice_main_loop = g_main_loop_new(NULL, FALSE);
++
++   owner_id = g_bus_own_name(G_BUS_TYPE_SYSTEM,
++         BUS_KNOWN_NAME_SAMBACFG,
++         G_BUS_NAME_OWNER_FLAGS_NONE,
++         _on_bus_acquired,
++         _on_name_acquired,
++         _on_name_lost,
++         NULL,
++         NULL);
++
++   g_main_loop_run(sambaservice_main_loop);
++
++   util_log(SMBSRV_LOG_DEBUG, "Samba service exits\n");
++   g_bus_unown_name(owner_id);
++   g_main_loop_unref(sambaservice_main_loop);
++   
++   return result;
++}
+diff -ruN samba_beep/sambaservice.manifest beep_source/sambaservice.manifest
+--- samba_beep/sambaservice.manifest	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/sambaservice.manifest	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,71 @@
++{
++  "app-name": "sambaservice",
++  "vendor": "The Samba Team",
++  "version": "3.0.37",
++  "description": "Samba Service",
++  "bus":
++  { 
++    "wellknown-name": "com.broadcom.samba",
++    "object-path": ["/com/broadcom/samba"]
++  },
++  "linux":
++  {
++    "resources":
++    {
++      "cpu": {
++        "quota": 20,
++      },
++      "memory": {
++        "limit": 40000000,
++      },
++      "network-setup": {"mode":"LanOnly"},
++      "devices": [
++        {
++          "allow": false
++        },
++        {
++          "allow": true,
++          "major": 5,
++          "minor": 0,
++          "type":"c",
++          "access":"mrw"
++        }
++      ]
++    },
++    "devices": [
++      {
++        "path": "/dev/tty",
++        "type": "c",
++        "major": 5,
++        "minor": 0
++      }
++    ]
++  },
++  "config":
++  {
++    "ExposedPorts":"139/tcp,445/tcp,137/udp,138/udp"
++  },
++  "dependency":
++  {
++    "libraries": "crypt,pthread,rt,expat,ffi,dbus-1,z"
++  },
++  "hooks":
++  {
++    "presetup": [
++      {
++        "path": "/bin/mount_usb.sh"
++      }
++    ],
++    "poststop": [
++      {
++        "path": "/bin/umount_usb.sh"
++      }
++    ]
++  },
++  "privilege":
++  [
++    {"name": "com.broadcom.pmd", "object": "/com/broadcom/pmd", "interface": "com.broadcom.pmd", "method": "RestartEU"},
++    {"name": "com.broadcom.pmd", "object": "/com/broadcom/pmd", "interface": "com.broadcom.pmd", "signal": "LogicalVolumeAdded"},
++    {"name": "com.broadcom.pmd", "object": "/com/broadcom/pmd", "interface": "com.broadcom.pmd", "signal": "LogicalVolumeRemoved"}
++  ]
++}
+diff -ruN samba_beep/sambaservice-pkginfo.txt beep_source/sambaservice-pkginfo.txt
+--- samba_beep/sambaservice-pkginfo.txt	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/sambaservice-pkginfo.txt	2017-10-25 22:13:35.370173408 -0700
+@@ -0,0 +1,11 @@
++eeName: BEE
++eeVersion: 2.0
++pkgName: sambaservice
++vendor: The Samba Team 
++description: Samba Service 
++version: 1.0
++pkg-dependency:
++app-name:  sambaservice
++app-mediaType: tarball
++app-tarballMngrExecutable: sambaservice
++app-directory: .
+diff -ruN samba_beep/sambaservice_util.c beep_source/sambaservice_util.c
+--- samba_beep/sambaservice_util.c	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/sambaservice_util.c	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,207 @@
++/* 
++*  <:copyright-BRCM:2013:DUAL/GPL:standard
++*  Copyright (c) 2013 Broadcom 
++*  All Rights Reserved
++   
++*  This program is free software; you can redistribute it and/or modify
++*  it under the terms of the GNU General Public License as published by
++*  the Free Software Foundation; either version 2 of the License, or
++*  (at your option) any later version.
++   
++*  This program is distributed in the hope that it will be useful,
++*  but WITHOUT ANY WARRANTY; without even the implied warranty of
++*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++*  GNU General Public License for more details.
++*/
++
++/*
++ *  utility module
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <crypt.h>
++#include <string.h>
++#include <sys/types.h> 
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <pwd.h>
++
++#include <gio/gio.h>
++
++#include "sambaservice_util.h"
++#include "sambaservice_common.h"
++
++#define EUID_INFO_FILE  "/etc/euid"
++
++/*Hold global DBus connection*/
++static void *sambaservice_connection = NULL;
++
++static LOG_LEVEL log_level = SMBSRV_LOG_ERROR;
++
++void util_errmsg_compose(int code, char **errmsg)
++{
++   switch(code)
++   {
++      case RESULT_OK:
++         *errmsg = g_strdup("DBus method call handled successfully");
++         break;
++      case RESULT_GENERIC_FAILURE:
++         *errmsg = g_strdup("Generic failure");
++         break;
++
++      case RESULT_INVALID_PARAM:
++         *errmsg = g_strdup("invalid parameter");
++         break;
++      case RESULT_NO_MEM:
++         *errmsg = g_strdup("no memory");
++         break;
++      case RESULT_FILE_NOT_EXIST:
++         *errmsg = g_strdup("file not exists");
++         break;
++      case RESULT_FILE_ERROR:
++         *errmsg = g_strdup("file read/write error");
++         break;
++      case RESULT_CWMP_OFFLINE:
++         *errmsg = g_strdup("cwmp service offline");
++         break;
++
++      case RESULT_BUS_ERROR:
++         *errmsg = g_strdup("DBus internal error");
++         break; 
++      case RESULT_MDM_ERROR:
++         *errmsg = g_strdup("MDM operation error");
++         break; 
++
++      case RESULT_NO_PARAM:
++          *errmsg = g_strdup("no such parameter");
++         break;
++      case RESULT_NO_METHOD:
++         *errmsg = g_strdup("no such parameter");
++         break;
++      case RESULT_NOT_INITED:
++         *errmsg = g_strdup("not inited");
++            break;
++      case RESULT_USER_EXIST:
++         *errmsg = g_strdup("user exists");
++         break;
++      case RESULT_USER_NOT_EXIST:
++         *errmsg = g_strdup("user not exists");
++         break;
++      case RESULT_SYSTEM_CALL:
++         *errmsg = g_strdup("system call failure");
++         break;
++      default:
++         *errmsg = g_strdup("unknow error");
++         break;
++   }
++}
++
++void * util_dbus_connection_get(void)
++{
++   return sambaservice_connection;
++}
++
++void util_dbus_connection_set(void *connection)
++{
++   sambaservice_connection = connection;
++}
++
++/*
++ * Check if a file specified by file exists or not
++ * Parameters:
++ * - file: input. specify file to check
++ * Return:
++ * - 1: file exists; 0: not exists
++ */
++int util_is_file_exist(const char *file)
++{
++   if(NULL == file)
++      return 0;
++
++   if(0 == access(file, F_OK))
++      return 1;
++   else
++      return 0;
++}
++
++
++int util_file_create(char *file_name, int mode)
++{
++   int fd;
++   if(file_name == NULL)
++      return -1;
++   fd = open(file_name,  O_CREAT, mode);
++   if(fd != -1)
++      close(fd);
++
++   return 0;
++}
++
++
++void util_log_level_set(guint level)
++{
++   log_level = (level > SMBSRV_LOG_DEBUG) ? SMBSRV_LOG_DEBUG : level;  
++}
++
++void util_log(LOG_LEVEL level, const char *format, ...)
++{
++   va_list args;
++   
++   if(level > log_level)
++      return;
++
++  va_start (args, format);
++  vprintf (format, args);
++  va_end (args);
++}
++
++/*Read EUID of this EU from file /etc/euid
++* Parameters
++*  @buf (IN): input buffer to hold the euid of this EU.
++*  @len (IN): buffer length
++* Return:
++*  0: succeed; other value: failed
++*/
++int util_euid_get(char *buf, int len)
++{
++   FILE *fp = NULL;
++   gchar * line = NULL;
++   size_t line_len = 0;
++   int ret = 0;
++   
++   fp = fopen(EUID_INFO_FILE, "r");
++   if(NULL != fp) 
++   {
++      if(getline(&line, &line_len, fp) != -1)
++      {
++         line_len =  strlen(line);
++         if(line_len < len)
++         {
++            sprintf(buf,"%s", line);
++            buf[strlen(buf)-1] = '\0';  /*remove character '\n'*/
++         }
++         else
++            ret = -1;
++      }
++
++      fclose(fp);
++      if(line)
++         free(line);
++   }
++
++   return ret;
++}
++
++void util_as_free(char **as)
++{
++   int i = 0;
++   if(as == NULL)
++      return;
++   while(as[i])
++   {
++      g_free(as[i++]);      
++   }
++   g_free(as);
++}
++
+diff -ruN samba_beep/sambaservice_util.h beep_source/sambaservice_util.h
+--- samba_beep/sambaservice_util.h	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/sambaservice_util.h	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,65 @@
++/* 
++*  <:copyright-BRCM:2013:DUAL/GPL:standard
++*  Copyright (c) 2013 Broadcom 
++*  All Rights Reserved
++   
++*  This program is free software; you can redistribute it and/or modify
++*  it under the terms of the GNU General Public License as published by
++*  the Free Software Foundation; either version 2 of the License, or
++*  (at your option) any later version.
++   
++*  This program is distributed in the hope that it will be useful,
++*  but WITHOUT ANY WARRANTY; without even the implied warranty of
++*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++*  GNU General Public License for more details.
++*/
++
++#ifndef __HEADER_SAMBASERVICE_UTIL__
++#define __HEADER_SAMBASERVICE_UTIL__
++
++typedef enum
++{
++   SMBSRV_LOG_ERROR,
++   SMBSRV_LOG_INFO,
++   SMBSRV_LOG_DEBUG,
++   SMBSRV_LOG_MAX
++}LOG_LEVEL;
++
++
++void util_errmsg_compose(int code, char **errmsg);
++
++void * util_dbus_connection_get(void);
++void util_dbus_connection_set(void *connection);
++
++
++/*
++ * Check if a file specified by file exists or not
++ * Parameters:
++ * - file: input. specify file to check
++ * Return:
++ * - 1: file exists; 0: not exists
++ */
++int util_is_file_exist(const char *file);
++int util_file_create(char *file_name, int mode);
++
++void util_log_level_set(unsigned int level);
++
++void util_log(LOG_LEVEL level, const char *format, ...);
++
++/*Read EUID of this EU from file /etc/euid
++* Parameters
++*  @buf (IN): input buffer to hold the euid of this EU.
++*  @len (IN): buffer length
++* Return:
++*  0: succeed; other value: failed
++*/
++int util_euid_get(char *buf, int len);
++
++/*Free string array
++* Parameters:
++*  @as (IN): array of string ended with NULL
++*     each string need to be freed. 
++*/
++void util_as_free(char **as);
++
++#endif
+diff -ruN samba_beep/webs/beep_sambaservice.html beep_source/webs/beep_sambaservice.html
+--- samba_beep/webs/beep_sambaservice.html	1969-12-31 16:00:00.000000000 -0800
++++ beep_source/webs/beep_sambaservice.html	2017-10-25 22:11:38.562378787 -0700
+@@ -0,0 +1,154 @@
++<!DOCTYPE html>
++<html>
++  <head>
++    <meta charset='utf-8'>
++    <title>Execution Unit Extension</title>
++    <style>
++      .output { font-weight:bold;}
++      #payment { text-decoration: underline;}
++      #graph {border: solid black 1px;}
++      th, td {vertical-align: top;}
++    </style>
++    <script>
++      var sessionKey='<%ejGetOther(sessionKey)%>';
++      function StartSamba(){
++        var loc = 'modSwEU.cmd?action=modsw-config';
++        loc += '&name=sambaservice';
++        loc += '&service=com.broadcom.samba&path=/com/broadcom/samba&interface=com.broadcom.samba&method=Start';
++
++        loc += '&sessionKey=' + sessionKey;
++        var code = 'location="' + loc + '"';
++        eval(code);
++      }
++
++      function StopSamba(){
++        var loc = 'modSwEU.cmd?action=modsw-config';
++        loc += '&name=sambaservice';
++        loc += '&service=com.broadcom.samba&path=/com/broadcom/samba&interface=com.broadcom.samba&method=Stop';
++
++        loc += '&sessionKey=' + sessionKey;
++        var code = 'location="' + loc + '"';
++        eval(code);
++      }
++
++      function AddUser() {
++        var loc = 'modSwEU.cmd?action=modsw-config';
++
++        loc += '&name=sambaservice';
++        loc += '&service=com.broadcom.samba&path=/com/broadcom/samba&interface=com.broadcom.samba&method=AddUser';
++
++        loc += '&params=s-' + document.getElementById('user_name').value;
++        loc += '|s-' + document.getElementById('password').value;
++        loc += '|s-' + document.getElementById('volume_name').value;
++        loc += '&sessionKey=' + sessionKey;
++        var code = 'location="' + loc + '"';
++        eval(code);
++      }
++
++      function ListUsers() {
++        var loc = 'modSwEU.cmd?action=modsw-config';
++        loc += '&name=sambaservice';
++        loc += '&service=com.broadcom.samba&path=/com/broadcom/samba&interface=com.broadcom.samba&method=ListUser&result=asus';
++
++        loc += '&sessionKey=' + sessionKey;
++        var code = 'location="' + loc + '"';
++        eval(code);
++      }
++
++      function DeleteUser(rml) {
++        var lst = '';
++        var loc = 'modSwEU.cmd?action=modsw-config';
++
++        if(rml.length > 0){
++          for(i = 0; i < rml.length; i++) {
++            if(rml[i].checked == true)
++            {
++              lst += rml[i].value;
++              break;
++            }
++          }
++        }
++        else if(rml.checked == true)
++          lst = rml.value;
++        loc += '&name=sambaservice';
++        loc += '&service=com.broadcom.samba&path=/com/broadcom/samba&interface=com.broadcom.samba&method=DeleteUser';
++
++        loc += '&params=s-' + lst;
++        loc += '&sessionKey=' + sessionKey;
++        var code = 'location="' + loc + '"';
++        eval(code);
++      }
++
++    </script>
++  </head>
++
++  <body>
++    <table>
++      <tr>
++        <th>Samba</th>
++        <td align='center'><input type='button' onClick='StartSamba()' value='Start'></td>
++        <td align='center'><input type='button' onClick='StopSamba()' value='Stop'></td>
++      </tr> 
++    </table>
++    <br>
++    <b>Samba User Account Setup</b>
++    <blockquote>
++      <form>
++        <div>               
++          <table border="0" cellpadding="0" cellspacing="0">
++               <tr>
++                  <td> Username:&nbsp;&nbsp;</td>
++                  <td><input id='user_name' type='text' name='userName'></td>
++               </tr>
++               <tr>
++                  <td> Password:&nbsp;&nbsp;</td>
++                  <td><input id='password' type='password' name='Password'></td>
++               </tr>
++               <tr>
++                  <td> volumeName:&nbsp;&nbsp;</td>
++                  <td><input id='volume_name' type='text' name='volumeName'></td>
++               </tr>
++          </table>
++        </div>            
++        <br>        
++        <input type='button' onClick='AddUser()' value='Apply/Save'>
++      </form>
++    </blockquote>
++    <br>
++    <b>Current Users</b>
++    <form>
++    <blockquote>
++    <table border='1' cellpadding='4' cellspacing='0'>
++      <tr align='center'>
++        <td class='hd'>UserName</td>
++        <td class='hd'>Remove</td>
++      </tr>
++      <script language="javascript">
++      {
++        var i = 0;
++        var result_string = '<%ejGetOther(dbuscall)%>';
++        var user_string = (result_string.split('&'))[0];
++        var user_array = user_string.split('=')[1];
++        if(user_array != undefined)
++        {
++          var users = user_array.split('|');
++          if(users != '')
++          {
++            for(i=0; i<users.length; i++){
++              document.writeln("<tr align='center'>");
++              document.writeln("<td>" + users[i] + "</td>");
++              document.writeln("<td align='center'><input type='checkbox' name='rml' value='" + users[i] + "'></td>");
++              document.writeln("</tr>");
++            }
++          }
++        }
++      }
++      </script>
++    </table>
++    <br>
++    <input type='button' onClick='ListUsers()' value='List'>
++    <input type='button' onClick='DeleteUser(this.form.rml)' value='Remove'>
++    </blockquote>
++    </form>
++  </body>
++</html>

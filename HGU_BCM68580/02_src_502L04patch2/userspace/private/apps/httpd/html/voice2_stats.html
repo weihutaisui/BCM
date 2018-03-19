@@ -1,0 +1,448 @@
+<html>
+   <head>
+
+      <style type="text/css">
+      ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }
+      ul#tabs li { display: inline; }
+      ul#tabs li a { color: #42454a; background-color: #dedbde; border: 1px solid #c9c3ba; border-bottom: none; padding: 0.3em; text-decoration: none; }
+      ul#tabs li a:hover { background-color: #f1f0ee; }
+      ul#tabs li a.selected { color: #000; background-color: #f1f0ee; font-weight: bold; padding: 0.7em 0.3em 0.38em 0.3em; }
+      div.tabContent { border: 1px solid #c9c3ba; padding: 0.5em; background-color: #f1f0ee; }
+      div.tabContent.hide { display: none; }
+      </style>
+
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+      <link rel="stylesheet" href='colors.css' type='text/css'>
+      <script language="javascript" src="util.js"></script>
+
+<script language="javascript">
+/////////////////////////
+// BEGINING OF JAVASCRIPT
+/////////////////////////
+
+///////////////////////
+// Initialize variables
+///////////////////////
+
+var numVoiceButtonSets = 1;
+
+/* Retrieve variables from CGI - %ejGetVoice()% is replaced by cgiGetVarVoice()
+ * in httpd before file is sent to the remote browser
+ */
+var voiceRunning = '<%ejGetVoice(voiceStatus)%>';
+var numCcLines = '<%ejGetVoice(numCcLines)%>';
+var sessionKey='<%ejGetOther(sessionKey)%>';
+
+// Initialize dynamic variables
+for (var i = 1; i <= numCcLines; i++)
+{
+   eval( "var ast" + i + " \= \"\" " );
+   eval( "var rs" + i + " \= \"\" " );
+   eval( "var rr" + i + " \= \"\" " );
+   eval( "var rl" + i + " \= \"\" " );
+   eval( "var bs" + i + " \= \"\" " );
+   eval( "var br" + i + " \= \"\" " );
+   
+   eval( "var icr" + i + " \= \"\" " );
+   eval( "var icc" + i + " \= \"\" " );
+   eval( "var icf" + i + " \= \"\" " );
+   eval( "var icd" + i + " \= \"\" " );
+   
+   eval( "var oca" + i + " \= \"\" " );
+   eval( "var occ" + i + " \= \"\" " );
+   eval( "var ocf" + i + " \= \"\" " );
+   eval( "var ocd" + i + " \= \"\" " );
+}
+
+// Retrieve string list for dynamic variables (list based, eg. "item1=x item2=y ...")
+var lst_ast = '<%ejGetVoice(accntStatus)%>';
+
+var lst_rs = '<%ejGetVoice(rtpPacketSent)%>';
+var lst_rr = '<%ejGetVoice(rtpPacketRecv)%>';
+var lst_rl = '<%ejGetVoice(rtpPacketLost)%>';
+var lst_bs = '<%ejGetVoice(totalBytesSent)%>';
+var lst_br = '<%ejGetVoice(totalBytesRecv)%>';
+
+var lst_icr = '<%ejGetVoice(incCallReceived)%>';
+var lst_icc = '<%ejGetVoice(incCallConnected)%>';
+var lst_icf = '<%ejGetVoice(incCallFailed)%>';
+var lst_icd = '<%ejGetVoice(incCallDropped)%>';
+
+var lst_oca = '<%ejGetVoice(outCallAttempted)%>';
+var lst_occ = '<%ejGetVoice(outCallConnected)%>';
+var lst_ocf = '<%ejGetVoice(outCallFailed)%>';
+var lst_ocd = '<%ejGetVoice(outCallDropped)%>';
+
+// Convert string list to dynamic variables
+if ( lst_ast.search("ejGetVoice") < 0 ) {
+   eval( lst_ast );
+}
+if ( lst_rs.search("ejGetVoice") < 0 ) {
+   eval( lst_rs );
+}
+if ( lst_rr.search("ejGetVoice") < 0 ) {
+   eval( lst_rr );
+}
+if ( lst_rl.search("ejGetVoice") < 0 ) {
+   eval( lst_rl );
+}
+if ( lst_bs.search("ejGetVoice") < 0 ) {
+   eval( lst_bs );
+}
+if ( lst_br.search("ejGetVoice") < 0 ) {
+   eval( lst_br );
+}   
+if ( lst_icr.search("ejGetVoice") < 0 ) {
+   eval( lst_icr );
+}
+if ( lst_icc.search("ejGetVoice") < 0 ) {
+   eval( lst_icc );
+}
+if ( lst_icf.search("ejGetVoice") < 0 ) {
+   eval( lst_icf );
+}
+if ( lst_icd.search("ejGetVoice") < 0 ) {
+   eval( lst_icd );  
+}
+if ( lst_oca.search("ejGetVoice") < 0 ) {
+   eval( lst_oca );
+}
+if ( lst_occ.search("ejGetVoice") < 0 ) {
+   eval( lst_occ );
+}
+if ( lst_ocf.search("ejGetVoice") < 0 ) {
+   eval( lst_ocf );
+}
+if ( lst_ocd.search("ejGetVoice") < 0 ) {
+   eval( lst_ocd );
+}
+
+////////////
+// Functions
+////////////
+
+function btnRefresh() {
+   var loc = 'voicerefresh.cmd?';
+
+   loc += addParamsToQuery( loc, "stats" );
+
+   //Stripping quotes and spaces
+   loc = loc.replace(/['" ]/g,'');
+
+   loc += '&sessionKey=' + sessionKey;
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+// Adds parameters to the query passed to the http server
+function addParamsToQuery( loc_init, current_view) {
+   var loc = loc_init;
+
+   with ( document.forms[0] ) {
+      loc += 'currentview=' + current_view;
+   }
+
+   return loc;
+}
+
+function frmLoad(current_view) {
+
+   init();
+
+   with ( document.forms[0] ) {
+
+      /* Initialize SIP parameters */
+
+      for (var i = 1; i <= numCcLines; i++)
+      {
+         eval("accntSt" + i + ".value = ast"+i);
+		 
+		 eval("rtpSent" + i + ".value = rs"+i);
+		 eval("rtpRecv" + i + ".value = rr"+i);
+		 eval("rtpLost" + i + ".value = rl"+i);
+		 eval("bytesRecv" + i + ".value = br"+i);
+		 eval("bytesSent" + i + ".value = bs"+i);
+		 
+		 eval("incCallRecv" + i + ".value = icr"+i);
+		 eval("incCallConn" + i + ".value = icc"+i);
+		 eval("incCallDrop" + i + ".value = icd"+i);
+		 eval("incCallFail" + i + ".value = icf"+i);
+		 
+		 eval("outCallAtt" + i + ".value = oca"+i);
+		 eval("outCallConn" + i + ".value = occ"+i);
+		 eval("outCallDrop" + i + ".value = ocd"+i);
+		 eval("outCallFail" + i + ".value = ocf"+i);
+      }
+   }
+}
+
+function enableVoiceButtons(index)
+{
+   var buttonRefresh = document.getElementById( "RefreshButton" + index );
+
+   if ( voiceRunning == 1 ) {
+      buttonRefresh.disabled = false;
+   } else {
+      buttonRefresh.disabled = true;
+   }
+}
+
+var tabLinks = new Array();
+var contentDivs = new Array();
+var selectedTab;
+
+function init() {
+
+  // Grab the tab links and content divs from the page
+  var tabListItems = document.getElementById('tabs').childNodes;
+  for ( var i = 0; i < tabListItems.length; i++ ) {
+    if ( tabListItems[i].nodeName == "LI" ) {
+      var tabLink = getFirstChildWithTagName( tabListItems[i], 'A' );
+      var id = getHash( tabLink.getAttribute('href') );
+      tabLinks[id] = tabLink;
+      contentDivs[id] = document.getElementById( id );
+    }
+  }
+
+  // Assign onclick events to the tab links, and
+  // highlight the first tab
+  var i = 0;
+  selectedTab = 0;
+
+  for ( var id in tabLinks ) {
+    tabLinks[id].onclick = showTab;
+    tabLinks[id].onfocus = function() { this.blur() };
+    if ( i == 0 ) tabLinks[id].className = 'selected';
+    i++;
+  }
+
+  // Hide all content divs except the first
+  var i = 0;
+
+  for ( var id in contentDivs ) {
+    if ( i != 0 ) contentDivs[id].className = 'tabContent hide';
+    i++;
+  }
+}
+
+
+function showTab() {
+  var selectedId = getHash( this.getAttribute('href') );
+
+  // Highlight the selected tab, and dim all others.
+  // Also show the selected content div, and hide all others.
+  for ( var id in contentDivs ) {
+    if ( id == selectedId ) {
+      selectedTab = selectedId;
+      tabLinks[id].className = 'selected';
+      contentDivs[id].className = 'tabContent';
+    } else {
+      tabLinks[id].className = '';
+      contentDivs[id].className = 'tabContent hide';
+    }
+  }
+
+  // Stop the browser following the link
+  return false;
+}
+
+function getFirstChildWithTagName( element, tagName ) {
+  for ( var i = 0; i < element.childNodes.length; i++ ) {
+    if ( element.childNodes[i].nodeName == tagName ) return element.childNodes[i];
+  }
+}
+
+function getHash( url ) {
+  var hashPos = url.lastIndexOf ( '#' );
+  return url.substring( hashPos + 1 );
+}
+
+function createLinesTable() {
+
+   document.writeln("<table id='linesTable' border='1'><tbody id='linesTbody'>");
+
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>SIP Account<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td align=center>" + line + "</td>");
+   }
+   document.writeln("</tr>");
+
+   /* 2nd row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Account Status<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='accntSt" + line + "' name='accntSt" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+
+   /* 3rd row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>RTP Packets Sent<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='rtpSent" + line + "' name='rtpSent" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+
+   /* 4th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>RTP Packets Received<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='rtpRecv" + line + "' name='rtpRecv" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+ 
+   /* 5th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>RTP Packets Lost<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='rtpLost" + line + "' name='rtpLost" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+   
+   /* 6th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Total Bytes Sent<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='bytesSent" + line + "' name='bytesSent" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+
+   /* 7th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Total Bytes Received<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='bytesRecv" + line + "' name='bytesRecv" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+   
+   /* 8th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Incoming Calls Received<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='incCallRecv" + line + "' name='incCallRecv" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+   
+   /* 9th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Incoming Calls Connected<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='incCallConn" + line + "' name='incCallConn" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+   
+   /* 10th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Incoming Calls Failed<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='incCallFail" + line + "' name='incCallFail" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+   
+   /* 11th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Incoming Calls Dropped<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='incCallDrop" + line + "' name='incCallDrop" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+   
+   /* 12th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Outgoing Calls Attempted<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='outCallAtt" + line + "' name='outCallAtt" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+   
+   /* 13th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Outgoing Calls Connected<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='outCallConn" + line + "' name='outCallConn" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+   
+   /* 14th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Outgoing Calls Failed<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='outCallFail" + line + "' name='outCallFail" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+   
+   /* 15th row */
+   document.writeln("<tr>");
+   document.writeln("<td class='hd' width='200'>Outgoing Calls Dropped<\/td>");
+   for (var line = 1; line <= numCcLines; line++)
+   {
+      document.writeln("<td><input type='text' id='outCallDrop" + line + "' name='outCallDrop" + line + "' disabled></td>");
+   }
+   document.writeln("</tr>");
+ 
+   document.writeln("</tbody></table>");
+}
+
+function createTabs() {
+  document.writeln("<ul id='tabs'>");
+  document.writeln("<li><a href='#" + 0 + "'>Voice Statistics and Status</a></li>");
+}
+
+function createStats() {
+   document.writeln("<div class='tabContent' id='0'>");
+   document.writeln("<div>");
+
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+                        createLinesTable();
+   document.writeln("   <br>");
+   document.writeln("   <br>");
+   document.writeln("   <center>");
+   document.writeln("       <input type='button' onClick='btnRefresh()' value='Refresh' id='RefreshButton" + 0 + "' disabled=true>");
+   document.writeln("       <br>");
+   document.writeln("    </center>");
+   document.writeln("    <br>");
+   document.writeln("</div>");
+   document.writeln("</div>");
+}
+
+////////////////////
+// END OF JAVASCRIPT
+////////////////////
+
+</script>
+</head>
+
+<body onLoad="frmLoad('stats')">
+   <blockquote>
+      <form>
+      <script TYPE="text/javascript">
+        createTabs();
+        createStats();
+
+       for (var i = 0; i < numVoiceButtonSets; i++) {
+           enableVoiceButtons(i);
+        }
+
+     </script>
+
+      </form>
+   </blockquote>
+</body>
+</html>

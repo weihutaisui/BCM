@@ -1,0 +1,76 @@
+diff -ur openssl-1.0.2a/Configure openssl-1.0.2a.mod/Configure
+--- openssl-1.0.2a/Configure	2015-03-19 09:30:36.000000000 -0400
++++ openssl-1.0.2a.mod/Configure	2015-06-18 13:14:16.094226455 -0400
+@@ -349,6 +349,7 @@
+ # *-generic* is endian-neutral target, but ./config is free to
+ # throw in -D[BL]_ENDIAN, whichever appropriate...
+ "linux-generic32","gcc:-O3 -fomit-frame-pointer -Wall::-D_REENTRANT::-ldl:BN_LLONG RC4_CHAR RC4_CHUNK DES_INT DES_UNROLL BF_PTR:${no_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
++"linux-bcmmips","gcc:::-D_REENTRANT::-ldl::${no_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
+ "linux-ppc",	"gcc:-DB_ENDIAN -O3 -Wall::-D_REENTRANT::-ldl:BN_LLONG RC4_CHAR RC4_CHUNK DES_RISC1 DES_UNROLL:${ppc32_asm}:linux32:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
+ 
+ #######################################################################
+@@ -379,6 +380,7 @@
+ #       ./Configure linux-armv4 -march=armv6 -D__ARM_MAX_ARCH__=8
+ #
+ "linux-armv4",	"gcc: -O3 -Wall::-D_REENTRANT::-ldl:BN_LLONG RC4_CHAR RC4_CHUNK DES_INT DES_UNROLL BF_PTR:${armv4_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
++"linux-bcmarm","gcc:::-D_REENTRANT::-ldl::${armv4_asm}:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
+ "linux-aarch64","gcc: -O3 -Wall::-D_REENTRANT::-ldl:SIXTY_FOUR_BIT_LONG RC4_CHAR RC4_CHUNK DES_INT DES_UNROLL BF_PTR:${aarch64_asm}:linux64:dlfcn:linux-shared:-fPIC::.so.\$(SHLIB_MAJOR).\$(SHLIB_MINOR)",
+ # Configure script adds minimally required -march for assembly support,
+ # if no -march was specified at command line. mips32 and mips64 below
+diff -ur openssl-1.0.2a/Makefile.org openssl-1.0.2a.mod/Makefile.org
+--- openssl-1.0.2a/Makefile.org	2015-03-19 09:30:36.000000000 -0400
++++ openssl-1.0.2a.mod/Makefile.org	2015-06-18 13:14:16.097226009 -0400
+@@ -136,7 +136,7 @@
+ 
+ BASEADDR=
+ 
+-DIRS=   crypto ssl engines apps test tools
++DIRS=   crypto ssl engines apps tools
+ ENGDIRS= ccgost
+ SHLIBDIRS= crypto ssl
+ 
+@@ -332,7 +332,7 @@
+ 		fi; \
+ 	done
+ 
+-link-shared:
++link-shared: do_$(SHLIB_TARGET)
+ 	@ set -e; for i in $(SHLIBDIRS); do \
+ 		$(MAKE) -f $(HERE)/Makefile.shared -e $(BUILDENV) \
+ 			LIBNAME=$$i LIBVERSION=$(SHLIB_MAJOR).$(SHLIB_MINOR) \
+diff -ur openssl-1.0.2a/crypto/engine/eng_cryptodev.c openssl-1.0.2a.mod/crypto/engine/eng_cryptodev.c
+--- openssl-1.0.2a/crypto/engine/eng_cryptodev.c	2015-03-19 09:30:36.000000000 -0400
++++ openssl-1.0.2a.mod/crypto/engine/eng_cryptodev.c	2015-06-18 13:14:16.094226455 -0400
+@@ -53,7 +53,7 @@
+ #else
+ 
+ # include <sys/types.h>
+-# include <crypto/cryptodev.h>
++# include <cryptodev.h>
+ # include <openssl/dh.h>
+ # include <openssl/dsa.h>
+ # include <openssl/err.h>
+diff -ur openssl-1.0.2a/crypto/evp/openbsd_hw.c openssl-1.0.2a.mod/crypto/evp/openbsd_hw.c
+--- openssl-1.0.2a/crypto/evp/openbsd_hw.c	2015-03-19 09:19:00.000000000 -0400
++++ openssl-1.0.2a.mod/crypto/evp/openbsd_hw.c	2015-06-18 13:14:16.095226318 -0400
+@@ -67,7 +67,7 @@
+ #  include <stdio.h>
+ #  include <errno.h>
+ #  include <sys/ioctl.h>
+-#  include <crypto/cryptodev.h>
++#  include <cryptodev.h>
+ #  include <unistd.h>
+ #  include <assert.h>
+ 
+diff -ur openssl-1.0.2a/crypto/x509/x509_vfy.c openssl-1.0.2a.mod/crypto/x509/x509_vfy.c
+--- openssl-1.0.2a/crypto/x509/x509_vfy.c	2015-03-19 09:30:36.000000000 -0400
++++ openssl-1.0.2a.mod/crypto/x509/x509_vfy.c	2015-06-18 13:14:16.095226320 -0400
+@@ -814,7 +814,7 @@
+ {
+     X509_CRL *crl = NULL, *dcrl = NULL;
+     X509 *x;
+-    int ok, cnum;
++    int ok = 1, cnum;
+     unsigned int last_reasons;
+     cnum = ctx->error_depth;
+     x = sk_X509_value(ctx->chain, cnum);

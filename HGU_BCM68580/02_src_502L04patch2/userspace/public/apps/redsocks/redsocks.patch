@@ -1,0 +1,30 @@
+--- redsocks_orig/Makefile	2017-03-27 11:12:20.812132183 -0700
++++ redsocks/Makefile	2017-03-27 11:10:34.892132800 -0700
+@@ -1,3 +1,8 @@
++CURR_DIR := $(shell pwd)
++BUILD_DIR:=$(subst /userspace, /userspace,$(CURR_DIR))
++BUILD_DIR:=$(word 1, $(BUILD_DIR))
++
++
+ -include make.conf
+ OBJS := parser.o main.o redsocks.o log.o http-connect.o socks4.o socks5.o http-relay.o base.o base64.o md5.o http-auth.o utils.o redudp.o dnstc.o gen/version.o
+ ifeq ($(DBG_BUILD),1)
+@@ -9,6 +14,9 @@ DEPS := .depend
+ OUT := redsocks
+ VERSION := 0.5
+ 
++CFLAGS += -I  $(BCM_FSBUILD_DIR)/public/include
++LDFLAGS += -L $(BCM_FSBUILD_DIR)/public/lib
++
+ LIBS := -levent_core
+ ifeq ($(DBG_BUILD),1)
+ # -levent_extra is required only for `http` and `debug`
+@@ -20,6 +28,8 @@ override CFLAGS += -std=c99 -D_XOPEN_SOU
+ 
+ all: $(OUT)
+ 
++include $(BUILD_DIR)/make.common
++
+ .PHONY: all clean distclean test
+ 
+ tags: *.c *.h

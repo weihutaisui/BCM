@@ -1,0 +1,118 @@
+##############################################################################
+# Name of TMSCTL executable.
+#
+TMSCTL_NAME = tmsctl
+ifneq ($(MAKECMDGOALS), binaryonly_dist_clean)
+HAVESRC = $(wildcard ./*.c)
+endif
+
+ifeq ($(strip $(HAVESRC)),)
+EXE = $(TMSCTL_NAME)
+
+all install: $(EXE) generic_exe_install
+
+$(EXE): always
+	cp -f ./$(EXE).$(KERNEL_ARCH).save $(EXE)
+
+.PHONY : always
+
+clean: generic_clean
+	rm -f $(EXE)
+	rm -f $(INSTALL_DIR)/bin/$(EXE)
+
+binaryonly_dist_clean: clean generic_binaryonly_dist_clean
+	@rm -f Makefile.fullsrc *.mak
+	@find -type l -exec rm -f {} \;
+
+#
+# Set our CommEngine directory (by splitting the pwd into two words
+# at /userspace and taking the first word only).
+# Then include the common defines under CommEngine.
+#
+CURR_DIR :=$(shell pwd)
+BUILD_DIR:=$(subst /userspace, /userspace,$(CURR_DIR))
+BUILD_DIR:=$(word 1, $(BUILD_DIR))
+
+include $(BUILD_DIR)/make.common
+
+else
+##############################################################################
+# Like all makefiles, the first rule that Make sees is the default rule,
+# but there may be rules in other included-makefiles, so I am just making
+# certain this rule is the first rule it sees.
+#
+$(TMSCTL_NAME)::
+
+include ./setupHW.mak
+
+
+##############################################################################
+# Since I am not using the buildflags file but I am still using the
+# translation-layer include-makefile, I need to tell the include-makefile
+# which of the TMS Packages to accommodate.  I am explicitly setting the few
+# buildflags that apply to this Demo.  Not all of the BUILD_xxxx flags are
+# necessarily significant.
+#
+# If you want to use the TMS Debug tools, then make sure you turn on the
+# debug buildflag here.  Don't forget to also turn on debug for the TMS
+# module and rebuild it, if not done already.
+#
+# You should set those buildflags that apply for your licensed purchase.
+# These buildflags also may be used further below to set some compiler-flags
+# based on the selected packages.
+#
+BUILD_ETH	= 1
+BUILD_ETH1AG	= 1
+BUILD_ETH1731	= 1
+BUILD_ETHMPLSTP	= 0
+BUILD_ETHMEF35	= 0
+BUILD_ETHY1564	= 0
+BUILD_ETH3AH	= 1
+BUILD_ETHSYNCE	= 0
+BUILD_DEBUG	= 0
+
+
+##############################################################################
+# The -D switches indicate the various TMS packages and features that will
+# be used by this Demo.  Note that the -D switches communicate information
+# to the source-files at compile-time, whereas the BUILD_xxxx flags (above)
+# communicate information to the makefiles.
+#
+TMSCTL_INCDIRS	= $(TMSROOT)/eth/line $(TMSROOT)/eth/3ah $(TMSROOT)/eth/1ag
+TMSCTL_INCDIRS	+= $(TMSROOT)/eth/y1731
+
+TMSCTL_CFLAGS	= -DETH_PACKAGE -DNCI_ETH3AH -DNCI_ETH1AG -DNCI_Y1731
+
+
+##############################################################################
+# This is the list of .o files that make up tmsctl Application.
+# The final include-file will automatically add a few additional necessary
+# files and dependencies required by the translation-layer.
+#
+# Note that I also include the dependencies associated with the source files.
+#
+TMSCTL_OBJS		= tmsctl_main.o tmsctl_3AH.o tmsctl_1AG.o tmsctl_1731.o tmsctl_common.o setupEndPoints.o
+
+tmsctl_main.o:		tmsctl_main.c
+
+tmsctl_3AH.o:		tmsctl_3AH.c tmsctl.h
+
+tmsctl_1AG.o:		tmsctl_1AG.c tmsctl.h
+
+tmsctl_1731.o:		tmsctl_1731.c tmsctl.h
+
+tmsctl_common.o:	tmsctl_common.c tmsctl.h
+
+setupEndPoints.o:	setupEndPoints.c tmsctl.h
+
+tmsctl.h:		bspHW.h tmsAPI.h
+	touch ./tmsctl.h
+
+
+##############################################################################
+# The following include-file will have the rest of the settings and rules
+# to build tmsctl.  It will automatically add a few additional
+# necessary object-files to our own local list above.
+#
+include ./finalHW.mak
+endif

@@ -1,0 +1,60 @@
+The usl_signal subsystem takes care of Unix signal handling
+complexity. The application registers signal notifcation callbacks
+which are passed a signal number. When a signal arrives, all
+registered notifier callbacks are called. These callbacks are made by
+the USL main loop and are therefore synchronous with all other USL
+events such as timers and file descriptors.
+
+A number of hooks are available, on which the application can register
+its own handlers. Thse are useful for SIGHUP and SIGTERM handling.
+
+    usl_signal_terminate_hook
+    usl_signal_hangup_hook
+
+While the regular signal notification callback mechanism could be used
+to handle SIGTERM and SIGHUP, in practice the handling of these
+signals is best done before all other signal handlers, hence the hooks.
+
+void usl_main_loop(void);
+
+This should be called by the application after initialisation. The
+function loops, processing expired timers, ready file descriptors and
+signals. 
+
+In most cases, this function never returns. For testing, the global
+variable usl_main_loop_max_count may be set to cause the function to
+exit after N times around its loop.
+
+int usl_signal_notifier_add(usl_notify_fn_t func, void *arg);
+
+Add a signal notification callback which is called whenever a signal
+is received by the application with the specified arg. The notifier
+callback is also passed the signal number - the application should use
+this to determine what actions to perform.
+
+Note that the signal notifier callback is called from the USL main
+loop - the notifier is not a Unix signal handler. This simplified the
+application design because all events are handled by the same context.
+
+RETURNS
+
+Returns 0 on success, or a negative error code in case of failure.
+
+void usl_signal_notifier_remove(usl_notify_fn_t func, void *arg);
+
+Remove a previously registered callback.
+
+void usl_signal_init(void);
+
+Must be called to init the usl_signal subsystem before any other
+usl_signal call.
+
+RETURNS
+
+Returns 0 on success, or a negative error code in case of failure.
+
+void usl_signal_cleanup(void);
+
+Called to shutdown the usl_signal mechanism. All signals are returned
+to their default behaviour with any registered signal notifiers
+unregistered..

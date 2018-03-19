@@ -1,0 +1,36 @@
+
+OBJS = gponctl.o gponctl_ploam.o
+
+CC       = gcc
+
+all : gponctlapp.O
+
+clean:
+	rm -f *.exe *.so *.o *.a *.s .*.cmd *.O
+
+
+INCLUDES := -I.\
+            -I../../include  \
+            -I../../../../bcmdrivers/opensource/include/bcm963xx \
+            -I../../../../bcmdrivers/broadcom/include/bcm963xx
+
+
+LFLAGS = -nostartfiles
+LFLAGS += -nodefaultlibs
+LFLAGS += -Wl
+LFLAGS += -r
+
+CFLAGS += -DBUILD_STATIC
+CFLAGS += -DCONFIG_BCM96816
+CFLAGS += -DNON_LINUX_BUILD
+CFLAGS += -Werror -Wall
+CFLAGS += $(INCLUDES)
+
+%.o : %.c *.h
+	$(CC) $(CFLAGS) -c $<
+
+gponctlapp.O : $(OBJS)
+	$(CC) $(LFLAGS) -o $@ $^
+
+
+.PHONY: all clean

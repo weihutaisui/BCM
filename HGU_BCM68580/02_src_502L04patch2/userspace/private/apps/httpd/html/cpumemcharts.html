@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<html">
+
+<!--[if lte IE 9]>
+<p style="background-color:red; color:white"><b>Your version of Internet Explorer does not support web sockets.</b></p>
+<![endif]-->
+
+  <head>
+    <title>DPI Real-time Statistic Charts</title>
+    <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+    <link rel="stylesheet" href='stylemain.css' type='text/css'>
+    <link rel="stylesheet" href='colors.css' type='text/css'>
+    <link class="include" rel="stylesheet" type="text/css" href="jquery.jqplot.min.css" />
+  
+    <!--[if lt IE 9]><script language="javascript" type="text/javascript" src="../excanvas.js"></script><![endif]-->
+    <script class="include" type="text/javascript" src="jquery.js"></script>
+    <script class="include" type="text/javascript" src="jquery.jqplot.js"></script>
+    <script class="include" type="text/javascript" src="plugins/jqplot.barRenderer.js"></script>
+    <script class="include" type="text/javascript" src="plugins/jqplot.categoryAxisRenderer.js"></script>
+    <script class="include" type="text/javascript" src="plugins/jqplot.pointLabels.js"></script>
+    <script class="include" type="text/javascript" src="plugins/jqplot.canvasTextRenderer.js"></script>
+    <script class="include" type="text/javascript" src="plugins/jqplot.canvasAxisLabelRenderer.js"></script>
+    <script class="include" type="text/javascript" src="plugins/jqplot.highlighter.js"></script>
+    <script class="include" type="text/javascript" src="plugins/jqplot.cursor.js"></script>
+  </head>
+
+<script class="code" type="text/javascript">
+
+var CPU_POINTS_MIN = 1;
+var CPU_POINTS_MAX = 10;
+var MEM_POINTS_MIN = 1;
+var MEM_POINTS_MAX = 18;
+var POLLING_INTERVAL_SEC = 2;
+var cpu_bar = null;
+var cpu0_line = null;
+var cpu0_line_points = [0];
+var cpu1_line = null;
+var cpu1_line_points = [0];
+var cpu2_line = null;
+var cpu2_line_points = [0];
+var cpu3_line = null;
+var cpu3_line_points = [0];
+var mem_bar = null;
+var mem_line = null;
+var mem_line_points = [0];
+var key = <%ejGetOther(sessionKey)%>;
+var mem_max = <%ejGetOther(sysInfo, memSize)%> / 1024;
+var num_cpu = <%ejGetOther(sysInfo, numCpuThreads)%>;
+
+$(document).ready(function() {
+
+  var cpu0_line_options = {
+    title: 'CPU 0 Usage History',
+    axesDefaults: {
+      labelRenderer: $.jqplot.CanvasAxisLabelRenderer
+    },
+    seriesDefaults: {
+        rendererOptions: { smooth: true }
+    },
+    axes: {
+      xaxis: { showTicks: false, pad: 0 },
+      yaxis: { showTicks: false, min: 0, max: 100 }
+    },
+    highlighter: {
+      show: true,
+      sizeAdjust: 7.5,
+      tooltipAxes: 'y',
+      formatString: '%d'
+    },
+    cursor: { show: false }
+  }
+
+  var cpu1_line_options = {
+    title: 'CPU 1 Usage History',
+    axesDefaults: {
+      labelRenderer: $.jqplot.CanvasAxisLabelRenderer
+    },
+    seriesDefaults: {
+        rendererOptions: { smooth: true }
+    },
+    axes: {
+      xaxis: { showTicks: false, pad: 0 },
+      yaxis: { showTicks: false, min: 0, max: 100 }
+    },
+    highlighter: {
+      show: true,
+      sizeAdjust: 7.5,
+      tooltipAxes: 'y',
+      formatString: '%d'
+    },
+    cursor: { show: false }
+  }
+
+  if (num_cpu == 4) {
+    var cpu2_line_options = {
+      title: 'CPU 2 Usage History',
+      axesDefaults: {
+        labelRenderer: $.jqplot.CanvasAxisLabelRenderer
+      },
+      seriesDefaults: {
+          rendererOptions: { smooth: true }
+      },
+      axes: {
+        xaxis: { showTicks: false, pad: 0 },
+        yaxis: { showTicks: false, min: 0, max: 100 }
+      },
+      highlighter: {
+        show: true,
+        sizeAdjust: 7.5,
+        tooltipAxes: 'y',
+        formatString: '%d'
+      },
+      cursor: { show: false }
+    }
+
+    var cpu3_line_options = {
+      title: 'CPU 3 Usage History',
+      axesDefaults: {
+        labelRenderer: $.jqplot.CanvasAxisLabelRenderer
+      },
+      seriesDefaults: {
+          rendererOptions: { smooth: true }
+      },
+      axes: {
+        xaxis: { showTicks: false, pad: 0 },
+        yaxis: { showTicks: false, min: 0, max: 100 }
+      },
+      highlighter: {
+        show: true,
+        sizeAdjust: 7.5,
+        tooltipAxes: 'y',
+        formatString: '%d'
+      },
+      cursor: { show: false }
+    }
+  }
+
+  var mem_line_options = {
+    title: 'Physical Memory Usage History',
+    axesDefaults: {
+      labelRenderer: $.jqplot.CanvasAxisLabelRenderer
+    },
+    seriesDefaults: {
+        rendererOptions: { smooth: true }
+    },
+    axes: {
+      xaxis: { showTicks: false, pad: 0 },
+      yaxis: { showTicks: false, min: 0, max: mem_max }
+    },
+    highlighter: {
+      show: true,
+      sizeAdjust: 7.5,
+      tooltipAxes: 'y',
+      formatString: '%d'
+    },
+    cursor: { show: false }
+  }
+
+  var cpu_bar_options = {
+    title: 'CPU Usage',
+    seriesDefaults:{
+      renderer:$.jqplot.BarRenderer,
+      pointLabels: { show: true, location: 'n', formatString: '%d%' },
+      rendererOptions: {
+        barMargin: 40,
+        highlightMouseOver: true
+      }
+    },
+    axes: {
+      xaxis: {
+        renderer: $.jqplot.CategoryAxisRenderer,
+        ticks: [null],
+        showTicks: false
+      },
+      yaxis: { showTicks: false, min: 0, max: 100 }
+    },
+    highlighter: { show: false }
+  }
+
+  var mem_bar_options = {
+    title: 'Memory',
+    seriesDefaults:{
+      renderer:$.jqplot.BarRenderer,
+      pointLabels: { show: true, location: 'n', formatString: '%d KB' },
+      rendererOptions: {
+        barMargin: 40,
+        highlightMouseOver: true
+      }
+    },
+    axes: {
+      xaxis: {
+        renderer: $.jqplot.CategoryAxisRenderer,
+        ticks: [null],
+        showTicks: false
+      },
+      yaxis: { showTicks: false, min: 0, max: mem_max }
+    },
+    highlighter: { show: false }
+  }
+
+  function randomIntFromInterval(min,max)
+  {
+    return Math.floor(Math.random()*(max-min+1)+min);
+  }
+
+  function plotCharts(info) {
+    // info should have 6 fields:
+    //    1. cpu all usage in percent
+    //    2. cpu0 usage in percent
+    //    3. cpu1 usage in percent
+    //    4. cpu2 usage in percent
+    //    5. cpu3 usage in percent
+    //    6. memory usage in KByte
+
+    //if ( window.console && window.console.log ) {
+      // console is available
+      //console.log ( 'info = ' + info);
+    //}
+
+    var new_data = info.split('|');
+
+    if (new_data.length != 6) {
+      alert('new length ' + new_data.length + ' != 4 ');
+      return;
+    }
+
+    // redraw cpu_bar
+    if (cpu_bar != null)
+      cpu_bar.destroy();            
+    cpu_bar = $.jqplot ('div-cpu-bar', [[parseInt(new_data[0])]], cpu_bar_options);
+
+    // redraw cpu0_line
+    if (cpu0_line_points.length > CPU_POINTS_MAX)
+      cpu0_line_points.shift();
+
+    cpu0_line_points.push(parseInt(new_data[1]));
+
+    if (cpu0_line != null)
+      cpu0_line.destroy();            
+    cpu0_line = $.jqplot ('div-cpu0-line', [cpu0_line_points], cpu0_line_options);
+
+    // redraw cpu1_line
+    if (cpu1_line_points.length > CPU_POINTS_MAX)
+      cpu1_line_points.shift();
+
+    cpu1_line_points.push(parseInt(new_data[2]));
+
+    if (cpu1_line != null)
+      cpu1_line.destroy();            
+    cpu1_line = $.jqplot ('div-cpu1-line', [cpu1_line_points], cpu1_line_options);
+
+    if (num_cpu == 4) {
+      // redraw cpu2_line
+      if (cpu2_line_points.length > CPU_POINTS_MAX)
+        cpu2_line_points.shift();
+
+      cpu2_line_points.push(parseInt(new_data[3]));
+
+      if (cpu2_line != null)
+        cpu2_line.destroy();            
+      cpu2_line = $.jqplot ('div-cpu2-line', [cpu2_line_points], cpu2_line_options);
+
+      // redraw cpu3_line
+      if (cpu3_line_points.length > CPU_POINTS_MAX)
+        cpu3_line_points.shift();
+
+      cpu3_line_points.push(parseInt(new_data[4]));
+
+      if (cpu3_line != null)
+        cpu3_line.destroy();            
+      cpu3_line = $.jqplot ('div-cpu3-line', [cpu3_line_points], cpu3_line_options);
+    }
+
+    // redraw mem_bar
+    if (mem_bar != null)
+      mem_bar.destroy();            
+    mem_bar = $.jqplot ('div-mem-bar', [[parseInt(new_data[5])]], mem_bar_options);
+
+    // redraw mem_line
+    if (mem_line_points.length > MEM_POINTS_MAX)
+      mem_line_points.shift();
+
+    mem_line_points.push(parseInt(new_data[5]));
+
+    if (mem_line != null)
+      mem_line.destroy();            
+    mem_line = $.jqplot ('div-mem-line', [mem_line_points], mem_line_options);
+  }
+
+  function get_appropriate_ws_url()
+  {
+	var pcol;
+	var u = document.URL;
+
+	if (u.substring(0, 5) == "https") {
+		pcol = "wss://";
+		u = u.substr(8);
+	} else {
+		pcol = "ws://";
+		if (u.substring(0, 4) == "http")
+			u = u.substr(7);
+	}
+
+	u = u.split('/');
+
+	return pcol + u[0] + ":7681/";
+  }
+
+  if (typeof MozWebSocket != "undefined") {
+    ws_sys_mem = new MozWebSocket(get_appropriate_ws_url(), "cpu-mem");
+  } else {
+    ws_sys_mem = new WebSocket(get_appropriate_ws_url(), "cpu-mem");
+  }
+
+  try {
+    ws_sys_mem.onopen = function () {
+      // send session key to validate session
+      ws_sys_mem.send("sessionKey=" + key);
+    } 
+    ws_sys_mem.onmessage = function (msg) {
+      plotCharts(msg.data);
+    } 
+  } catch(exception) {
+    alert('<p>Error' + exception);  
+  }
+
+  function generatePoints(msg)
+  {
+    // send dummy data to request
+    // cpu and memory information
+    ws_sys_mem.send("0|0|0|0|0|0");
+
+    setTimeout(function(){generatePoints()}, POLLING_INTERVAL_SEC * 1000); 
+  }
+
+  cpu_bar = $.jqplot ('div-cpu-bar', [[0]], cpu_bar_options);
+  cpu0_line = $.jqplot ('div-cpu0-line', [cpu0_line_points], cpu0_line_options);
+  cpu1_line = $.jqplot ('div-cpu1-line', [cpu1_line_points], cpu1_line_options);
+  if (num_cpu == 4) {
+    cpu2_line = $.jqplot ('div-cpu2-line', [cpu2_line_points], cpu2_line_options);
+    cpu3_line = $.jqplot ('div-cpu3-line', [cpu3_line_points], cpu3_line_options);
+  }
+  mem_bar = $.jqplot ('div-mem-bar', [[0]], mem_bar_options);
+  mem_line = $.jqplot ('div-mem-line', [mem_line_points], mem_line_options);
+
+  setTimeout(function(){generatePoints()}, POLLING_INTERVAL_SEC * 1000); 
+
+});
+
+</script>
+  <body>
+    <b>System Performance</b>
+    <br><br><br>
+    <center>
+<script language="javascript">
+<!-- hide
+if (num_cpu == 4) {
+  document.write("    <div id='row1' style='height:120px; width:1000px'>");
+  document.write("      <div id='div-cpu-bar' style='height:120px; width:200px; float:left;'></div>");
+  document.write("      <div id='div-cpu0-line' style='height:120px; width:200px; float:left;'></div>");
+  document.write("      <div id='div-cpu1-line' style='height:120px; width:200px; float:left;'></div>");
+  document.write("      <div id='div-cpu2-line' style='height:120px; width:200px; float:left;'></div>");
+  document.write("      <div id='div-cpu3-line' style='height:120px; width:200px; float:left;'></div>");
+  document.write("    </div>");
+  document.write("    <div id='row2' style='height:120px; width:1000px'>");
+  document.write("      <div id='div-mem-bar' style='height:120px; width:200px; float:left;'></div>");
+  document.write("      <div id='div-mem-line' style='height:120px; width:800px; float:left;'></div>");
+  document.write("    </div>");
+} else {
+  document.write("    <div id='row1' style='height:200px; width:900px'>");
+  document.write("      <div id='div-cpu-bar' style='height:200px; width:200px; float:left;'></div>");
+  document.write("      <div id='div-cpu0-line' style='height:200px; width:333px; float:left;'></div>");
+  document.write("      <div id='div-cpu1-line' style='height:200px; width:333px; float:left;'></div>");
+  document.write("    </div>");
+  document.write("    <div id='row2' style='height:200px; width:900px'>");
+  document.write("      <div id='div-mem-bar' style='height:200px; width:200px; float:left;'></div>");
+  document.write("      <div id='div-mem-line' style='height:200px; width:666px; float:left;'></div>");
+  document.write("    </div>");
+}
+// done hiding -->
+</script>
+    </center>
+  </body>
+</html>

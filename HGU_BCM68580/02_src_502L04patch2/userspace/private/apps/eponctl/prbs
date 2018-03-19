@@ -1,0 +1,104 @@
+#!/bin/bash
+# PRBS
+#
+# EPON optical testing script.  Run from command line with GPIO49 set low.
+#
+echo "============================================================"
+echo " Running PRBS script.  Please press return key to proceed."
+echo " Setup will take 30 to 60 seconds"
+echo "============================================================"
+
+read dummy_variable
+
+# Kill EPON app, then command CLI mode and sleep so EPON MAC can catch up.
+echo "Sending EPON MAC into CLI mode"
+killall eponapp
+eponapp -c 1 &
+sleep 30s
+
+# Send first set of command to EPON MAC
+echo "Sending PRBS commands to EPON"
+eponctl cli > /dev/null << cmdseq
+/reg 0x002 0x000001ff
+/reg 0x007 0x00000e83
+/reg 0x059
+/reg 0x059 0x4064cd01
+/reg 0x059
+/reg 0x05a
+/reg 0x05a 0x00080000
+/reg 0x05a
+/reg 0x059 0x4004cd01
+/reg 0x059 0x4064cd01
+eth
+exit
+cmdseq
+
+# Send next set of commands
+echo "\nSleeping 2 seconds..."
+sleep 2s
+eponctl cli > /dev/null << cmdseq
+mdio 0x1a 0x1f 0x8000 
+mdio 0x1a 0x10 0x063f 
+mdio 0x1a 0x1f 0x8300 
+mdio 0x1a 0x18 0x5120 
+mdio 0x1a 0x18 
+exit
+cmdseq
+
+# Send next set of commands
+echo "\nSleeping 2 seconds..."
+sleep 2s
+eponctl cli > /dev/null << cmdseq
+mdio 0x1a 0x1f 0x8010 
+mdio 0x1a 0x15 0x0000 
+mdio 0x1a 0x16 0x0000 
+mdio 0x1a 0x17 0x0000 
+mdio 0x1a 0x17 0x0000 
+mdio 0x1a 0x17 0x000f 
+exit
+cmdseq
+
+# Send next set of commands
+echo "\nSleeping 2 seconds..."
+sleep 2s
+eponctl cli > /dev/null << cmdseq
+mdio 0x1a 0x19 0xba98 
+mdio 0x1a 0x1f 0x80f0 
+mdio 0x1a 0x11 0x1c47 
+mdio 0x1a 0x1f 0x8000 
+mdio 0x1a 0x10 0x263f 
+mdio 0x1a 0x1f 0x80f0 
+mdio 0x1a 0x11 0x1c47 
+exit
+cmdseq
+
+# Send next set of commands
+echo "\nSleeping 2 seconds..."
+sleep 2s
+eponctl cli > /dev/null << cmdseq
+
+/reg 0x80 0x0100103f
+/
+exit
+cmdseq
+
+# Running PRBS.  Wait for user input to end it.
+
+echo "\n\n============================================================"
+echo " PRBS setup complete.  Take any needed measurements and then"
+echo " press return key to exit PRBS and end testing."
+echo "============================================================"
+
+read dummy_variable
+
+# Return to normal EPON MAC operation
+echo "Returning EPON MAC to normal operation"
+killall eponapp
+eponapp -c 0 &
+sleep 5s
+
+echo "\n\n============================================================"
+echo " Testing complete."
+echo "============================================================"
+
+ 

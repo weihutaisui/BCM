@@ -1,0 +1,177 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript">
+<!-- hide
+
+function hideManual(hide)
+{
+   var status = 'visible';
+
+   if ( hide == 1 )
+      status = 'hidden';
+   if (document.getElementById)  // DOM3 = IE5, NS6
+      document.getElementById('manualdiv').style.visibility = status;
+   else {
+      if (document.layers == false) // IE4
+         document.all.manualdiv.style.visibility = status;
+   }
+}
+
+function dynamicClick() 
+{
+   with ( document.forms[0] ) {
+   if ( dynamicbtn[0].checked == true ) {
+      hideManual(0);
+   } else {
+      hideManual(1);
+   }
+}
+}
+
+function btnApply() {
+   var loc = 'tunnelcfg.cmd?action=addmapt';
+   with ( document.forms[0] ) {
+      var wanifc;
+      var lanifc;
+
+      wanifc = wanIfName.options[wanIfName.selectedIndex].value;
+      lanifc = lanIfName.options[lanIfName.selectedIndex].value;
+
+      if (wanifc != '') {
+         loc += '&associatedWanIntf=' + wanifc;
+      }
+      else {
+         alert('Need to specify the WAN interface of this tunnel.');
+         return;
+      }
+
+      if (lanifc != '') {
+         loc += '&associatedLanIntf=' + lanifc;
+      }
+      else {
+         alert('Need to specify the LAN interface of this tunnel.');
+         return;
+      }
+
+      if ( dynamicbtn[0].checked == true )
+      {
+         loc += '&dynamic=0';
+
+         if (remoteIpv6Addr.value == '' ) {
+            alert('Please enter AFTR information');
+            return;
+         }
+         loc += '&remoteIpv6Addr=' + remoteIpv6Addr.value;
+         loc += '&ruleIpv6Prefix=' + ruleIpv6Prefix.value;
+         loc += '&ruleIpv4Prefix=' + ruleIpv4Prefix.value;
+         loc += '&psidOffset=' + psidOffset.value;
+         loc += '&psidLen=' + psidLen.value;
+         loc += '&psid=' + psid.value;
+      }
+      else
+      {
+         loc += '&dynamic=1';
+      }
+   }
+   loc += '&sessionKey=<%ejGetOther(sessionKey)%>';
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+function frmLoad() {
+   with ( document.forms[0] ) {
+      dynamicbtn[0].checked = true;
+      dynamicClick();
+   }
+}
+
+// done hiding -->
+</script>
+   </head>
+   <body onload="frmLoad()">
+      <blockquote>
+         <form>
+            <b>MAP-T -- MAP-T Configuration</b><br>
+            <br>
+            <br>
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width='290'>Associated WAN Interface</td>
+                  <td><select name='wanIfName'>
+<script language="javascript">
+<!-- hide
+{
+   var i;
+   var intfInfo = '<%ejGetOther(wanInterfaceInfo, route6)%>';
+   var intf     = intfInfo.split('|');
+
+   document.write("  <option value=''>");
+   document.writeln("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\
+                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\
+                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;");
+   for ( i = 0; i < intf.length; i++ ) {
+      var names = intf[i].split('/');
+      if (names.length > 1) {
+         document.write("  <option value='" + names[1] + "'>");
+         document.writeln(intf[i]);
+      }
+   }
+}
+// done hiding -->
+</script>
+                  </select></td>
+               </tr>
+               <tr>
+                  <td width='290'>Associated LAN Interface</td>
+                  <td><select name='lanIfName'>
+                      <option value='br0'>LAN/br0
+                  </select></td>
+               </tr>
+            </table>
+
+            <tr>
+               <td colspan="2"><input type='radio' name='dynamicbtn' onClick='dynamicClick()'>&nbsp;&nbsp;Manual</td>
+            </tr>
+            <tr>
+               <td colspan="2"><input type='radio' name='dynamicbtn' onClick='dynamicClick()'>&nbsp;&nbsp;Automatic</td>
+            </tr>
+            <div id='manualdiv'>
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td>BR IPv6 Prefix&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+                  <td><input type='text' name='remoteIpv6Addr'></td>
+              </tr><br>
+               <tr>
+                  <td>BMR IPv6 Prefix&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+                  <td><input type='text' name='ruleIpv6Prefix'></td>
+              </tr><br>
+               <tr>
+                  <td>BMR IPv4 Prefix&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+                  <td><input type='text' name='ruleIpv4Prefix'></td>
+              </tr><br>
+               <tr>
+                  <td>PSID Offset&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+                  <td><input type='text' name='psidOffset'></td>
+              </tr><br>
+               <tr>
+                  <td>PSID Length&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+                  <td><input type='text' name='psidLen'></td>
+              </tr><br>
+               <tr>
+                  <td>PSID Value&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+                  <td><input type='text' name='psid'></td>
+              </tr><br>
+           </table>
+           </div>
+
+            <center>
+               <input type='button' onClick='btnApply()' value='Apply/Save'>
+            </center>
+         </form>
+      </blockquote>
+   </body>
+</html>

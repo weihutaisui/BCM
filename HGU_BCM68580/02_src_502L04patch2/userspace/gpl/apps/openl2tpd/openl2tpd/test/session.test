@@ -1,0 +1,5700 @@
+# -*- tcl -*-
+
+source test_procs.tcl
+
+############################################################################
+# Tests 1.*
+# Create three sessions with default parameters to verify multiple
+# session setup, which is relied upon in some of the following tests.
+############################################################################
+
+test session-1.0 { Create tunnel for session tests... } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-1.0
+	l2tpConfig test modify no_random_ids=on reset_ids
+	l2tpConfig system modify reset_statistics
+	l2tpConfig peer profile create profile_name=wibble
+	l2tpConfig tunnel profile create profile_name=wibble
+	l2tpConfig session profile create profile_name=wibble
+	l2tpConfig ppp profile create profile_name=wibble
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42
+	sleep 2
+	l2tpConfig tunnel show tunnel_id=42 config
+	sleep 1
+	addCrLf
+    } \
+    {
+
+Modified test config
+Modified system config
+Created peer profile wibble
+Created tunnel profile wibble
+Created session profile wibble
+Created ppp profile wibble
+Created tunnel 42
+Tunnel 42, from 127.0.0.1 to 127.0.0.1, config_id 42:-
+  state: ESTABLISHED
+  created by admin: YES, tunnel mode: LAC
+  peer tunnel id: 1, host name: NOT SET
+  UDP ports: local 0, peer 0
+  authorization mode: NONE, hide AVPs: OFF, allow PPP proxy: OFF
+  session limit: 0, session count: 0
+  tunnel profile: default, peer profile: default
+  session profile: default, ppp profile: default
+  hello timeout: 60, retry timeout: 1, idle timeout: 0
+  rx window size: 10, tx window size: 10, max retries: 5
+  use udp checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC, bearer capability: DIGITAL ANALOG
+  use tiebreaker: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  peer vendor name: Katalix Systems Ltd. Linux
+  peer protocol version: 1.0, firmware 262
+  peer framing capability: SYNC ASYNC
+  peer bearer capability: DIGITAL ANALOG
+  peer rx window size: 10
+}
+
+test session-1.1 { Create/delete three default sessions } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-1.1
+	l2tpConfig session create tunnel_id=42 session_id=100
+	l2tpConfig session create tunnel_id=42 session_id=101
+	l2tpConfig session create tunnel_id=42 session_id=102
+	sleep 2
+	l2tpConfig system show statistics
+	l2tpConfig system show status
+	l2tpConfig tunnel list
+	l2tpConfig tunnel show tunnel_id=42 config
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=101
+	l2tpConfig session delete tunnel_id=42 session_id=102
+	sleep 70
+	l2tpConfig system show status
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig tunnel list
+    } \
+    {
+
+Created session 42/100
+Created session 42/101
+Created session 42/102
+L2TP counters:-
+  Total messages sent: 12, received: 12, retransmitted: 0
+    illegal: 0, unsupported: 0, ignored AVPs: 0, vendor AVPs: 0
+  Setup failures: tunnels: 0, sessions: 0
+  Resource failures: control frames: 0, peers: 0
+    tunnels: 0, sessions: 0, ppp: 0
+  Limit exceeded errors: tunnels: 0, sessions: 0
+  Frame errors: short frames: 0, wrong version frames: 0
+     unexpected data frames: 0, bad frames: 0
+  Internal: authentication failures: 0, message encode failures: 0
+     no matching tunnel discards: 0, mismatched tunnel ids: 0
+     no matching session_discards: 0, mismatched session ids: 0
+     total control frame send failures: 0, event queue fulls: 0
+
+  Message counters:-
+         Message          RX Good           RX Bad               TX
+         ILLEGAL                0                0                0
+           SCCRQ                1                0                1
+           SCCRP                1                0                1
+           SCCCN                1                0                1
+         STOPCCN                0                0                0
+       RESERVED1                0                0                0
+           HELLO                0                0                0
+            OCRQ                0                0                0
+            OCRP                0                0                0
+            OCCN                0                0                0
+            ICRQ                3                0                3
+            ICRP                3                0                3
+            ICCN                3                0                3
+       RESERVED2                0                0                0
+             CDN                0                0                0
+             WEN                0                0                0
+             SLI                0                0                0
+L2TP service status:-
+  tunnels: 2, sessions: 6
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Tunnel 42, from 127.0.0.1 to 127.0.0.1, config_id 42:-
+  state: ESTABLISHED
+  created by admin: YES, tunnel mode: LAC
+  peer tunnel id: 1, host name: NOT SET
+  UDP ports: local 0, peer 0
+  authorization mode: NONE, hide AVPs: OFF, allow PPP proxy: OFF
+  session limit: 0, session count: 3
+  tunnel profile: default, peer profile: default
+  session profile: default, ppp profile: default
+  hello timeout: 60, retry timeout: 1, idle timeout: 0
+  rx window size: 10, tx window size: 10, max retries: 5
+  use udp checksums: ON
+  do pmtu discovery: OFF, mtu: 1460
+  framing capability: SYNC ASYNC, bearer capability: DIGITAL ANALOG
+  use tiebreaker: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  peer vendor name: Katalix Systems Ltd. Linux
+  peer protocol version: 1.0, firmware 262
+  peer framing capability: SYNC ASYNC
+  peer bearer capability: DIGITAL ANALOG
+  peer rx window size: 10
+3 sessions on tunnel 42:-
+	100
+	101
+	102
+Deleted session 42/100
+Deleted session 42/101
+Deleted session 42/102
+L2TP service status:-
+  tunnels: 2, sessions: 0
+
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+}
+
+test session-1.99 { Cleanup session create tests } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-1.99
+	l2tpConfig peer profile delete profile_name=wibble
+	l2tpConfig tunnel profile delete profile_name=wibble
+	l2tpConfig session profile delete profile_name=wibble
+	l2tpConfig ppp profile delete profile_name=wibble
+	l2tpConfig tunnel delete tunnel_id=42 
+	sleep 5
+	l2tpConfig tunnel list
+    } \
+    {
+
+Deleted peer profile wibble
+Deleted tunnel profile wibble
+Deleted session profile wibble
+Deleted ppp profile wibble
+Deleted tunnel 42
+
+}
+
+############################################################################
+# Tests 2.* - session create parameters.
+############################################################################
+
+test session-2.0 { Setup session create parameter tests } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.0
+
+	l2tpConfig peer profile create profile_name=wibble
+	l2tpConfig tunnel profile create profile_name=wibble
+	l2tpConfig session profile create profile_name=wibble
+	l2tpConfig ppp profile create profile_name=wibble
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42
+	sleep 1
+	addCrLf
+    } \
+    {
+
+Created peer profile wibble
+Created tunnel profile wibble
+Created session profile wibble
+Created ppp profile wibble
+Created tunnel 42
+}
+
+test session-2.1 { Create session } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.1
+	l2tpConfig test modify no_random_ids=on reset_ids
+	l2tpConfig system modify reset_statistics
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Modified system config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.2 { Create session tunnel_name= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.2
+	l2tpConfig test modify reset_ids
+	l2tpConfig tunnel modify tunnel_id=42 tunnel_name=testTunnel
+	l2tpConfig session create tunnel_name=testTunnel session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig tunnel modify tunnel_id=42 tunnel_name=
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Modified tunnel 42
+Created session 100 on tunnel testTunnel
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Modified tunnel 42
+Deleted session 42/100
+
+}
+
+test session-2.3 { Create session profile_name= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.3
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 profile_name=wibble
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  session profile name: wibble
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.4 { Create session ppp_profile_name= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.4
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 ppp_profile_name=wibble
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  ppp profile name: wibble
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.5 { Create session trace_flags= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.5
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 trace_flags=7
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.6 { Create session sequencing_required= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.6
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 sequencing_required=yes
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: ON
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.7 { Create session use_sequence_numbers= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.7
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 use_sequence_numbers=yes
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: ON
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.8 { Create session reorder_timeout= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.8
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 reorder_timeout=42
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  reorder timeout: 42
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.9 { Create session session_type= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.9
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 session_type=laic
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.10 { Create session priv_group_id= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.10
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 priv_group_id=wibble
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  private group id: wibble
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.11 { Create session session_name= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.11
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 session_name=wibble
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  administrative name: wibble
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.12 { Create session interface_name= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.12
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 interface_name=wibble
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  ppp interface name: wibble
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.13 { Create session user_name= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.13
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 user_name=wibble
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  ppp user name: wibble
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.14 { Create session user_password= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.14
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 user_password=wibble
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  ppp user password: wibble
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.15 { Create session framing_type= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.15
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 framing_type=async
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 framing_type=sync
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 framing_type=any
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.16 { Create session bearer_type= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.16
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 bearer_type=analog
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 bearer_type=digital
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 bearer_type=any
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.17 { Create session minimum_bps= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.17
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 minimum_bps=42
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  min bps: 42, max bps: 0
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.18 { Create session maximum_bps= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.18
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 maximum_bps=42
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  min bps: 0, max bps: 42
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.19 { Create session connect_speed= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.19
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 connect_speed=42
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 connect_speed=42:43
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  tx connect speed: 42, rx connect speed: 42
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  tx connect speed: 43, rx connect speed: 42
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.20 { Create session use_ppp_proxy= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.20
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 use_ppp_proxy=yes
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	sleep 1
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: YES
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.21 { Create session proxy_auth_type= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.21
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 proxy_auth_type=none
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 proxy_auth_type=text
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 proxy_auth_type=chap
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 proxy_auth_type=pap
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 proxy_auth_type=mschap
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  proxy auth type: NONE
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  proxy auth type: TEXT
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  proxy auth type: CHAP
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  proxy auth type: PAP
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  proxy auth type: MSCHAP
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.22 { Create session proxy_auth_name= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.22
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 proxy_auth_name=wibble
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  proxy auth name: 'wibble'
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.23 { Create session proxy_auth_challenge= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.23
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 proxy_auth_challenge=0102030405060708090a0b0c0d0e0f
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  proxy auth challenge: 0102030405060708090a0b0c0d0e0f
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.24 { Create session proxy_auth_response= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.24
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 proxy_auth_response=0102030405060708090a0b0c0d0e0f
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  proxy auth response: 0102030405060708090a0b0c0d0e0f
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.25 { Create session calling_number= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.25
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 calling_number=012345678
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  calling number: '012345678'
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.26 { Create session called_number= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.26
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 called_number=012345678
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  called number: '012345678'
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.27 { Create session sub_address= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.27
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 sub_address=012345678
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  sub address: '012345678'
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.28 { Create session initial_rcvd_lcp_confreq= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.28
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 initial_rcvd_lcp_confreq=0102030405060708090a0b0c0d0e0f
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  initial received LCP CONFREQ: 0102030405060708090a0b0c0d0e0f
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.29 { Create session last_sent_lcp_confreq= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.29
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 last_sent_lcp_confreq=0102030405060708090a0b0c0d0e0f
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  last sent LCP CONFREQ: 0102030405060708090a0b0c0d0e0f
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.30 { Create session last_rcvd_lcp_confreq= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.30
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 last_rcvd_lcp_confreq=0102030405060708090a0b0c0d0e0f
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+  last received LCP CONFREQ: 0102030405060708090a0b0c0d0e0f
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.31 { Session create: LNS incoming call (rejected) } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.31
+	l2tpConfig system modify reset_statistics
+	l2tpConfig session create tunnel_id=42 session_id=100 session_type=lnic
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig system show status
+	l2tpConfig system show statistics
+    } \
+    {
+
+Modified system config
+Error at or near 'create'
+Operation failed: Session type invalid
+
+L2TP service status:-
+  tunnels: 2, sessions: 0
+L2TP counters:-
+  Total messages sent: 0, received: 0, retransmitted: 0
+    illegal: 0, unsupported: 0, ignored AVPs: 0, vendor AVPs: 0
+  Setup failures: tunnels: 0, sessions: 0
+  Resource failures: control frames: 0, peers: 0
+    tunnels: 0, sessions: 0, ppp: 0
+  Limit exceeded errors: tunnels: 0, sessions: 0
+  Frame errors: short frames: 0, wrong version frames: 0
+     unexpected data frames: 0, bad frames: 0
+  Internal: authentication failures: 0, message encode failures: 0
+     no matching tunnel discards: 0, mismatched tunnel ids: 0
+     no matching session_discards: 0, mismatched session ids: 0
+     total control frame send failures: 0, event queue fulls: 0
+
+  Message counters:-
+         Message          RX Good           RX Bad               TX
+         ILLEGAL                0                0                0
+           SCCRQ                0                0                0
+           SCCRP                0                0                0
+           SCCCN                0                0                0
+         STOPCCN                0                0                0
+       RESERVED1                0                0                0
+           HELLO                0                0                0
+            OCRQ                0                0                0
+            OCRP                0                0                0
+            OCCN                0                0                0
+            ICRQ                0                0                0
+            ICRP                0                0                0
+            ICCN                0                0                0
+       RESERVED2                0                0                0
+             CDN                0                0                0
+             WEN                0                0                0
+             SLI                0                0                0
+}
+
+test session-2.32 { Session create: LAC outgoing call (rejected) } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.32
+	l2tpConfig system modify reset_statistics
+	l2tpConfig session create tunnel_id=42 session_id=100 session_type=laoc
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig system show status
+	l2tpConfig system show statistics
+    } \
+    {
+
+Modified system config
+Error at or near 'create'
+Operation failed: Session type invalid
+
+L2TP service status:-
+  tunnels: 2, sessions: 0
+L2TP counters:-
+  Total messages sent: 0, received: 0, retransmitted: 0
+    illegal: 0, unsupported: 0, ignored AVPs: 0, vendor AVPs: 0
+  Setup failures: tunnels: 0, sessions: 0
+  Resource failures: control frames: 0, peers: 0
+    tunnels: 0, sessions: 0, ppp: 0
+  Limit exceeded errors: tunnels: 0, sessions: 0
+  Frame errors: short frames: 0, wrong version frames: 0
+     unexpected data frames: 0, bad frames: 0
+  Internal: authentication failures: 0, message encode failures: 0
+     no matching tunnel discards: 0, mismatched tunnel ids: 0
+     no matching session_discards: 0, mismatched session ids: 0
+     total control frame send failures: 0, event queue fulls: 0
+
+  Message counters:-
+         Message          RX Good           RX Bad               TX
+         ILLEGAL                0                0                0
+           SCCRQ                0                0                0
+           SCCRP                0                0                0
+           SCCCN                0                0                0
+         STOPCCN                0                0                0
+       RESERVED1                0                0                0
+           HELLO                0                0                0
+            OCRQ                0                0                0
+            OCRP                0                0                0
+            OCCN                0                0                0
+            ICRQ                0                0                0
+            ICRP                0                0                0
+            ICCN                0                0                0
+       RESERVED2                0                0                0
+             CDN                0                0                0
+             WEN                0                0                0
+             SLI                0                0                0
+}
+
+test session-2.33 { Session create: LNS outgoing call on LAC tunnel rejected } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.33
+	l2tpConfig system modify reset_statistics
+	l2tpConfig session create tunnel_id=42 session_id=100 session_type=lnoc
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig system show status
+	l2tpConfig system show statistics
+    } \
+    {
+
+Modified system config
+Error at or near 'create'
+Operation failed: Session type illegal for tunnel
+
+L2TP service status:-
+  tunnels: 2, sessions: 0
+L2TP counters:-
+  Total messages sent: 0, received: 0, retransmitted: 0
+    illegal: 0, unsupported: 0, ignored AVPs: 0, vendor AVPs: 0
+  Setup failures: tunnels: 0, sessions: 0
+  Resource failures: control frames: 0, peers: 0
+    tunnels: 0, sessions: 0, ppp: 0
+  Limit exceeded errors: tunnels: 0, sessions: 0
+  Frame errors: short frames: 0, wrong version frames: 0
+     unexpected data frames: 0, bad frames: 0
+  Internal: authentication failures: 0, message encode failures: 0
+     no matching tunnel discards: 0, mismatched tunnel ids: 0
+     no matching session_discards: 0, mismatched session ids: 0
+     total control frame send failures: 0, event queue fulls: 0
+
+  Message counters:-
+         Message          RX Good           RX Bad               TX
+         ILLEGAL                0                0                0
+           SCCRQ                0                0                0
+           SCCRP                0                0                0
+           SCCCN                0                0                0
+         STOPCCN                0                0                0
+       RESERVED1                0                0                0
+           HELLO                0                0                0
+            OCRQ                0                0                0
+            OCRP                0                0                0
+            OCCN                0                0                0
+            ICRQ                0                0                0
+            ICRP                0                0                0
+            ICCN                0                0                0
+       RESERVED2                0                0                0
+             CDN                0                0                0
+             WEN                0                0                0
+             SLI                0                0                0
+}
+
+test session-2.34 { Create session no_ppp= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.34
+	l2tpConfig test modify reset_ids
+	l2tpConfig session create tunnel_id=42 session_id=100 no_ppp=yes
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	sleep 1
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+}
+
+test session-2.35 { Complex create session with all args } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.34
+	l2tpConfig session create tunnel_id=42 session_id=100 \
+	  session_name=wibble \
+	  tunnel_name=one \
+	  bearer_type=digital \
+	  called_number=123 \
+	  calling_number=456 \
+	  connect_speed=100000 \
+	  framing_type=sync \
+	  maximum_bps=100000 \
+	  minimum_bps=10000 \
+	  no_ppp=no \
+	  ppp_profile_name=wibble \
+	  priv_group_id=wibble \
+	  profile_name=wibble \
+	  reorder_timeout=42 \
+	  sequencing_required=yes \
+	  session_type=laic \
+	  sub_address=789 \
+	  trace_flags=7 \
+	  use_ppp_proxy=yes \
+	  use_sequence_numbers=yes \
+	  user_name=you \
+	  interface_name=one \
+	  user_password=mypass \
+	  proxy_auth_challenge=010203 \
+	  proxy_auth_name=wibble \
+	  proxy_auth_type=chap \
+	  last_rcvd_lcp_confreq=010203040506070809 \
+	  last_sent_lcp_confreq=010203040506070809 \
+	  initial_rcvd_lcp_confreq=010203040506070809
+
+	sleep 3
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	sleep 1
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig tunnel modify tunnel_id=42 tunnel_name=
+    } \
+    {
+
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  administrative name: wibble
+  created by admin: YES, peer session id: 2
+  session profile name: wibble
+  private group id: wibble
+  ppp user name: you
+  ppp user password: mypass
+  ppp interface name: one
+  ppp profile name: wibble
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42
+  trace flags: PROTOCOL FSM API
+  framing types: SYNC
+  bearer types: DIGITAL
+  min bps: 10000, max bps: 100000
+  tx connect speed: 100000, rx connect speed: 100000
+  calling number: '456'
+  called number: '123'
+  sub address: '789'
+  use ppp proxy: YES
+  proxy auth type: CHAP
+  proxy auth name: 'wibble'
+  proxy auth challenge: 010203
+  initial received LCP CONFREQ: 010203040506070809
+  last received LCP CONFREQ: 010203040506070809
+  last sent LCP CONFREQ: 010203040506070809
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+
+Modified tunnel 42
+}
+
+test session-2.99 { Cleanup session create parameter tests } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-2.99
+	l2tpConfig session list tunnel_id=42
+
+	l2tpConfig peer profile delete profile_name=wibble
+	l2tpConfig tunnel profile delete profile_name=wibble
+	l2tpConfig session profile delete profile_name=wibble
+	l2tpConfig ppp profile delete profile_name=wibble
+	l2tpConfig tunnel delete tunnel_id=42 
+	sleep 5
+	l2tpConfig tunnel list
+    } \
+    {
+
+
+Deleted peer profile wibble
+Deleted tunnel profile wibble
+Deleted session profile wibble
+Deleted ppp profile wibble
+Deleted tunnel 42
+
+}
+
+############################################################################
+# Tests 3.* - session modify parameters
+############################################################################
+
+test session-3.0 { Modify session parameters... } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-3.0
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics
+
+	l2tpConfig peer profile create profile_name=wibble
+	l2tpConfig tunnel profile create profile_name=wibble
+	l2tpConfig session profile create profile_name=wibble
+	l2tpConfig ppp profile create profile_name=wibble
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42
+	sleep 1
+
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Modified system config
+Created peer profile wibble
+Created tunnel profile wibble
+Created session profile wibble
+Created ppp profile wibble
+Created tunnel 42
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+}
+
+test session-3.1 { Modify session session_name= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-3.1
+	l2tpConfig session modify tunnel_id=42 session_id=100 session_name=wibble
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session modify tunnel_id=42 session_id=100 session_name=
+	l2tpConfig session show tunnel_id=42 session_id=100
+    } \
+    {
+
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  administrative name: wibble
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+}
+
+test session-3.2 { Modify session trace_flags= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-3.2
+	l2tpConfig session modify tunnel_id=42 session_id=100 trace_flags=7
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session modify tunnel_id=42 session_id=100 trace_flags=0xffffffff
+	l2tpConfig session show tunnel_id=42 session_id=100
+    } \
+    {
+
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+}
+
+test session-3.3 { Modify session sequencing_required= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-3.3
+	l2tpConfig session modify tunnel_id=42 session_id=100 sequencing_required=yes
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session modify tunnel_id=42 session_id=100 sequencing_required=no
+	l2tpConfig session show tunnel_id=42 session_id=100
+    } \
+    {
+
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: ON
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+}
+
+test session-3.4 { Modify session use_sequence_numbers= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-3.4
+	l2tpConfig session modify tunnel_id=42 session_id=100 use_sequence_numbers=yes
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session modify tunnel_id=42 session_id=100 use_sequence_numbers=no
+	l2tpConfig session show tunnel_id=42 session_id=100
+    } \
+    {
+
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: ON
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+}
+
+test session-3.5 { Modify session reorder_timeout= } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-3.5
+	l2tpConfig session modify tunnel_id=42 session_id=100 reorder_timeout=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session modify tunnel_id=42 session_id=100 reorder_timeout=0
+	l2tpConfig session show tunnel_id=42 session_id=100
+    } \
+    {
+
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  reorder timeout: 42
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+}
+
+test session-3.6 { Complex modify session with all args } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-3.6
+	l2tpConfig session modify tunnel_id=42 session_id=100 \
+	  session_name=wibble \
+	  trace_flags=7 \
+	  sequencing_required=yes \
+	  use_sequence_numbers=yes \
+	  reorder_timeout=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+    } \
+    {
+
+Modified session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  administrative name: wibble
+  created by admin: YES, peer session id: 1
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42
+  trace flags: PROTOCOL FSM API
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+}
+
+test session-3.99 { Session modify cleanup } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig tunnel list
+
+	l2tpConfig peer profile delete profile_name=wibble
+	l2tpConfig tunnel profile delete profile_name=wibble
+	l2tpConfig session profile delete profile_name=wibble
+	l2tpConfig ppp profile delete profile_name=wibble
+    } \
+    {
+1 sessions on tunnel 42:-
+	100
+Deleted session 42/100
+
+Deleted tunnel 42
+
+Deleted peer profile wibble
+Deleted tunnel profile wibble
+Deleted session profile wibble
+Deleted ppp profile wibble
+}
+
+############################################################################
+# Tests 4.* - session profile parameter inheritance
+############################################################################
+
+test session-4.0 { Session parameter inheritance test setup... } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-4.0
+	l2tpConfig test modify no_random_ids=on show_profile_usage=on reset_ids
+	l2tpConfig system modify reset_statistics
+	l2tpConfig peer profile create profile_name=one session_profile_name=one
+	l2tpConfig peer profile create profile_name=two tunnel_profile_name=two
+	l2tpConfig peer profile create profile_name=three ppp_profile_name=three 
+	l2tpConfig peer profile create profile_name=four ppp_profile_name=four
+	l2tpConfig peer profile create profile_name=five session_profile_name=five
+	l2tpConfig peer profile create profile_name=six tunnel_profile_name=six session_profile_name=one ppp_profile_name=one
+	l2tpConfig tunnel profile create profile_name=one session_profile_name=one
+	l2tpConfig tunnel profile create profile_name=two session_profile_name=two
+	l2tpConfig tunnel profile create profile_name=three session_profile_name=three ppp_profile_name=three 
+	l2tpConfig tunnel profile create profile_name=six session_profile_name=six ppp_profile_name=one 
+	l2tpConfig session profile create profile_name=one
+	l2tpConfig session profile create profile_name=two
+	l2tpConfig session profile create profile_name=three ppp_profile_name=three
+	l2tpConfig session profile create profile_name=five ppp_profile_name=five
+	l2tpConfig session profile create profile_name=six ppp_profile_name=six
+	l2tpConfig ppp profile create profile_name=one local_name=one
+	l2tpConfig ppp profile create profile_name=two local_name=two
+	l2tpConfig ppp profile create profile_name=three local_name=three
+	l2tpConfig ppp profile create profile_name=four local_name=four
+	l2tpConfig ppp profile create profile_name=five local_name=five
+	l2tpConfig ppp profile create profile_name=six local_name=six
+    } \
+    {
+
+Modified test config
+Modified system config
+Created peer profile one
+Created peer profile two
+Created peer profile three
+Created peer profile four
+Created peer profile five
+Created peer profile six
+Created tunnel profile one
+Created tunnel profile two
+Created tunnel profile three
+Created tunnel profile six
+Created session profile one
+Created session profile two
+Created session profile three
+Created session profile five
+Created session profile six
+Created ppp profile one
+Created ppp profile two
+Created ppp profile three
+Created ppp profile four
+Created ppp profile five
+Created ppp profile six
+}
+
+test session-4.1 { Session parameter inheritance from peer profile's default session profile } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-4.1
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42 host_name=one
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 1
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session show tunnel_id=1 session_id=1
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig test modify no_random_ids=on reset_ids
+    } \
+    {
+
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Session 1 on tunnel 1:-
+  type: LNS Incoming Call, state: ESTABLISHED
+  created by admin: NO, peer session id: 100
+  session profile name: one
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types: SYNC ASYNC
+    bearer types: DIGITAL ANALOG
+    connect speed: 1000000
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+L2TP service status:-
+  tunnels: 2, sessions: 0
+Deleted tunnel 42
+L2TP service status:-
+  tunnels: 0, sessions: 0
+Modified test config
+}
+
+test session-4.2 { Session parameter inheritance from tunnel's default session profile } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-4.2
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42 host_name=two
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 1
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session show tunnel_id=1 session_id=1
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig test modify no_random_ids=on reset_ids
+    } \
+    {
+
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Session 1 on tunnel 1:-
+  type: LNS Incoming Call, state: ESTABLISHED
+  created by admin: NO, peer session id: 100
+  session profile name: two
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types: SYNC ASYNC
+    bearer types: DIGITAL ANALOG
+    connect speed: 1000000
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+L2TP service status:-
+  tunnels: 2, sessions: 0
+Deleted tunnel 42
+L2TP service status:-
+  tunnels: 0, sessions: 0
+Modified test config
+}
+
+test session-4.3 { PPP parameter inheritance from peer profile's default ppp profile } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-4.3
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42 host_name=three
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 1
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session show tunnel_id=1 session_id=1
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig test modify no_random_ids=on reset_ids
+    } \
+    {
+
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Session 1 on tunnel 1:-
+  type: LNS Incoming Call, state: ESTABLISHED
+  created by admin: NO, peer session id: 100
+  ppp profile name: three
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types: SYNC ASYNC
+    bearer types: DIGITAL ANALOG
+    connect speed: 1000000
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+L2TP service status:-
+  tunnels: 2, sessions: 0
+Deleted tunnel 42
+L2TP service status:-
+  tunnels: 0, sessions: 0
+Modified test config
+}
+
+test session-4.4 { PPP parameter inheritance from tunnel's default ppp profile } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-4.4
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42 host_name=four
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 1
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session show tunnel_id=1 session_id=1
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig test modify no_random_ids=on reset_ids
+    } \
+    {
+
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Session 1 on tunnel 1:-
+  type: LNS Incoming Call, state: ESTABLISHED
+  created by admin: NO, peer session id: 100
+  ppp profile name: four
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types: SYNC ASYNC
+    bearer types: DIGITAL ANALOG
+    connect speed: 1000000
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+L2TP service status:-
+  tunnels: 2, sessions: 0
+Deleted tunnel 42
+L2TP service status:-
+  tunnels: 0, sessions: 0
+Modified test config
+}
+
+test session-4.5 { PPP parameter inheritance from session's default ppp profile } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-4.5
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42 host_name=five
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 1
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session show tunnel_id=1 session_id=1
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig test modify no_random_ids=on reset_ids
+    } \
+    {
+
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Session 1 on tunnel 1:-
+  type: LNS Incoming Call, state: ESTABLISHED
+  created by admin: NO, peer session id: 100
+  session profile name: five
+  ppp profile name: five
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types: SYNC ASYNC
+    bearer types: DIGITAL ANALOG
+    connect speed: 1000000
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+L2TP service status:-
+  tunnels: 2, sessions: 0
+Deleted tunnel 42
+L2TP service status:-
+  tunnels: 0, sessions: 0
+Modified test config
+}
+
+test session-4.6 { PPP parameters take precedance from session's default ppp profile } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-4.6
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42 host_name=six
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 1
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session show tunnel_id=1 session_id=1
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig system show status
+	l2tpConfig test modify no_random_ids=on reset_ids
+    } \
+    {
+
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Session 1 on tunnel 1:-
+  type: LNS Incoming Call, state: ESTABLISHED
+  created by admin: NO, peer session id: 100
+  session profile name: six
+  ppp profile name: six
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types: SYNC ASYNC
+    bearer types: DIGITAL ANALOG
+    connect speed: 1000000
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+L2TP service status:-
+  tunnels: 2, sessions: 0
+Deleted tunnel 42
+L2TP service status:-
+  tunnels: 0, sessions: 0
+Modified test config
+}
+
+test session-4.99 { Session parameter inheritance test cleanup } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-4.99
+	l2tpConfig tunnel list
+	l2tpConfig ppp profile delete profile_name=one
+	l2tpConfig ppp profile delete profile_name=two
+	l2tpConfig ppp profile delete profile_name=three
+	l2tpConfig ppp profile delete profile_name=four
+	l2tpConfig ppp profile delete profile_name=five
+	l2tpConfig ppp profile delete profile_name=six
+	l2tpConfig session profile delete profile_name=one
+	l2tpConfig session profile delete profile_name=two
+	l2tpConfig session profile delete profile_name=three
+	l2tpConfig session profile delete profile_name=five
+	l2tpConfig session profile delete profile_name=six
+	l2tpConfig tunnel profile delete profile_name=one
+	l2tpConfig tunnel profile delete profile_name=two
+	l2tpConfig tunnel profile delete profile_name=three
+	l2tpConfig tunnel profile delete profile_name=six
+	l2tpConfig peer profile delete profile_name=one
+	l2tpConfig peer profile delete profile_name=two
+	l2tpConfig peer profile delete profile_name=three
+	l2tpConfig peer profile delete profile_name=four
+	l2tpConfig peer profile delete profile_name=five
+	l2tpConfig peer profile delete profile_name=six
+	l2tpConfig test modify no_random_ids=off show_profile_usage=off reset_ids
+    } \
+    {
+
+
+Deleted ppp profile one
+Deleted ppp profile two
+Deleted ppp profile three
+Deleted ppp profile four
+Deleted ppp profile five
+Deleted ppp profile six
+Deleted session profile one
+Deleted session profile two
+Deleted session profile three
+Deleted session profile five
+Deleted session profile six
+Deleted tunnel profile one
+Deleted tunnel profile two
+Deleted tunnel profile three
+Deleted tunnel profile six
+Deleted peer profile one
+Deleted peer profile two
+Deleted peer profile three
+Deleted peer profile four
+Deleted peer profile five
+Deleted peer profile six
+Modified test config
+}
+
+############################################################################
+# Tests 5.*
+# Session creation denial by admin or by limits
+############################################################################
+
+test session-5.0 { Session creation failure test setup... } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-5.0
+	l2tpConfig test modify no_random_ids=on reset_ids
+	l2tpConfig system modify reset_statistics
+    } \
+    {
+
+Modified test config
+Modified system config
+}
+
+test session-5.1 { Session creation rejected by local config } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-5.1
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig system modify drain_tunnels=yes
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig system show status
+	l2tpConfig system show statistics
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig system modify drain_tunnels=no
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Modified system config
+Error at or near 'create'
+Operation failed: Tunnel is administratively disabled
+L2TP service status:-
+  tunnels: 2, sessions: 0
+L2TP counters:-
+  Total messages sent: 3, received: 3, retransmitted: 0
+    illegal: 0, unsupported: 0, ignored AVPs: 0, vendor AVPs: 0
+  Setup failures: tunnels: 0, sessions: 0
+  Resource failures: control frames: 0, peers: 0
+    tunnels: 0, sessions: 0, ppp: 0
+  Limit exceeded errors: tunnels: 0, sessions: 0
+  Frame errors: short frames: 0, wrong version frames: 0
+     unexpected data frames: 0, bad frames: 0
+  Internal: authentication failures: 0, message encode failures: 0
+     no matching tunnel discards: 0, mismatched tunnel ids: 0
+     no matching session_discards: 0, mismatched session ids: 0
+     total control frame send failures: 0, event queue fulls: 0
+
+  Message counters:-
+         Message          RX Good           RX Bad               TX
+         ILLEGAL                0                0                0
+           SCCRQ                1                0                1
+           SCCRP                1                0                1
+           SCCCN                1                0                1
+         STOPCCN                0                0                0
+       RESERVED1                0                0                0
+           HELLO                0                0                0
+            OCRQ                0                0                0
+            OCRP                0                0                0
+            OCCN                0                0                0
+            ICRQ                0                0                0
+            ICRP                0                0                0
+            ICCN                0                0                0
+       RESERVED2                0                0                0
+             CDN                0                0                0
+             WEN                0                0                0
+             SLI                0                0                0
+
+Modified system config
+Deleted tunnel 42
+
+}
+
+test session-5.2 { Session creation rejected by local system session limit } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-5.2
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics max_sessions=4
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig session create tunnel_id=42 session_id=100
+	l2tpConfig session create tunnel_id=42 session_id=101
+	sleep 1
+	l2tpConfig session create tunnel_id=42 session_id=102
+	sleep 4
+	l2tpConfig system show status
+	l2tpConfig system show statistics
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig system modify max_sessions=0
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Created session 42/101
+Error at or near 'create'
+Operation failed: Session limit exceeded
+L2TP service status:-
+  tunnels: 2, sessions: 4
+L2TP counters:-
+  Total messages sent: 9, received: 9, retransmitted: 0
+    illegal: 0, unsupported: 0, ignored AVPs: 0, vendor AVPs: 0
+  Setup failures: tunnels: 0, sessions: 0
+  Resource failures: control frames: 0, peers: 0
+    tunnels: 0, sessions: 0, ppp: 0
+  Limit exceeded errors: tunnels: 0, sessions: 1
+  Frame errors: short frames: 0, wrong version frames: 0
+     unexpected data frames: 0, bad frames: 0
+  Internal: authentication failures: 0, message encode failures: 0
+     no matching tunnel discards: 0, mismatched tunnel ids: 0
+     no matching session_discards: 0, mismatched session ids: 0
+     total control frame send failures: 0, event queue fulls: 0
+
+  Message counters:-
+         Message          RX Good           RX Bad               TX
+         ILLEGAL                0                0                0
+           SCCRQ                1                0                1
+           SCCRP                1                0                1
+           SCCCN                1                0                1
+         STOPCCN                0                0                0
+       RESERVED1                0                0                0
+           HELLO                0                0                0
+            OCRQ                0                0                0
+            OCRP                0                0                0
+            OCCN                0                0                0
+            ICRQ                2                0                2
+            ICRP                2                0                2
+            ICCN                2                0                2
+       RESERVED2                0                0                0
+             CDN                0                0                0
+             WEN                0                0                0
+             SLI                0                0                0
+2 sessions on tunnel 42:-
+	100
+	101
+2 sessions on tunnel 1:-
+	1
+	2
+Modified system config
+Deleted tunnel 42
+
+}
+
+test session-5.3 { Session creation rejected by local tunnel session limit } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-5.3
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42 max_sessions=4
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig session create tunnel_id=42 session_id=100
+	l2tpConfig session create tunnel_id=42 session_id=101
+	l2tpConfig session create tunnel_id=42 session_id=102
+	sleep 4
+	l2tpConfig system show status
+	l2tpConfig system show statistics
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Created session 42/101
+Created session 42/102
+L2TP service status:-
+  tunnels: 2, sessions: 6
+L2TP counters:-
+  Total messages sent: 12, received: 12, retransmitted: 0
+    illegal: 0, unsupported: 0, ignored AVPs: 0, vendor AVPs: 0
+  Setup failures: tunnels: 0, sessions: 0
+  Resource failures: control frames: 0, peers: 0
+    tunnels: 0, sessions: 0, ppp: 0
+  Limit exceeded errors: tunnels: 0, sessions: 0
+  Frame errors: short frames: 0, wrong version frames: 0
+     unexpected data frames: 0, bad frames: 0
+  Internal: authentication failures: 0, message encode failures: 0
+     no matching tunnel discards: 0, mismatched tunnel ids: 0
+     no matching session_discards: 0, mismatched session ids: 0
+     total control frame send failures: 0, event queue fulls: 0
+
+  Message counters:-
+         Message          RX Good           RX Bad               TX
+         ILLEGAL                0                0                0
+           SCCRQ                1                0                1
+           SCCRP                1                0                1
+           SCCCN                1                0                1
+         STOPCCN                0                0                0
+       RESERVED1                0                0                0
+           HELLO                0                0                0
+            OCRQ                0                0                0
+            OCRP                0                0                0
+            OCCN                0                0                0
+            ICRQ                3                0                3
+            ICRP                3                0                3
+            ICCN                3                0                3
+       RESERVED2                0                0                0
+             CDN                0                0                0
+             WEN                0                0                0
+             SLI                0                0                0
+3 sessions on tunnel 42:-
+	100
+	101
+	102
+3 sessions on tunnel 1:-
+	1
+	2
+	3
+Deleted tunnel 42
+
+}
+
+test session-5.4 { Session creation rejected by remote tunnel session limit } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-5.4
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig tunnel modify tunnel_id=1 max_sessions=4
+	l2tpConfig session create tunnel_id=42 session_id=100
+	l2tpConfig session create tunnel_id=42 session_id=101
+	l2tpConfig session create tunnel_id=42 session_id=102
+	sleep 4
+	l2tpConfig system show status
+	l2tpConfig system show statistics
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Modified tunnel 1
+Created session 42/100
+Created session 42/101
+Created session 42/102
+L2TP service status:-
+  tunnels: 2, sessions: 6
+L2TP counters:-
+  Total messages sent: 12, received: 12, retransmitted: 0
+    illegal: 0, unsupported: 0, ignored AVPs: 0, vendor AVPs: 0
+  Setup failures: tunnels: 0, sessions: 0
+  Resource failures: control frames: 0, peers: 0
+    tunnels: 0, sessions: 0, ppp: 0
+  Limit exceeded errors: tunnels: 0, sessions: 0
+  Frame errors: short frames: 0, wrong version frames: 0
+     unexpected data frames: 0, bad frames: 0
+  Internal: authentication failures: 0, message encode failures: 0
+     no matching tunnel discards: 0, mismatched tunnel ids: 0
+     no matching session_discards: 0, mismatched session ids: 0
+     total control frame send failures: 0, event queue fulls: 0
+
+  Message counters:-
+         Message          RX Good           RX Bad               TX
+         ILLEGAL                0                0                0
+           SCCRQ                1                0                1
+           SCCRP                1                0                1
+           SCCCN                1                0                1
+         STOPCCN                0                0                0
+       RESERVED1                0                0                0
+           HELLO                0                0                0
+            OCRQ                0                0                0
+            OCRP                0                0                0
+            OCCN                0                0                0
+            ICRQ                3                0                3
+            ICRP                3                0                3
+            ICCN                3                0                3
+       RESERVED2                0                0                0
+             CDN                0                0                0
+             WEN                0                0                0
+             SLI                0                0                0
+3 sessions on tunnel 42:-
+	100
+	101
+	102
+3 sessions on tunnel 1:-
+	1
+	2
+	3
+Deleted tunnel 42
+
+}
+
+test session-5.99 { Session creation failure test cleanup } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-5.99
+	l2tpConfig tunnel list
+    } \
+    {
+
+
+}
+
+############################################################################
+# Tests 6.*
+# Outgoing Call session type
+############################################################################
+
+test session-6.0 { Outgoing call session tests setup } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-6.0
+	l2tpConfig test modify reset_ids no_random_ids=on
+	l2tpConfig system modify reset_statistics
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42
+	sleep 1
+	l2tpConfig tunnel list
+
+	# Create a session to prevent tunnel no-session timeouts
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig session show tunnel_id=1 session_id=1
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+1 sessions on tunnel 1:-
+	1
+Session 1 on tunnel 1:-
+  type: LNS Incoming Call, state: ESTABLISHED
+  created by admin: NO, peer session id: 100
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types: SYNC ASYNC
+    bearer types: DIGITAL ANALOG
+    connect speed: 1000000
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+}
+
+test session-6.1 { Create session at LNS (outgoing call type) } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-6.1
+
+	l2tpConfig session create tunnel_id=1 session_id=101
+	sleep 2
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig session show tunnel_id=1 session_id=101
+	l2tpConfig session delete tunnel_id=1 session_id=101
+	sleep 5
+	addCrLf
+    } \
+    {
+
+Created session 1/101
+2 sessions on tunnel 1:-
+	1
+	101
+Session 101 on tunnel 1:-
+  type: LNS Outgoing Call, state: ESTABLISHED
+  created by admin: YES
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  called number: ''
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types: SYNC ASYNC
+    bearer types:
+    connect speed: 1000000
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 1/101
+}
+
+test session-6.2 { Create session at LNS with explicit LNOC type } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-6.2
+
+	l2tpConfig session create tunnel_id=1 session_id=102 session_type=lnoc
+	sleep 2
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig session show tunnel_id=1 session_id=102
+	l2tpConfig session delete tunnel_id=1 session_id=102
+	sleep 5
+	addCrLf
+    } \
+    {
+
+Created session 1/102
+2 sessions on tunnel 1:-
+	1
+	102
+Session 102 on tunnel 1:-
+  type: LNS Outgoing Call, state: ESTABLISHED
+  created by admin: YES
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  called number: ''
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types: SYNC ASYNC
+    bearer types:
+    connect speed: 1000000
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 1/102
+}
+
+test session-6.3 { Create session at LNS with explicit LAOC type (illegal) } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-6.3
+
+	l2tpConfig session create tunnel_id=1 session_id=103 session_type=laoc
+	sleep 2
+	l2tpConfig session list tunnel_id=1
+    } \
+    {
+
+Error at or near 'create'
+Operation failed: Session type invalid
+1 sessions on tunnel 1:-
+	1
+}
+
+test session-6.4 { Delete LNOC session at LAC } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-6.4
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics
+
+	l2tpConfig session create tunnel_id=1 session_id=104
+	sleep 2
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session delete tunnel_id=42 session_id=3
+	sleep 5
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig session list tunnel_id=42
+    } \
+    {
+
+Modified test config
+Modified system config
+Created session 1/104
+2 sessions on tunnel 1:-
+	1
+	104
+4 sessions on tunnel 42:-
+	1
+	2
+	3
+	100
+Deleted session 42/3
+2 sessions on tunnel 1:-
+	1
+	104
+3 sessions on tunnel 42:-
+	1
+	2
+	100
+}
+
+test session-6.99 { Outgoing call session tests cleanup } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-6.99
+	l2tpConfig tunnel list
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 4
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 5
+	l2tpConfig tunnel list
+    } \
+    {
+
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Deleted session 42/100
+Deleted tunnel 42
+
+}
+
+############################################################################
+# Tests 7.*
+# Persistent tunnels (sessions)
+############################################################################
+
+test session-7.0 { Persistent tunnel/session test setup } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-7.0
+	l2tpConfig test modify no_random_ids=on
+	l2tpConfig system modify tunnel_persist_pend_timeout=120
+    } \
+    {
+
+Modified test config
+Modified system config
+}
+
+test session-7.1 { Locally created session on a persistent tunnel recreates } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-7.1
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics
+
+	l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=1 config_id=1 persist=yes
+	sleep 1
+	l2tpConfig session create tunnel_id=1
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig system show status
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig tunnel delete tunnel_id=2
+	sleep 10
+	l2tpConfig tunnel list
+	sleep 120
+	l2tpConfig tunnel list
+	l2tpConfig system show status
+	l2tpConfig session list tunnel_id=3
+	l2tpConfig tunnel modify tunnel_id=1 persist=no
+	l2tpConfig tunnel delete tunnel_id=3
+	sleep 70
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 1
+Created session 1/1
+   TunId             Peer            Local  PeerTId ConfigId            State
+       1        127.0.0.1        127.0.0.1        2        1      ESTABLISHED
+*      2        127.0.0.1        127.0.0.1        1        2      ESTABLISHED
+L2TP service status:-
+  tunnels: 2, sessions: 2
+1 sessions on tunnel 1:-
+	1
+Deleted tunnel 2
+   TunId             Peer            Local  PeerTId ConfigId            State
+       1        127.0.0.1        127.0.0.1        2        1            RETRY
+   TunId             Peer            Local  PeerTId ConfigId            State
+       1        127.0.0.1        127.0.0.1        3        1      ESTABLISHED
+*      3        127.0.0.1        127.0.0.1        1        2      ESTABLISHED
+L2TP service status:-
+  tunnels: 2, sessions: 2
+1 sessions on tunnel 3:-
+	3
+Modified tunnel 1
+Deleted tunnel 3
+
+}
+
+test session-7.2 { Remotely created session on a persistent tunnel does not recreate } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-7.2
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics
+
+	l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=1 config_id=1 persist=yes
+	sleep 1
+	l2tpConfig session create tunnel_id=2 session_type=lnoc
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig system show status
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig tunnel delete tunnel_id=2
+	sleep 10
+	l2tpConfig tunnel list
+	sleep 120
+	l2tpConfig tunnel list
+	l2tpConfig system show status
+	l2tpConfig session list tunnel_id=3
+	l2tpConfig tunnel modify tunnel_id=1 persist=no
+	l2tpConfig tunnel delete tunnel_id=3
+	sleep 10
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 1
+Created session 2/1
+   TunId             Peer            Local  PeerTId ConfigId            State
+       1        127.0.0.1        127.0.0.1        2        1      ESTABLISHED
+*      2        127.0.0.1        127.0.0.1        1        2      ESTABLISHED
+L2TP service status:-
+  tunnels: 2, sessions: 2
+1 sessions on tunnel 1:-
+	2
+Deleted tunnel 2
+   TunId             Peer            Local  PeerTId ConfigId            State
+       1        127.0.0.1        127.0.0.1        2        1            RETRY
+   TunId             Peer            Local  PeerTId ConfigId            State
+       1        127.0.0.1        127.0.0.1        3        1      ESTABLISHED
+*      3        127.0.0.1        127.0.0.1        1        2      ESTABLISHED
+L2TP service status:-
+  tunnels: 3, sessions: 1
+
+Modified tunnel 1
+Deleted tunnel 3
+
+}
+
+test session-7.3 { Multiple sessions recreate in a persistent tunnel } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-7.3
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics
+
+	l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=1 config_id=1 persist=yes
+	sleep 1
+	l2tpConfig session create tunnel_id=1
+	sleep 1
+	l2tpConfig session create tunnel_id=1
+	sleep 1
+	l2tpConfig session create tunnel_id=1
+	sleep 1
+	l2tpConfig session create tunnel_id=1
+	sleep 1
+	l2tpConfig session create tunnel_id=1
+	sleep 1
+	l2tpConfig tunnel list
+	l2tpConfig system show status
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig tunnel delete tunnel_id=2
+	sleep 10
+	l2tpConfig tunnel list
+	sleep 120
+	l2tpConfig tunnel list
+	l2tpConfig system show status
+	l2tpConfig session list tunnel_id=3
+	l2tpConfig tunnel modify tunnel_id=1 persist=no
+	l2tpConfig tunnel delete tunnel_id=3
+	sleep 10
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 1
+Created session 1/1
+Created session 1/3
+Created session 1/5
+Created session 1/7
+Created session 1/9
+   TunId             Peer            Local  PeerTId ConfigId            State
+       1        127.0.0.1        127.0.0.1        2        1      ESTABLISHED
+*      2        127.0.0.1        127.0.0.1        1        2      ESTABLISHED
+L2TP service status:-
+  tunnels: 2, sessions: 10
+5 sessions on tunnel 1:-
+	1
+	3
+	5
+	7
+	9
+Deleted tunnel 2
+   TunId             Peer            Local  PeerTId ConfigId            State
+       1        127.0.0.1        127.0.0.1        2        1            RETRY
+   TunId             Peer            Local  PeerTId ConfigId            State
+       1        127.0.0.1        127.0.0.1        3        1      ESTABLISHED
+*      3        127.0.0.1        127.0.0.1        1        2      ESTABLISHED
+L2TP service status:-
+  tunnels: 2, sessions: 10
+5 sessions on tunnel 3:-
+	11
+	12
+	13
+	14
+	15
+Modified tunnel 1
+Deleted tunnel 3
+
+}
+
+test session-7.99 { Persistent tunnel/session test cleanup } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-7.99
+	l2tpConfig system modify tunnel_persist_pend_timeout=300
+    } \
+    {
+
+Modified system config
+}
+
+############################################################################
+# Tests 8.*
+# Stress tests
+############################################################################
+
+test session-8.1 { Create/delete many sessions at LAC } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-8.1
+	l2tpConfig test modify reset_ids no_random_ids=on
+	l2tpConfig system modify reset_statistics
+
+	l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=99 config_id=99
+
+	for { set i 0 } { $i < 49 } { incr i } {
+	    l2tpConfig session create tunnel_id=99 session_id=[expr ($i + 100)]
+	}
+	sleep 70
+	l2tpConfig system show status
+	l2tpConfig tunnel list
+	l2tpConfig session list tunnel_id=99
+	for { set i 0 } { $i < 49 } { incr i } {
+	    l2tpConfig session delete tunnel_id=99 session_id=[expr ($i + 100)]
+	}
+	sleep 120
+	l2tpConfig system show status
+	l2tpConfig session list tunnel_id=99
+	l2tpConfig tunnel list
+
+	l2tpConfig tunnel delete tunnel_id=99
+	sleep 10
+	addCrLf
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 99
+Created session 99/100
+Created session 99/101
+Created session 99/102
+Created session 99/103
+Created session 99/104
+Created session 99/105
+Created session 99/106
+Created session 99/107
+Created session 99/108
+Created session 99/109
+Created session 99/110
+Created session 99/111
+Created session 99/112
+Created session 99/113
+Created session 99/114
+Created session 99/115
+Created session 99/116
+Created session 99/117
+Created session 99/118
+Created session 99/119
+Created session 99/120
+Created session 99/121
+Created session 99/122
+Created session 99/123
+Created session 99/124
+Created session 99/125
+Created session 99/126
+Created session 99/127
+Created session 99/128
+Created session 99/129
+Created session 99/130
+Created session 99/131
+Created session 99/132
+Created session 99/133
+Created session 99/134
+Created session 99/135
+Created session 99/136
+Created session 99/137
+Created session 99/138
+Created session 99/139
+Created session 99/140
+Created session 99/141
+Created session 99/142
+Created session 99/143
+Created session 99/144
+Created session 99/145
+Created session 99/146
+Created session 99/147
+Created session 99/148
+L2TP service status:-
+  tunnels: 2, sessions: 98
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       99        1      ESTABLISHED
+      99        127.0.0.1        127.0.0.1        1       99      ESTABLISHED
+49 sessions on tunnel 99:-
+	100
+	101
+	102
+	103
+	104
+	105
+	106
+	107
+	108
+	109
+	110
+	111
+	112
+	113
+	114
+	115
+	116
+	117
+	118
+	119
+	120
+	121
+	122
+	123
+	124
+	125
+	126
+	127
+	128
+	129
+	130
+	131
+	132
+	133
+	134
+	135
+	136
+	137
+	138
+	139
+	140
+	141
+	142
+	143
+	144
+	145
+	146
+	147
+	148
+Deleted session 99/100
+Deleted session 99/101
+Deleted session 99/102
+Deleted session 99/103
+Deleted session 99/104
+Deleted session 99/105
+Deleted session 99/106
+Deleted session 99/107
+Deleted session 99/108
+Deleted session 99/109
+Deleted session 99/110
+Deleted session 99/111
+Deleted session 99/112
+Deleted session 99/113
+Deleted session 99/114
+Deleted session 99/115
+Deleted session 99/116
+Deleted session 99/117
+Deleted session 99/118
+Deleted session 99/119
+Deleted session 99/120
+Deleted session 99/121
+Deleted session 99/122
+Deleted session 99/123
+Deleted session 99/124
+Deleted session 99/125
+Deleted session 99/126
+Deleted session 99/127
+Deleted session 99/128
+Deleted session 99/129
+Deleted session 99/130
+Deleted session 99/131
+Deleted session 99/132
+Deleted session 99/133
+Deleted session 99/134
+Deleted session 99/135
+Deleted session 99/136
+Deleted session 99/137
+Deleted session 99/138
+Deleted session 99/139
+Deleted session 99/140
+Deleted session 99/141
+Deleted session 99/142
+Deleted session 99/143
+Deleted session 99/144
+Deleted session 99/145
+Deleted session 99/146
+Deleted session 99/147
+Deleted session 99/148
+L2TP service status:-
+  tunnels: 2, sessions: 0
+
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       99        1      ESTABLISHED
+      99        127.0.0.1        127.0.0.1        1       99      ESTABLISHED
+Deleted tunnel 99
+}
+
+test session-8.2 { Sessions are deleted if tunnel is deleted } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-8.2
+	l2tpConfig test modify reset_ids no_random_ids=on
+	l2tpConfig system modify reset_statistics
+
+	l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=99 config_id=99
+
+	for { set i 0 } { $i < 3 } { incr i } {
+	    l2tpConfig session create tunnel_id=99 session_id=[expr ($i + 100)]
+	}
+	sleep 70
+	l2tpConfig system show status
+	l2tpConfig tunnel list
+	l2tpConfig session list tunnel_id=99
+
+	l2tpConfig tunnel delete tunnel_id=99
+	sleep 10
+
+	l2tpConfig system show status
+	l2tpConfig tunnel list
+	addCrLf
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 99
+Created session 99/100
+Created session 99/101
+Created session 99/102
+L2TP service status:-
+  tunnels: 2, sessions: 6
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       99        1      ESTABLISHED
+      99        127.0.0.1        127.0.0.1        1       99      ESTABLISHED
+3 sessions on tunnel 99:-
+	100
+	101
+	102
+Deleted tunnel 99
+L2TP service status:-
+  tunnels: 0, sessions: 0
+
+}
+
+test session-8.3 { Sessions and tunnel clean up if network link fails } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-8.3
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics
+
+	l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=99 config_id=99
+
+	for { set i 0 } { $i < 10 } { incr i } {
+	    l2tpConfig session create tunnel_id=99 session_id=[expr ($i + 100)]
+	}
+	sleep 70
+	l2tpConfig system show status
+	l2tpConfig tunnel list
+	l2tpConfig session list tunnel_id=99
+
+	l2tpConfig test modify fake_rx_drop=yes fake_tx_drop=yes fake_trigger_type=on
+	sleep 180
+
+	l2tpConfig system show status
+	l2tpConfig tunnel list
+	l2tpConfig test modify fake_rx_drop=no fake_tx_drop=no fake_trigger_type=off
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 99
+Created session 99/100
+Created session 99/101
+Created session 99/102
+Created session 99/103
+Created session 99/104
+Created session 99/105
+Created session 99/106
+Created session 99/107
+Created session 99/108
+Created session 99/109
+L2TP service status:-
+  tunnels: 2, sessions: 20
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       99        1      ESTABLISHED
+      99        127.0.0.1        127.0.0.1        1       99      ESTABLISHED
+10 sessions on tunnel 99:-
+	100
+	101
+	102
+	103
+	104
+	105
+	106
+	107
+	108
+	109
+Modified test config
+L2TP service status:-
+  tunnels: 0, sessions: 0
+
+Modified test config
+}
+
+test session-8.4 { Stress test session setup/cleanup } \
+    { l2tpdRunning && session } \
+    {
+        global message
+
+	clearResult
+	l2tpConfig test log message=session-8.4
+	set numSessions 20
+	set numPasses 1
+
+	# Create a tunnel with one session. The session is needed to
+	# prevent the tunnel "no session" timeout expiring.
+
+	l2tpConfig test modify reset_ids
+	l2tpConfig system modify reset_statistics
+
+	l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=1 tunnel_name=one
+	l2tpConfig session create tunnel_name=one session_id=65000 session_name=one
+	set savedResult $message
+
+	# When in this loop, expect to see session create failures
+	# (session already exists) and delete failures (session 
+	# does not exist), since we create/delete sessions as 
+	# fast as possible. Once out of the loop, let things settle,
+	# then retry the test and enable ping for each session
+	# to test system operation.
+
+	for { set pass 1 } { $pass <= $numPasses } { incr pass } {
+	    l2tpConfig test log message="Pass $pass"
+
+	    clearResult
+
+	    for { set i 1 } { $i <= $numSessions } { incr i } {
+		l2tpConfig session create tunnel_name=one \
+		    session_name=$i
+	    }
+
+	    for { set i $numSessions } { $i > 0 } { incr i -1 } {
+		l2tpConfig session delete tunnel_name=one session_name=$i
+	    }
+	    sleep 1
+	}
+
+	# Clean up
+
+	for { set i 1 } { $i <= $numSessions } { incr i } {
+	    l2tpConfig session delete tunnel_name=one session_name=$i
+	}
+
+	sleep 180
+	clearResult
+	set message $savedResult
+
+	# Check system status
+	
+	l2tpConfig tunnel list
+	l2tpConfig session list tunnel_name=one
+	l2tpConfig session create tunnel_name=one session_id=65001 session_name=two
+	l2tpConfig session list tunnel_name=one
+
+	# Clean up
+
+	l2tpConfig session delete tunnel_name=one session_name=one
+	l2tpConfig session delete tunnel_name=one session_name=two
+	sleep 5
+	l2tpConfig tunnel delete tunnel_name=one
+	sleep 10
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 1
+Created session 65000 on tunnel one
+   TunId             Peer            Local  PeerTId ConfigId            State
+       1        127.0.0.1        127.0.0.1        2        1      ESTABLISHED
+*      2        127.0.0.1        127.0.0.1        1        2      ESTABLISHED
+1 sessions on tunnel one:-
+	65000
+Created session 65001 on tunnel one
+2 sessions on tunnel one:-
+	65000
+	65001
+Deleted session one/one
+Deleted session one/two
+Deleted tunnel one
+
+}
+
+test session-8.5 { Many sessions recreate in a persistent tunnel } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-8.5
+	l2tpConfig test modify reset_ids no_random_ids=on
+	l2tpConfig system modify reset_statistics tunnel_persist_pend_timeout=120
+
+	l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=99 config_id=99 persist=yes
+
+	for { set i 0 } { $i < 49 } { incr i } {
+	    l2tpConfig session create tunnel_id=99 session_id=[expr ($i + 100)]
+	}
+	sleep 70
+	l2tpConfig system show status
+	l2tpConfig tunnel list
+	l2tpConfig session list tunnel_id=99
+	l2tpConfig tunnel delete tunnel_id=1
+	sleep 10
+	l2tpConfig tunnel list
+	l2tpConfig system show status
+	sleep 140
+	l2tpConfig tunnel list
+	l2tpConfig system show status
+	l2tpConfig session list tunnel_id=99
+	l2tpConfig tunnel modify tunnel_id=99 persist=no
+	l2tpConfig tunnel delete tunnel_id=99
+	sleep 70
+	l2tpConfig tunnel list
+	l2tpConfig system show status
+	l2tpConfig system modify tunnel_persist_pend_timeout=300
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 99
+Created session 99/100
+Created session 99/101
+Created session 99/102
+Created session 99/103
+Created session 99/104
+Created session 99/105
+Created session 99/106
+Created session 99/107
+Created session 99/108
+Created session 99/109
+Created session 99/110
+Created session 99/111
+Created session 99/112
+Created session 99/113
+Created session 99/114
+Created session 99/115
+Created session 99/116
+Created session 99/117
+Created session 99/118
+Created session 99/119
+Created session 99/120
+Created session 99/121
+Created session 99/122
+Created session 99/123
+Created session 99/124
+Created session 99/125
+Created session 99/126
+Created session 99/127
+Created session 99/128
+Created session 99/129
+Created session 99/130
+Created session 99/131
+Created session 99/132
+Created session 99/133
+Created session 99/134
+Created session 99/135
+Created session 99/136
+Created session 99/137
+Created session 99/138
+Created session 99/139
+Created session 99/140
+Created session 99/141
+Created session 99/142
+Created session 99/143
+Created session 99/144
+Created session 99/145
+Created session 99/146
+Created session 99/147
+Created session 99/148
+L2TP service status:-
+  tunnels: 2, sessions: 98
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       99        1      ESTABLISHED
+      99        127.0.0.1        127.0.0.1        1       99      ESTABLISHED
+49 sessions on tunnel 99:-
+	100
+	101
+	102
+	103
+	104
+	105
+	106
+	107
+	108
+	109
+	110
+	111
+	112
+	113
+	114
+	115
+	116
+	117
+	118
+	119
+	120
+	121
+	122
+	123
+	124
+	125
+	126
+	127
+	128
+	129
+	130
+	131
+	132
+	133
+	134
+	135
+	136
+	137
+	138
+	139
+	140
+	141
+	142
+	143
+	144
+	145
+	146
+	147
+	148
+Deleted tunnel 1
+   TunId             Peer            Local  PeerTId ConfigId            State
+      99        127.0.0.1        127.0.0.1        1       99            RETRY
+L2TP service status:-
+  tunnels: 1, sessions: 49
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      2        127.0.0.1        127.0.0.1       99        1      ESTABLISHED
+      99        127.0.0.1        127.0.0.1        2       99      ESTABLISHED
+L2TP service status:-
+  tunnels: 2, sessions: 98
+49 sessions on tunnel 99:-
+	100
+	101
+	102
+	103
+	104
+	105
+	106
+	107
+	108
+	109
+	110
+	111
+	112
+	113
+	114
+	115
+	116
+	117
+	118
+	119
+	120
+	121
+	122
+	123
+	124
+	125
+	126
+	127
+	128
+	129
+	130
+	131
+	132
+	133
+	134
+	135
+	136
+	137
+	138
+	139
+	140
+	141
+	142
+	143
+	144
+	145
+	146
+	147
+	148
+Modified tunnel 99
+Deleted tunnel 99
+
+L2TP service status:-
+  tunnels: 0, sessions: 0
+Modified system config
+}
+
+test session-8.99 { Cleanup session tests } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-8.99
+	l2tpConfig test modify reset_ids
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+
+}
+
+############################################################################
+# Tests 9.* - config save/restore
+############################################################################
+
+test session-9.0 { Config save/restore setup } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-9.0
+	l2tpConfig test modify reset_ids no_random_ids=on default_config
+	l2tpConfig system modify reset_statistics
+    } \
+    {
+
+Modified test config
+Modified system config
+}
+
+test session-9.1 { Save created sessions } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-9.1
+	l2tpConfig test modify reset_ids no_random_ids=on
+        l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=42 config_id=42 tunnel_name=one
+	sleep 5
+	l2tpConfig tunnel list
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 2
+
+	l2tpConfig config save file=results/session-9.1.cfg
+	catFile results/session-9.1.cfg
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 10
+	addCrLf
+    } \
+    {
+
+Modified test config
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+tunnel create tunnel_name=one dest_ipaddr=127.0.0.1 \$
+	tunnel_id=42 \$
+	config_id=42 \$
+$
+session create tunnel_name=one \$
+	tunnel_id=42 \$
+	session_id=100 \$
+$
+Deleted session 42/100
+Deleted tunnel 42
+}
+
+test session-9.2 { Save all set parameters of a session } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-9.2
+	l2tpConfig test modify reset_ids no_random_ids=on
+	l2tpConfig peer profile create profile_name=wibble
+	l2tpConfig tunnel profile create profile_name=wibble
+	l2tpConfig session profile create profile_name=wibble
+	l2tpConfig ppp profile create profile_name=wibble
+	sleep 1
+
+        l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=42 config_id=42 tunnel_name=one
+	sleep 2
+	l2tpConfig tunnel list
+
+	l2tpConfig session create tunnel_id=42 session_id=100 \
+	  session_name=wibble \
+	  tunnel_name=one \
+	  bearer_type=digital \
+	  called_number=123 \
+	  calling_number=456 \
+	  connect_speed=100000 \
+	  framing_type=sync \
+	  maximum_bps=100000 \
+	  minimum_bps=10000 \
+	  ppp_profile_name=wibble \
+	  priv_group_id=wibble \
+	  profile_name=wibble \
+	  reorder_timeout=42 \
+	  sequencing_required=yes \
+	  session_type=laic \
+	  sub_address=789 \
+	  trace_flags=7 \
+	  use_ppp_proxy=no \
+	  use_sequence_numbers=yes \
+	  user_name=you \
+	  interface_name=one \
+	  user_password=mypass
+	  
+	sleep 5
+	l2tpConfig config save file=results/session-9.2.cfg
+	catFile results/session-9.2.cfg
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 5
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 10
+	l2tpConfig ppp profile delete profile_name=wibble
+	l2tpConfig session profile delete profile_name=wibble
+	l2tpConfig tunnel profile delete profile_name=wibble
+	l2tpConfig peer profile delete profile_name=wibble
+	sleep 2
+	addCrLf
+    } \
+    {
+
+Modified test config
+Created peer profile wibble
+Created tunnel profile wibble
+Created session profile wibble
+Created ppp profile wibble
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+
+$
+# system$
+$
+# peer profiles$
+peer profile create profile_name=wibble$
+$
+# tunnel profiles$
+tunnel profile create profile_name=wibble$
+$
+# session profiles$
+session profile create profile_name=wibble$
+$
+# ppp profiles$
+ppp profile create profile_name=wibble$
+$
+# locally created tunnels and sessions$
+tunnel create tunnel_name=one dest_ipaddr=127.0.0.1 \$
+	tunnel_id=42 \$
+	config_id=42 \$
+$
+session create tunnel_name=one \$
+	tunnel_id=42 \$
+	session_id=100 \$
+	trace_flags=7 \$
+	sequencing_required=yes \$
+	profile_name=wibble \$
+	ppp_profile_name=wibble \$
+	session_type=laic \$
+	user_name=you \$
+	user_password=mypass \$
+	priv_group_id=wibble \$
+	framing_type=sync \$
+	bearer_type=digital \$
+	minimum_bps=10000 \$
+	maximum_bps=100000 \$
+	connect_speed=100000:100000 \$
+	use_ppp_proxy=no \$
+	use_sequence_numbers=yes \$
+	reorder_timeout=42 \$
+$
+Deleted session 42/100
+Deleted tunnel 42
+Deleted ppp profile wibble
+Deleted session profile wibble
+Deleted tunnel profile wibble
+Deleted peer profile wibble
+}
+
+test session-9.3 { Save only non-default parameters of a created session } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-9.3
+	l2tpConfig test modify reset_ids no_random_ids=on
+        l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=42 config_id=42 tunnel_name=one
+	sleep 2
+	l2tpConfig tunnel list
+	sleep 5
+	l2tpConfig session create tunnel_id=42 session_id=100 \
+	  session_name=wibble \
+	  tunnel_name=one \
+	  bearer_type=digital
+	sleep 2
+	l2tpConfig config save file=results/session-9.3.cfg
+	catFile results/session-9.3.cfg
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 10
+	addCrLf
+    } \
+    {
+
+Modified test config
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+tunnel create tunnel_name=one dest_ipaddr=127.0.0.1 \$
+	tunnel_id=42 \$
+	config_id=42 \$
+$
+session create tunnel_name=one \$
+	tunnel_id=42 \$
+	session_id=100 \$
+	bearer_type=digital \$
+$
+Deleted session 42/100
+Deleted tunnel 42
+}
+
+test session-9.4 { Save all modified values of a session } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-9.4
+	l2tpConfig test modify reset_ids no_random_ids=on
+	l2tpConfig peer profile create profile_name=wibble
+	l2tpConfig tunnel profile create profile_name=wibble
+	l2tpConfig session profile create profile_name=wibble
+	l2tpConfig ppp profile create profile_name=wibble
+
+        l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=42 config_id=42 tunnel_name=one
+	sleep 2
+	l2tpConfig tunnel list
+	sleep 5
+	l2tpConfig session create tunnel_id=42 session_id=100
+	l2tpConfig session modify tunnel_id=42 session_id=100 \
+	  session_name=wibble \
+	  trace_flags=7 \
+	  sequencing_required=yes \
+	  use_sequence_numbers=yes \
+	  reorder_timeout=42
+	  
+	l2tpConfig config save file=results/session-9.4.cfg
+	catFile results/session-9.4.cfg
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 10
+
+	l2tpConfig ppp profile delete profile_name=wibble
+	l2tpConfig session profile delete profile_name=wibble
+	l2tpConfig tunnel profile delete profile_name=wibble
+	l2tpConfig peer profile delete profile_name=wibble
+	sleep 2
+	addCrLf
+    } \
+    {
+
+Modified test config
+Created peer profile wibble
+Created tunnel profile wibble
+Created session profile wibble
+Created ppp profile wibble
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Modified session 42/100
+
+$
+# system$
+$
+# peer profiles$
+peer profile create profile_name=wibble$
+$
+# tunnel profiles$
+tunnel profile create profile_name=wibble$
+$
+# session profiles$
+session profile create profile_name=wibble$
+$
+# ppp profiles$
+ppp profile create profile_name=wibble$
+$
+# locally created tunnels and sessions$
+tunnel create tunnel_name=one dest_ipaddr=127.0.0.1 \$
+	tunnel_id=42 \$
+	config_id=42 \$
+$
+session create tunnel_name=one \$
+	tunnel_id=42 \$
+	session_id=100 \$
+	trace_flags=7 \$
+	sequencing_required=yes \$
+	use_sequence_numbers=yes \$
+	reorder_timeout=42 \$
+$
+Deleted session 42/100
+Deleted tunnel 42
+Deleted ppp profile wibble
+Deleted session profile wibble
+Deleted tunnel profile wibble
+Deleted peer profile wibble
+}
+
+test session-9.5 { Save only non-default modified values of a session } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-9.5
+	l2tpConfig test modify reset_ids no_random_ids=on
+	l2tpConfig peer profile create profile_name=wibble
+	l2tpConfig tunnel profile create profile_name=wibble
+	l2tpConfig session profile create profile_name=wibble
+	l2tpConfig ppp profile create profile_name=wibble
+
+        l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=42 config_id=42 tunnel_name=one
+	sleep 2
+	l2tpConfig tunnel list
+	sleep 5
+	l2tpConfig session create tunnel_id=42 session_id=100
+	l2tpConfig session modify tunnel_id=42 session_id=100 \
+	  session_name=wibble \
+	  trace_flags=7 \
+	  reorder_timeout=42
+	sleep 5
+	l2tpConfig config save file=results/session-9.5.cfg
+	catFile results/session-9.5.cfg
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 10
+
+	l2tpConfig ppp profile delete profile_name=wibble
+	l2tpConfig session profile delete profile_name=wibble
+	l2tpConfig tunnel profile delete profile_name=wibble
+	l2tpConfig peer profile delete profile_name=wibble
+	sleep 2
+	addCrLf
+    } \
+    {
+
+Modified test config
+Created peer profile wibble
+Created tunnel profile wibble
+Created session profile wibble
+Created ppp profile wibble
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Modified session 42/100
+
+$
+# system$
+$
+# peer profiles$
+peer profile create profile_name=wibble$
+$
+# tunnel profiles$
+tunnel profile create profile_name=wibble$
+$
+# session profiles$
+session profile create profile_name=wibble$
+$
+# ppp profiles$
+ppp profile create profile_name=wibble$
+$
+# locally created tunnels and sessions$
+tunnel create tunnel_name=one dest_ipaddr=127.0.0.1 \$
+	tunnel_id=42 \$
+	config_id=42 \$
+$
+session create tunnel_name=one \$
+	tunnel_id=42 \$
+	session_id=100 \$
+	trace_flags=7 \$
+	reorder_timeout=42 \$
+$
+Deleted session 42/100
+Deleted tunnel 42
+Deleted ppp profile wibble
+Deleted session profile wibble
+Deleted tunnel profile wibble
+Deleted peer profile wibble
+}
+
+test session-9.6 { Save all locally created sessions } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-9.6
+	l2tpConfig test modify reset_ids no_random_ids=on
+
+        l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=42 config_id=42 tunnel_name=one
+	sleep 2
+	l2tpConfig tunnel list
+
+	l2tpConfig session create tunnel_id=42 session_id=100
+	l2tpConfig session create tunnel_id=42 session_id=101
+	l2tpConfig session create tunnel_id=42 session_id=102
+	sleep 5
+	l2tpConfig config save file=results/session-9.6.cfg
+	catFile results/session-9.6.cfg
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=101
+	l2tpConfig session delete tunnel_id=42 session_id=102
+	sleep 5
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 10
+	addCrLf
+    } \
+    {
+
+Modified test config
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Created session 42/101
+Created session 42/102
+
+$
+# system$
+$
+# peer profiles$
+$
+# tunnel profiles$
+$
+# session profiles$
+$
+# ppp profiles$
+$
+# locally created tunnels and sessions$
+tunnel create tunnel_name=one dest_ipaddr=127.0.0.1 \$
+	tunnel_id=42 \$
+	config_id=42 \$
+$
+session create tunnel_name=one \$
+	tunnel_id=42 \$
+	session_id=102 \$
+$
+session create tunnel_name=one \$
+	tunnel_id=42 \$
+	session_id=101 \$
+$
+session create tunnel_name=one \$
+	tunnel_id=42 \$
+	session_id=100 \$
+$
+3 sessions on tunnel 42:-
+	100
+	101
+	102
+Deleted session 42/100
+Deleted session 42/101
+Deleted session 42/102
+Deleted tunnel 42
+}
+
+test session-9.7 { Restore all parameters of a session from a saved file } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-9.7
+	l2tpConfig test modify reset_ids no_random_ids=on
+
+	l2tpConfig peer profile create profile_name=wibble
+	l2tpConfig tunnel profile create profile_name=wibble
+	l2tpConfig session profile create profile_name=wibble
+	l2tpConfig ppp profile create profile_name=wibble
+	sleep 2
+
+        l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=42 config_id=42 tunnel_name=one
+	sleep 2
+	l2tpConfig tunnel list
+
+	l2tpConfig session create tunnel_id=42 session_id=100 \
+	  session_name=one \
+	  tunnel_name=one \
+	  bearer_type=digital \
+	  connect_speed=100000 \
+	  framing_type=sync \
+	  interface_name=wibble \
+	  maximum_bps=100000 \
+	  minimum_bps=10000 \
+	  ppp_profile_name=wibble \
+	  priv_group_id=wibble \
+	  profile_name=wibble \
+	  reorder_timeout=42 \
+	  sequencing_required=yes \
+	  session_type=laic \
+	  trace_flags=7 \
+	  use_ppp_proxy=no \
+	  use_sequence_numbers=yes \
+	  user_name=you \
+	  user_password=mypass
+
+	l2tpConfig test log message=session-9.7-save
+	l2tpConfig config save file=results/session-9.7.cfg
+	sleep 2
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	l2tpConfig tunnel delete tunnel_id=42
+	l2tpConfig ppp profile delete profile_name=wibble
+	l2tpConfig session profile delete profile_name=wibble
+	l2tpConfig tunnel profile delete profile_name=wibble
+	l2tpConfig peer profile delete profile_name=wibble
+	sleep 10
+
+	l2tpConfig test log message=session-9.7-restore
+	l2tpConfig config restore file=results/session-9.7.cfg
+	sleep 2
+	l2tpConfig tunnel list
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 10
+
+	l2tpConfig ppp profile delete profile_name=wibble
+	l2tpConfig session profile delete profile_name=wibble
+	l2tpConfig tunnel profile delete profile_name=wibble
+	l2tpConfig peer profile delete profile_name=wibble
+	sleep 2
+	addCrLf
+    } \
+    {
+
+Modified test config
+Created peer profile wibble
+Created tunnel profile wibble
+Created session profile wibble
+Created ppp profile wibble
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+
+
+Deleted session 42/100
+Deleted tunnel 42
+Deleted ppp profile wibble
+Deleted session profile wibble
+Deleted tunnel profile wibble
+Deleted peer profile wibble
+
+Created peer profile wibble
+Created tunnel profile wibble
+Created session profile wibble
+Created ppp profile wibble
+Created tunnel 42
+Created session 42/100
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      2        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        2       42      ESTABLISHED
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 2
+  session profile name: wibble
+  private group id: wibble
+  ppp user name: you
+  ppp user password: mypass
+  ppp profile name: wibble
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42
+  trace flags: PROTOCOL FSM API
+  framing types: SYNC
+  bearer types: DIGITAL
+  min bps: 10000, max bps: 100000
+  tx connect speed: 100000, rx connect speed: 100000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+Deleted tunnel 42
+Deleted ppp profile wibble
+Deleted session profile wibble
+Deleted tunnel profile wibble
+Deleted peer profile wibble
+}
+
+test session-9.8 { Restore multiple sessions } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-9.7
+	l2tpConfig test modify reset_ids no_random_ids=on
+
+	l2tpConfig peer profile create profile_name=wibble
+	l2tpConfig tunnel profile create profile_name=wibble
+	l2tpConfig session profile create profile_name=wibble
+	l2tpConfig ppp profile create profile_name=wibble
+	sleep 2
+
+        l2tpConfig tunnel create dest_ipaddr=127.0.0.1 tunnel_id=42 config_id=42 tunnel_name=one
+	sleep 2
+	l2tpConfig tunnel list
+
+	l2tpConfig session create tunnel_id=42 session_id=100 \
+	  session_name=one \
+	  tunnel_name=one \
+	  bearer_type=digital \
+	  connect_speed=100000 \
+	  framing_type=sync \
+	  interface_name=wibble \
+	  maximum_bps=100000 \
+	  minimum_bps=10000 \
+	  ppp_profile_name=wibble \
+	  priv_group_id=wibble \
+	  profile_name=wibble \
+	  reorder_timeout=42 \
+	  sequencing_required=yes \
+	  session_type=laic \
+	  trace_flags=7 \
+	  use_ppp_proxy=no \
+	  use_sequence_numbers=yes \
+	  user_name=you \
+	  user_password=mypass
+
+	l2tpConfig session create tunnel_id=42 session_id=101 \
+	  session_name=two \
+	  tunnel_name=one \
+	  bearer_type=digital \
+	  connect_speed=100000 \
+	  framing_type=sync \
+	  interface_name=wibble \
+	  maximum_bps=100000 \
+	  minimum_bps=10000 \
+	  ppp_profile_name=wibble \
+	  priv_group_id=wibble
+
+	l2tpConfig session create tunnel_id=42 session_id=102 \
+	  session_name=three \
+	  tunnel_name=one \
+	  profile_name=wibble \
+	  reorder_timeout=42 \
+	  sequencing_required=yes \
+	  session_type=laic \
+	  trace_flags=7 \
+	  use_ppp_proxy=yes \
+	  use_sequence_numbers=yes \
+	  user_name=you \
+	  user_password=mypass	  
+
+	l2tpConfig test log message=session-9.7-save
+	l2tpConfig config save file=results/session-9.7.cfg
+	sleep 2
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=101
+	l2tpConfig session delete tunnel_id=42 session_id=102
+	sleep 2
+	l2tpConfig tunnel delete tunnel_id=42
+	l2tpConfig ppp profile delete profile_name=wibble
+	l2tpConfig session profile delete profile_name=wibble
+	l2tpConfig tunnel profile delete profile_name=wibble
+	l2tpConfig peer profile delete profile_name=wibble
+	sleep 10
+
+	l2tpConfig test log message=session-9.7-restore
+	l2tpConfig config restore file=results/session-9.7.cfg
+	sleep 2
+	l2tpConfig tunnel list
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session show tunnel_id=42 session_id=101
+	l2tpConfig session show tunnel_id=42 session_id=102
+	sleep 1
+	l2tpConfig session delete tunnel_id=42 session_id=100
+	l2tpConfig session delete tunnel_id=42 session_id=101
+	l2tpConfig session delete tunnel_id=42 session_id=102
+	sleep 2
+	l2tpConfig tunnel delete tunnel_id=42
+	sleep 10
+
+	l2tpConfig ppp profile delete profile_name=wibble
+	l2tpConfig session profile delete profile_name=wibble
+	l2tpConfig tunnel profile delete profile_name=wibble
+	l2tpConfig peer profile delete profile_name=wibble
+	sleep 2
+	addCrLf
+    } \
+    {
+
+Modified test config
+Created peer profile wibble
+Created tunnel profile wibble
+Created session profile wibble
+Created ppp profile wibble
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Created session 42/101
+Created session 42/102
+
+
+Deleted session 42/100
+Deleted session 42/101
+Deleted session 42/102
+Deleted tunnel 42
+Deleted ppp profile wibble
+Deleted session profile wibble
+Deleted tunnel profile wibble
+Deleted peer profile wibble
+
+Created peer profile wibble
+Created tunnel profile wibble
+Created session profile wibble
+Created ppp profile wibble
+Created tunnel 42
+Created session 42/102
+Created session 42/101
+Created session 42/100
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      2        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        2       42      ESTABLISHED
+3 sessions on tunnel 42:-
+	100
+	101
+	102
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 6
+  session profile name: wibble
+  private group id: wibble
+  ppp user name: you
+  ppp user password: mypass
+  ppp profile name: wibble
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42
+  trace flags: PROTOCOL FSM API
+  framing types: SYNC
+  bearer types: DIGITAL
+  min bps: 10000, max bps: 100000
+  tx connect speed: 100000, rx connect speed: 100000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Session 101 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 5
+  private group id: wibble
+  ppp profile name: wibble
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC
+  bearer types: DIGITAL
+  min bps: 10000, max bps: 100000
+  tx connect speed: 100000, rx connect speed: 100000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Session 102 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 4
+  session profile name: wibble
+  ppp user name: you
+  ppp user password: mypass
+  data sequencing required: ON
+  use data sequence numbers: ON
+  reorder timeout: 42
+  trace flags: PROTOCOL FSM API
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: YES
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+Deleted session 42/100
+Deleted session 42/101
+Deleted session 42/102
+Deleted tunnel 42
+Deleted ppp profile wibble
+Deleted session profile wibble
+Deleted tunnel profile wibble
+Deleted peer profile wibble
+}
+
+############################################################################
+# Tests 10.* - debug control
+############################################################################
+
+test session-10.0 { Debug session setup } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-10.0
+	l2tpConfig tunnel create tunnel_id=1 dest_ipaddr=10.0.0.1 config_id=1 src_ipaddr=127.0.0.1
+    } \
+    {
+
+Created tunnel 1
+}
+
+test session-10.1 { Debug modify session all=yes } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-10.1
+	l2tpConfig session create tunnel_id=1 session_id=1
+	l2tpConfig debug modify tunnel_id=1 session_id=1 all=yes
+	l2tpConfig debug show tunnel_id=1 session_id=1
+	l2tpConfig session delete tunnel_id=1 session_id=1
+    } \
+    {
+
+Created session 1/1
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Deleted session 1/1
+}
+
+test session-10.2 { Debug modify session all=no } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-10.2
+	l2tpConfig session create tunnel_id=1 session_id=2
+	l2tpConfig debug modify tunnel_id=1 session_id=2 all=no
+	l2tpConfig debug show tunnel_id=1 session_id=2
+	l2tpConfig session delete tunnel_id=1 session_id=2
+    } \
+    {
+
+Created session 1/2
+
+  trace flags: NONE
+Deleted session 1/2
+}
+
+test session-10.3 { Debug modify session incremental changes } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-10.3
+	l2tpConfig session create tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 all=no
+	l2tpConfig debug modify tunnel_id=1 session_id=3 protocol=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 avp_info=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 avp_data=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 avp_hide=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 fsm=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 api=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 ppp_control=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 transport=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 func=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 data=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 system=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	# check every flag is set
+	l2tpConfig debug modify tunnel_id=1 session_id=3 all=yes
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	# Turn each off again
+	l2tpConfig debug modify tunnel_id=1 session_id=3 protocol=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 avp_info=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 avp_data=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 avp_hide=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 fsm=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 api=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 ppp_control=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 transport=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 func=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 data=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig debug modify tunnel_id=1 session_id=3 system=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	# check every flag is unset
+	l2tpConfig debug modify tunnel_id=1 session_id=3 all=no
+	l2tpConfig debug show tunnel_id=1 session_id=3
+	l2tpConfig session delete tunnel_id=1 session_id=3
+    } \
+    {
+
+Created session 1/3
+
+
+  trace flags: PROTOCOL
+
+  trace flags: PROTOCOL AVP
+
+  trace flags: PROTOCOL AVP AVPDATA
+
+  trace flags: PROTOCOL AVP AVPHIDE AVPDATA
+
+  trace flags: PROTOCOL FSM AVP AVPHIDE AVPDATA
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA XPRT PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API AVPHIDE FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FSM API FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: API FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FUNC XPRT DATA PPP SYSTEM
+
+  trace flags: FUNC XPRT DATA SYSTEM
+
+  trace flags: FUNC DATA SYSTEM
+
+  trace flags: DATA SYSTEM
+
+  trace flags: SYSTEM
+
+  trace flags: NONE
+
+  trace flags: NONE
+Deleted session 1/3
+}
+
+test session-10.4 { Debug modify session group changes } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-10.4
+	l2tpConfig session create tunnel_id=1 session_id=4
+	l2tpConfig debug modify tunnel_id=1 session_id=4 all=no
+	l2tpConfig debug modify tunnel_id=1 session_id=4 protocol=yes avp_info=yes fsm=yes
+	l2tpConfig debug show tunnel_id=1 session_id=4
+	l2tpConfig debug modify tunnel_id=1 session_id=4 api=yes avp_hide=yes avp_data=yes system=yes ppp_control=yes func=yes
+	l2tpConfig debug show tunnel_id=1 session_id=4
+	l2tpConfig debug modify tunnel_id=1 session_id=4 protocol=no fsm=no
+	l2tpConfig debug show tunnel_id=1 session_id=4
+	l2tpConfig debug modify tunnel_id=1 session_id=4 avp_info=no avp_data=no avp_hide=no
+	l2tpConfig debug show tunnel_id=1 session_id=4
+	l2tpConfig session delete tunnel_id=1 session_id=4
+    } \
+    {
+
+Created session 1/4
+
+
+  trace flags: PROTOCOL FSM AVP
+
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC PPP SYSTEM
+
+  trace flags: API AVP AVPHIDE AVPDATA FUNC PPP SYSTEM
+
+  trace flags: API FUNC PPP SYSTEM
+Deleted session 1/4
+}
+
+test session-10.5 { Debug modify session bad trace category } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-10.5
+	l2tpConfig session create tunnel_id=1 session_id=5
+	l2tpConfig debug modify tunnel_id=1 session_id=5 all=no
+	l2tpConfig debug modify tunnel_id=1 session_id=5 wibble=yes
+	l2tpConfig debug show tunnel_id=1 session_id=5
+	l2tpConfig session delete tunnel_id=1 session_id=5
+    } \
+    {
+
+Created session 1/5
+
+Error at or near 'wibble=yes'
+  trace flags: NONE
+Deleted session 1/5
+}
+
+test session-10.6 { Set session trace_flags symbolically } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-10.6
+	l2tpConfig session create tunnel_id=1 session_id=6
+	l2tpConfig session modify tunnel_id=1 session_id=6 trace_flags=all
+	l2tpConfig debug show tunnel_id=1 session_id=6
+	l2tpConfig session modify tunnel_id=1 session_id=6 trace_flags=protocol
+	l2tpConfig debug show tunnel_id=1 session_id=6
+	l2tpConfig session modify tunnel_id=1 session_id=6 trace_flags=api,fsm
+	l2tpConfig debug show tunnel_id=1 session_id=6
+	l2tpConfig session modify tunnel_id=1 session_id=6 trace_flags=avp_info,avp_data,avp_hide
+	l2tpConfig debug show tunnel_id=1 session_id=6
+	l2tpConfig session modify tunnel_id=1 session_id=6 trace_flags=api,protocol,fsm,avp_info,avp_data,avp_hide,ppp_control,transport,system,data,func
+	l2tpConfig debug show tunnel_id=1 session_id=6
+	l2tpConfig session modify tunnel_id=1 session_id=6 trace_flags=all
+	l2tpConfig debug show tunnel_id=1 session_id=6
+	l2tpConfig session delete tunnel_id=1 session_id=6
+    } \
+    {
+
+Created session 1/6
+Modified session 1/6
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Modified session 1/6
+  trace flags: PROTOCOL
+Modified session 1/6
+  trace flags: FSM API
+Modified session 1/6
+  trace flags: AVP AVPHIDE AVPDATA
+Modified session 1/6
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Modified session 1/6
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Deleted session 1/6
+}
+
+test session-10.7 { Detect bad trace category in command } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-10.7
+	l2tpConfig session create tunnel_id=1 session_id=7
+	l2tpConfig session modify tunnel_id=1 session_id=7 trace_flags=all
+	l2tpConfig session modify tunnel_id=1 session_id=7 trace_flags=api,protocol,fsm,avp_info,avp_data,avp_hide,wibble,data,func
+	l2tpConfig debug show tunnel_id=1 session_id=7
+	l2tpConfig session delete tunnel_id=1 session_id=7
+    } \
+    {
+
+Created session 1/7
+Modified session 1/7
+Error at or near 'modify'
+Unknown trace flag: wibble
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+Deleted session 1/7
+}
+
+test session-10.99 { Cleanup } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-10.99
+	l2tpConfig tunnel delete tunnel_id=1
+	# wait for test tunnel to delete
+	sleep 62
+	l2tpConfig test modify default_config
+    } \
+    {
+
+Deleted tunnel 1
+Modified test config
+}
+
+############################################################################
+# Tests 11.* - miscellaneous
+############################################################################
+
+test session-11.1 { Tunnel closes if idle_timeout used } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-11.1
+	l2tpConfig test modify reset_ids no_random_ids=on
+	l2tpConfig system modify reset_statistics
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42 idle_timeout=10
+	sleep 1
+	l2tpConfig tunnel list
+
+	# Create a session
+	l2tpConfig session create tunnel_id=42 session_id=100
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session show tunnel_id=42 session_id=100
+	l2tpConfig session list tunnel_id=1
+	l2tpConfig session show tunnel_id=1 session_id=1
+
+	# Check idle_timeout doesn't expire incorrectly
+	sleep 30
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session list tunnel_id=1
+
+	# Delete session
+	l2tpConfig session delete tunnel_id=42 session_id=100
+
+	# Wait for idle_timeout to expire
+	sleep 20
+
+	# Check tunnel has gone
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+1 sessions on tunnel 42:-
+	100
+Session 100 on tunnel 42:-
+  type: LAC Incoming Call, state: ESTABLISHED
+  created by admin: YES, peer session id: 1
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types:
+    bearer types:
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+1 sessions on tunnel 1:-
+	1
+Session 1 on tunnel 1:-
+  type: LNS Incoming Call, state: ESTABLISHED
+  created by admin: NO, peer session id: 100
+  data sequencing required: OFF
+  use data sequence numbers: OFF
+  trace flags: PROTOCOL FSM API AVP AVPHIDE AVPDATA FUNC XPRT DATA PPP SYSTEM
+  framing types: SYNC ASYNC
+  bearer types: DIGITAL ANALOG
+  connect speed: 1000000
+  use ppp proxy: NO
+
+  Peer configuration data:-
+    data sequencing required: OFF
+    framing types: SYNC ASYNC
+    bearer types: DIGITAL ANALOG
+    connect speed: 1000000
+  data rx packets: 0, rx bytes: 0, rx errors: 0
+  data tx packets: 0, tx bytes: 0, tx errors: 0
+1 sessions on tunnel 42:-
+	100
+1 sessions on tunnel 1:-
+	1
+Deleted session 42/100
+
+}
+
+test session-11.2 { Tunnel doesn't close until last session closes if idle_timeout used } \
+    { l2tpdRunning && session } \
+    { \
+	clearResult
+	l2tpConfig test log message=session-11.1
+	l2tpConfig test modify reset_ids no_random_ids=on
+	l2tpConfig system modify reset_statistics
+	l2tpConfig tunnel create tunnel_id=42 dest_ipaddr=127.0.0.1 config_id=42 idle_timeout=10
+	sleep 1
+	l2tpConfig tunnel list
+
+	# Create two sessions
+	l2tpConfig session create tunnel_id=42 session_id=100
+	l2tpConfig session create tunnel_id=42 session_id=101
+	sleep 2
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session list tunnel_id=1
+
+	# Check idle_timeout doesn't expire incorrectly
+	sleep 30
+	l2tpConfig session list tunnel_id=42
+	l2tpConfig session list tunnel_id=1
+
+	# Delete one session
+	l2tpConfig session delete tunnel_id=42 session_id=101
+
+	# Check tunnel still present after idle_timeout
+	sleep 30
+	l2tpConfig tunnel list
+
+	# Delete one session
+	l2tpConfig session delete tunnel_id=42 session_id=100
+
+	# Wait for idle_timeout to expire
+	sleep 20
+
+	# Check tunnel has gone
+	l2tpConfig tunnel list
+    } \
+    {
+
+Modified test config
+Modified system config
+Created tunnel 42
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Created session 42/100
+Created session 42/101
+2 sessions on tunnel 42:-
+	100
+	101
+2 sessions on tunnel 1:-
+	1
+	2
+2 sessions on tunnel 42:-
+	100
+	101
+2 sessions on tunnel 1:-
+	1
+	2
+Deleted session 42/101
+   TunId             Peer            Local  PeerTId ConfigId            State
+*      1        127.0.0.1        127.0.0.1       42        1      ESTABLISHED
+      42        127.0.0.1        127.0.0.1        1       42      ESTABLISHED
+Deleted session 42/100
+
+}

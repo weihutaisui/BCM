@@ -1,0 +1,76 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript" src="portName.js"></script>
+            <script language="javascript">
+<!-- hide
+function btnCancel() {  
+   window.close();
+}
+
+function btnOk() {
+   with ( document.choiceForm ) {
+      for ( var i = 0; i < cellularAvailNtwkLists.options.length; i++ ) {
+         if ( cellularAvailNtwkLists.options[i].selected == true ) {
+            window.opener.document.forms[0].networkReqSel[1].checked = true
+            window.opener.document.forms[0].networkReq.value = cellularAvailNtwkLists.options[i].text;
+            window.opener.document.forms[0].networkReq_MCCMNC.value = cellularAvailNtwkLists.options[i].value;
+            break;
+         }
+      }
+   
+      if (i == cellularAvailNtwkLists.options.length) {
+         msg = 'No Network Selected.';
+         alert(msg);
+         return;
+      }
+   }
+   
+   window.close();
+}
+
+// done hiding -->
+      </script>
+   </head>
+   <body>
+      <blockquote>
+         <form name="choiceForm">
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td width="200"><b>Available Networks Lists</b></td>
+               </tr>
+               <tr>
+                  <td>
+                      <select name="cellularAvailNtwkLists" size="10" style="width: 200">
+<script language="javascript">
+<!-- hide
+{
+   var i = 0;
+   var availNtwks = '<%ejGetOther(cellularInfo, availNtwk)%>';
+   var ntwks = availNtwks.split(',');
+   ntwks.sort();
+   for ( i = 0; i < ntwks.length; i++ ) {
+      if (ntwks[i] != '') {
+         var ntwk_MCCMNC = ntwks[i].split('|');
+         document.writeln("  <option value='" + ntwk_MCCMNC[1] + "'>" + ntwk_MCCMNC[0] + "</option>");
+      }
+   }
+}
+// done hiding -->
+</script>
+                      </select>
+                  </td>
+               </tr>
+            </table>
+            <br><br>
+            <center>
+               <input type='button' onClick='btnCancel()' value='Cancel'>
+               <input type='button' onClick='btnOk()' value='Ok'>
+            </center>
+         </form>
+      </blockquote>
+   </body>
+</html>

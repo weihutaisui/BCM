@@ -1,0 +1,4 @@
+
+dependson: private/libs/wlcsm private/apps/nvram gpl/apps/busybox gpl/apps/iptables
+condition: ifneq ($(strip $(BCA_HNDROUTER)),)
+

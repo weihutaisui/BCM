@@ -1,0 +1,4 @@
+
+dependson: private/libs/ethswctl private/libs/cms_core public/libs/cms_util
+condition: ifneq ($(strip $(BUILD_EPON_SDK)),)
+

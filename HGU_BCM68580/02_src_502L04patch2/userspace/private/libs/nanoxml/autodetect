@@ -1,0 +1,4 @@
+
+condition: ifneq ($(strip $(BUILD_BRCM_CMS)),)
+dependson: i5api
+

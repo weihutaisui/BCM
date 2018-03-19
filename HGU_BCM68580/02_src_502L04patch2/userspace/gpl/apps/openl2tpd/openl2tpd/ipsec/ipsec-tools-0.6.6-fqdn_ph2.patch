@@ -1,0 +1,108 @@
+diff -Naur ipsec-tools-0.6.6.orig/src/racoon/isakmp_quick.c ipsec-tools-0.6.6/src/racoon/isakmp_quick.c
+--- ipsec-tools-0.6.6.orig/src/racoon/isakmp_quick.c	2005-07-20 10:02:05.000000000 +0200
++++ ipsec-tools-0.6.6/src/racoon/isakmp_quick.c	2006-10-19 20:06:30.000000000 +0200
+@@ -300,6 +300,62 @@
+ }
+ 
+ /*
++ * this function is called when an IDcx mismatch is detected to see
++ * if we can cope with that
++ * this was introduced to be able to interoperate with Microsoft's
++ * implementation which seems to send a mismatched IDcr in
++ * ISAKMP Quick Mode R1 message
++ */
++int
++ipsec_compatible_id(id1, idlen1, id2, idlen2)
++	caddr_t id1, id2;
++	size_t idlen1, idlen2;
++{
++	struct ipsecdoi_id_b *id_b1 = (struct ipsecdoi_id_b *)id1;
++	struct ipsecdoi_id_b *id_b2 = (struct ipsecdoi_id_b *)id2;
++
++	if (id_b1->type == id_b2->type)
++		/*
++		 * if the types are the same then the IDcx's must be
++		 * different (otherwise we would not be here)
++		 * => the IDcx's are NOT compatible
++		 */
++		return 0;
++
++	if (id_b1->proto_id != id_b2->proto_id ||
++	    id_b1->port != id_b2->port)
++		/*
++		 * the protocol or port differ
++		 * => the IDcx's are NOT compatible
++		 */
++		return 0;
++
++	if (((id_b1->type == IPSECDOI_ID_IPV4_ADDR
++#ifdef INET6
++	     || id_b1->type == IPSECDOI_ID_IPV6_ADDR
++#endif
++	     ) && id_b2->type == IPSECDOI_ID_FQDN)
++	    || ((id_b2->type == IPSECDOI_ID_IPV4_ADDR
++#ifdef INET6
++	     || id_b2->type == IPSECDOI_ID_IPV6_ADDR
++#endif
++	     ) && id_b1->type == IPSECDOI_ID_FQDN))
++		/*
++		 * the first IDcx is a host address (IPv4 or IPv6) and
++		 * the second one is a Fully Qualified Domain Name (FQDN)
++		 * or vice versa
++		 * => the IDcx's are compatible
++		 */
++		return 1;
++
++	/*
++	 * any other case (for now):
++	 * => the IDcx's are NOT compatible
++	 */
++	return 0;
++}
++
++/*
+  * receive from responder
+  * 	HDR*, HASH(2), SA, Nr [, KE ] [, IDi2, IDr2 ]
+  */
+@@ -421,21 +477,35 @@
+ 		case ISAKMP_NPTYPE_ID:
+ 		    {
+ 			vchar_t *vp;
++			caddr_t id;
++			size_t idlen;
+ 
+ 			/* check ID value */
+-			if (f_id == 0) {
++			switch (++f_id) {
++			case 1:
+ 				/* for IDci */
+-				f_id = 1;
+ 				vp = iph2->id;
+-			} else {
++				break;
++			case 2:
+ 				/* for IDcr */
+ 				vp = iph2->id_p;
++				break;
++			default:
++				plog(LLV_ERROR, LOCATION, NULL,
++					"received too many ID payloads.\n");
++				plogdump(LLV_ERROR, iph2->id->v, iph2->id->l);
++				error = ISAKMP_NTYPE_INVALID_ID_INFORMATION;
++				goto end;
+ 			}
+ 
+-			if (memcmp(vp->v, (caddr_t)pa->ptr + sizeof(struct isakmp_gen), vp->l)) {
+-
++			id = (caddr_t)pa->ptr + sizeof(struct isakmp_gen);
++			idlen = pa->len - sizeof(struct isakmp_gen);
++			if ((vp->l != idlen || memcmp(vp->v, id, vp->l)) &&
++			    !ipsec_compatible_id(vp->v, vp->l, id, idlen)) {
+ 				plog(LLV_ERROR, LOCATION, NULL,
+-					"mismatched ID was returned.\n");
++					"mismatched IDc%c was returned:\n",
++					f_id == 1 ? 'i' : 'r');
++				plogdump(LLV_ERROR, id, idlen);
+ 				error = ISAKMP_NTYPE_ATTRIBUTES_NOT_SUPPORTED;
+ 				goto end;
+ 			}

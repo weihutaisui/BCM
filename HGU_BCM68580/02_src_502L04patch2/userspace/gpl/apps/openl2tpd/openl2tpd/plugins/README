@@ -1,0 +1,62 @@
+OpenL2TP Plugins
+================
+
+An OpenL2TP plugin is a shared library which extends OpenL2TP
+functionality. Multiple plugins may be loaded.
+
+Plugins may call any public function within the OpenL2TP server
+software and may have visibility of tunnel/session
+create/delete/modify/up/down events.
+
+The following OpenL2TP plugins are available:-
+
+ppp_unix:       This plugin is provided to allow L2TP to interface
+                with the standard UNIX pppd. It is loaded by
+                default. To operate with other (perhaps commercial)
+                PPP implementations, a different plugin would be
+                needed. Note, however, that unless a commercial L2TP
+                license is used, the plugin also falls under GPL.
+
+ppp_null:       This plugin may be used instead of ppp_unix to disable
+                the use of PPP over L2TP sessions. This may be useful
+                for testing.
+
+The default location for OpenL2TP plugins is /usr/lib/openl2tp/.
+
+Plugins are loaded using -p <plugin> arguments when starting
+openl2tpd.  If any -p argument is given, the ppp_unix plugin (which is
+usually loaded by default) is not loaded.
+
+The plugin may register with one or more hooks and has access to all
+global variables of OpenL2TP. The hooks are
+
+extern int (*l2tp_tunnel_created_hook)(uint16_t tunnel_id);
+extern int (*l2tp_tunnel_deleted_hook)(uint16_t tunnel_id);
+extern int (*l2tp_tunnel_modified_hook)(uint16_t tunnel_id);
+extern int (*l2tp_tunnel_up_hook)(uint16_t tunnel_id, uint16_t peer_tunnel_id);
+extern int (*l2tp_tunnel_down_hook)(uint16_t tunnel_id);
+extern int (*l2tp_session_created_hook)(struct l2tp_session const *session, 
+                                        uint16_t tunnel_id, uint16_t session_id);
+extern int (*l2tp_session_deleted_hook)(struct l2tp_session const *session, 
+                                        uint16_t tunnel_id, uint16_t session_id);
+extern int (*l2tp_session_modified_hook)(struct l2tp_session const *session, 
+                                         uint16_t tunnel_id, uint16_t session_id);
+extern int (*l2tp_session_up_hook)(struct l2tp_session const *session, 
+                                   uint16_t tunnel_id, uint16_t session_id, 
+                                   uint16_t peer_tunnel_id, uint16_t peer_session_id);
+extern int (*l2tp_session_down_hook)(struct l2tp_session const *session, 
+                                     uint16_t tunnel_id, uint16_t session_id);
+extern int (*l2tp_session_get_stats_hook)(struct l2tp_session const *session, 
+                                          uint16_t tunnel_id, uint16_t session_id, 
+                                          struct pppol2tp_ioc_stats *stats);
+
+When tunnels and sessions are created and destroyed or change state,
+OpenL2TP calls any registered hooks. It gurantees to call the created
+hook before the up hook and the deleted hook after the down hook.
+
+Plugins must provide the following global symbols:-
+
+const char l2tp_plugin_version[];
+int l2tp_plugin_init(void);
+int l2tp_plugin_cleanup(void);
+

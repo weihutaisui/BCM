@@ -1,0 +1,3 @@
+
+dependson: public/libs/stlport public/libs/dbus public/libs/glib
+

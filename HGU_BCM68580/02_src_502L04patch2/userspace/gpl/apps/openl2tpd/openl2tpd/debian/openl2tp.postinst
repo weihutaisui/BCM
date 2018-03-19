@@ -1,0 +1,12 @@
+#!/bin/sh -e
+
+# Automatically added by dh_installinit
+if [ -x "/etc/init.d/openl2tp" ]; then
+	update-rc.d openl2tp defaults >/dev/null
+	if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+		invoke-rc.d openl2tp start || exit $?
+	else
+		/etc/init.d/openl2tp start || exit $?
+	fi
+fi
+# End automatically added section

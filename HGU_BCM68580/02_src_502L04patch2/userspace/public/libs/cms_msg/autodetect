@@ -1,0 +1,4 @@
+
+# makeflags: -j1
+condition: ifneq ($(strip $(BUILD_BRCM_CMS)),)
+dependson: bcm_util

@@ -1,0 +1,16 @@
+#!/bin/sh
+# 
+# Toggle hardware reset pin of the dsl dsp.
+
+model="`cat /proc/nvram/boardid`"
+
+case "$model" in
+    965400X_CO|965400X_CPE)
+        echo "reset enter BCM654XX_RST_N" > /proc/xdsl_distpoint
+        sleep 1
+        echo "reset exit BCM654XX_RST_N" > /proc/xdsl_distpoint
+        ;;
+    *)
+        echo "reset not implemented on this board ($(model)"
+        ;;
+esac

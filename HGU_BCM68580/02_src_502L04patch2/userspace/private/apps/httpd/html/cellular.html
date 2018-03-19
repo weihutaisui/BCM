@@ -1,0 +1,63 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript">
+<!-- hide
+var enblRoaming = '<%ejGet(cellularRoamingEnbl)%>';
+
+function btnApply() {
+   var loc = 'cellular.cgi?';
+
+   with ( document.forms[0] ) {
+      if (cellularRoamingEnable.checked == true) {
+         loc += 'cellularRoamingEnbl=1';
+      } else {
+         loc += 'cellularRoamingEnbl=0';
+      }
+   }
+   loc += '&sessionKey=<%ejGetOther(sessionKey)%>';
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+function frmLoad() {
+   with ( document.forms[0] ) {
+      if (enblRoaming == '1') {
+         cellularRoamingEnable.checked = true;
+      } else {
+         cellularRoamingEnable.checked = false;
+      }
+   }
+}
+
+// done hiding -->
+</script>
+   </head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form>
+            <P>
+               <b>Cellular -- Cellular Configuration</b><br>
+               <br><br>
+               <b> Note: Enables or disables roaming will be applied to all cellular interfaces.</b>
+               <br><br>
+               
+            <table border="0" cellpadding="0" cellspacing="0">
+               <tr>
+                  <td valign="center" align="middle" colspan="2" width="30" height="30">
+                     <input type='checkbox' name='cellularRoamingEnable' ></td>
+                  <td colspan="2">Enable Roaming</td>
+               </tr>
+            </table>
+    
+            <br>
+            <center>
+               <input type='button' onClick='btnApply()' value='Apply/Save'>
+            </center>
+         </form>
+      </blockquote>
+   </body>
+</html>

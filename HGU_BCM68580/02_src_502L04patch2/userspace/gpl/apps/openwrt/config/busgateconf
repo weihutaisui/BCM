@@ -1,0 +1,9 @@
+"privilege":
+[
+{"name": "com.broadcom.DataAdaptation", "object": "/com/broadcom/DataAdaptation", "interface": "com.broadcom.DataAdaptation.CwmpClient", "method": "GetCwmpClientConfigration"},
+{"name": "com.broadcom.DataAdaptation", "object": "/com/broadcom/DataAdaptation", "interface": "com.broadcom.DataAdaptation.CwmpClient", "method": "SetCwmpClientConfigration"},
+{"name": "com.broadcom.DataAdaptation", "object": "/com/broadcom/DataAdaptation", "interface": "com.broadcom.DataAdaptation.Wifi", "method": "SetWifiConfigration"},
+{"name": "com.broadcom.DataAdaptation", "object": "/com/broadcom/DataAdaptation", "interface": "com.broadcom.DataAdaptation.Wifi", "method": "GetWifiConfigration"},
+{"name": "com.broadcom.DataAdaptation", "object": "/com/broadcom/DataAdaptation", "interface": "com.broadcom.DataAdaptation.Wifi", "method": "GetWifiStationList"}
+]
+}

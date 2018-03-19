@@ -1,0 +1,2 @@
+condition: ifneq ($(or $(strip $(BUILD_BRCM_CMS)),$(strip $(BUILD_CMS_UTIL))),)
+dependson: bcm_util

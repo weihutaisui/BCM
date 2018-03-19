@@ -1,0 +1,3 @@
+
+condition: ifneq ($(strip $(BUILD_TR69C_BCM_SSL)),)
+

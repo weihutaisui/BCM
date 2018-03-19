@@ -1,0 +1,8 @@
+#
+# This file is used to generate a report that provides a summary of our OMCI data model.
+#
+# Lines beginning with # are skipped.  Blank lines are also skipped.
+# All other lines should contain the profile name followed by the number of
+# parameters in the profile.
+
+Baseline:1 0

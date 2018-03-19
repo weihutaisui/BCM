@@ -1,0 +1,57 @@
+This directory contains miscellaneous items for use with IPSec,
+contributed by Michal Ruzicka (michal.ruzicka@comstar.cz). 
+
+Using OpenL2TP's ipsec.so plugin and racoon/kernel patched with
+Michal's patches listed below, it is possible to serve multiple
+L2TP/IPSec clients that are behind a NAT gateway using an OpenL2TP
+server.
+
+The sample configuration files ipsec.conf and racoon.conf in this
+directory provide example configurations for use with racoon from the
+ipsec-tools package. See racoon(8), racoon.conf(5) and setkey(8) man
+pages.
+
+The following patches are also available. These are required to
+support configurations where there are multiple L2TP/IPSec clients
+behind a NAT getaway. (Multiple L2TP/IPSec clients work without these
+patches provided there are no NAT gateways used.) All of these patches
+have been submitted for inclusion in the Linux kernel and ipsec-tools
+packages but at this time (01-DEC-2006) have not yet been integrated
+into official releases.
+
+- ipsec-tools-0.6.6-sendproxyaddr.patch
+
+  This patch makes racoon send more info to the kernel for supporting
+  ephemeral ports.  Although Linux's SA are presented by setkey in a
+  way that suggests that they don't contain port (not even protocol)
+  information to match the data flows against (which is necessary to
+  select the correct SA in the multiple clients behind the same NAT
+  scenario), the contrary is true! The detailed infromation can be
+  examined for example by the "ip xfrm" command.  The unfortunate
+  thing is that user space tools (racoon included) don't use that
+  functionality, as documented in: linux-2.6.17.11/net/key/af_key.c
+  line 1167:
+
+  1164:   if (ext_hdrs[SADB_EXT_ADDRESS_PROXY-1]) {
+  1165:           struct sadb_address *addr = ext_hdrs[SADB_EXT_ADDRESS_PROXY-1];
+  1166:
+  1167:           /* Nobody uses this, but we try. */
+  1168:           x->sel.family = pfkey_sadb_addr2xfrm_addr(addr, &x->sel.saddr);
+  1169:           x->sel.prefixlen_s = addr->sadb_address_prefixlen;
+  1170:   }
+
+- linux-2.6.17.11-af_key_sa_selector.patch
+
+  This kernel patch allows the ephemeral port info now supplied by
+  racoon to be applied to the SPD database.
+
+- ipsec-tools-0.6.6-fqdn_ph2.patch
+
+  This patches the racoon daemon to handle Microsoft ISAKMP exchange
+  problems. Microsoft's IPSec implentation fails to include correct
+  IDcr in its response to ISAKMP Quick Mode exchage (instead of the
+  orginal ID_IPV4_ADDR sent by racoon it responded with ID_FQDN which
+  racoon considered to be an error). This patch is probably only
+  needed for interopability with MS clients.
+
+

@@ -1,0 +1,3 @@
+bcm createSuperBondingCore 2
+api createBondingGrps 2 0,1 1
+source /etc/xdsl/xdsl_cmd_start_all.txt

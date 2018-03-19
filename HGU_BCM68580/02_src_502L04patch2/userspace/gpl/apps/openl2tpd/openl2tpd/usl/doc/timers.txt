@@ -1,0 +1,77 @@
+USL timers are useful for applications that run multiple
+timers. Traditional Unix timers don't lend themselves to applications
+that need to run multiple timers. Traditional timers are also
+processed at signal (interrupt) context so the application must take
+special care in avoiding race conditions when accessing application
+data that is shared by the timer handler and main application.
+
+USL drives all timers from a single timer tick which is configured and
+handled by USL. The tick rate is defined by USL_TIMER_HZ ticks per
+second. The value should be no more than half the desired minimum
+timer duration. For example, if an application uses some timers that
+expire in 0.5 seconds, USL_TIMER_HZ is set to 4 (0.25 seconds).
+
+void *usl_timer_create(unsigned int expires, unsigned int interval, 
+		       usl_timer_callback_fn_t callback, void *callback_arg,
+		       usl_timer_interval_adjust_fn_t adjuster);
+
+Creates a one-shot or interval timer. The caller supplies a callback
+which is called when the timer expires. An optional interval adjuster
+function may be supplied to automatically adjust the next interval
+duration when an interval timer expires. This is useful for
+applications that use adaptive timeouts, where timer durations back
+off, for example.
+
+Note that the callback is called from the USL main loop and so is
+synchronous. Unlike standard Unix timers, USL timers are synchronous
+so the application doesn't have to worry about thread safety etc.
+
+RETURNS
+
+A timer handle, or NULL on error. The timer handle may be used to
+reference the timer in other usl_timer calls.
+
+void usl_timer_delete(void *handle);
+
+Deletes the timer identified by handle.
+
+void usl_timer_stop(void *handle);
+
+Stops the timer identified by handle.
+
+int usl_timer_is_running(void *handle);
+
+This call is used by an application to determine if a specific timer
+is currently running.
+
+RETURNS
+
+Returns 0 if timer is not running, non-zero if it is running.
+
+void usl_timer_restart(void *handle);
+
+Restarts the specified timer. If the timer is already running, the
+expiry time is set back to the timer's preset duration. If the timer
+is not already running, it is started.
+
+void usl_timer_interval_set(void *handle, unsigned int interval);
+
+Sets (changes) the interval (repeat rate) of the timer specified by
+handle. Interval is specified in ticks. Use the USL_TIMER_HZ and
+USL_TIMER_TICKS() macros to derive ticks for a given timer duration.
+
+void usl_timer_expiry_set(void *handle, unsigned int expiry);
+
+Sets (changes) the expiry time of the timer specified by
+handle. Interval is specified in ticks. Use the USL_TIMER_HZ and
+USL_TIMER_TICKS() macros to derive ticks for a given timer
+duration.
+
+int usl_timer_init(void);
+
+Must be called before any of the usl_timer functions.
+
+void usl_timer_cleanup(void);
+
+Called when USL timers are no longer required. Stops and deletes all
+timers.

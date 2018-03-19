@@ -1,0 +1,4 @@
+condition: ifneq ($(strip $(BUILD_BRCM_CMS)),)
+dependson: public/libs/stlport private/libs/cms_core private/libs/tmctl
+
+

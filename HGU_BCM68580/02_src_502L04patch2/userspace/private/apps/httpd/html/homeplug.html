@@ -1,0 +1,86 @@
+<html>
+   <head>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <meta http-equiv="Pragma" content="no-cache">
+            <meta http-equiv="refresh" content="60">
+            <script language="javascript" src="util.js"></script>
+            <script language="javascript">
+
+<!-- hide
+
+function frmLoad() {
+   with ( document.forms[0] ) {
+      alias.value = '<%ejGet(homeplugAlias)%>';
+   }
+}
+
+function btnApply() {
+   var loc = 'homeplug.cgi?';
+
+   with ( document.forms[0] ) {
+      var strNewAlias = new String();
+      strNewAlias = alias.value;
+      if ( strNewAlias == "" ) {
+         alert('Device HFID cannot be empty.');   
+         return;
+      }
+      if ( strNewAlias.length > 64 ) {
+         alert('Device HFID cannot be longer than 64 characters.');
+         return;
+      }
+      loc += 'homeplugAlias=' + encodeUrl(alias.value);
+      loc += '&sessionKey=<%ejGetOther(sessionKey)%>';
+
+      var code = 'location="' + loc + '"';
+      eval(code);
+   }
+}
+// done hiding -->
+</script>
+</head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form>
+            <b>HomePlug -- Setup</br></br>
+            <table border="0" cellpadding="5" cellspacing="0">
+		         <tr>
+	  	            <td width="150">Device HFID:</td>
+                  <td><input type='text' name='alias'></td>
+                </tr>
+		         <tr>
+		            <td width="150">MAC address:</td>
+                  <td><%ejGet(homeplugMACAddress)%></td>
+                </tr>
+                <tr>
+                  <td width="150">Firmware version:</td>
+                  <td><%ejGet(plcVersion)%></td>
+	             </tr>
+	             <tr>
+                  <td width="150">HomePlug version:</td>
+		            <td><%ejGet(homeplugVersion)%></td>
+                </tr>
+                <tr>
+                  <td width="150">Maximum bit rate:</td>
+                  <td><%ejGet(homeplugMaxBitRate)%> Mbps</td>
+               </tr>
+	            <tr>
+	               <td width="150">Status:</td>
+	               <td><%ejGet(homeplugStatus)%></td>
+               </tr>
+            </table></br>
+   	    <b>Associated devices</br></br>
+            <table border="1" cellpadding="3" cellspacing="0">
+	            <tr>
+	               <td class='hd'>MAC address</td>
+                  <td class='hd'>HPAV Rate (Tx/Rx)</td>
+               </tr>
+               <%ejGetOther(homeplugInfo,0,0)%>
+	        </table></br></br>
+            <center><input type='button' 
+                           onClick='btnApply()'
+                           value='Apply/Save'></center>
+         </form>
+      </blockquote>
+   </body>
+</html>

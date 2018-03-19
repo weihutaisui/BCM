@@ -1,0 +1,102 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	OPT_CFLAGS = -O0
+else
+	OPT_CFLAGS = -O2
+endif
+
+export OPT_CFLAGS
+
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+	# Add here commands to configure the package.
+	dpatch apply-all
+
+	touch configure-stamp
+
+
+build: build-stamp
+
+build-stamp: configure-stamp 
+	dh_testdir
+
+	# Add here commands to compile the package.
+	$(MAKE) PPPD_VERSION=2.4.4 KERNEL_SRCDIR=/usr/src/linux-headers-`uname -r`
+	#docbook-to-man debian/openl2tp.sgml > openl2tp.1
+
+	touch $@
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp
+
+	# Add here commands to clean up after the build process.
+	$(MAKE) clean
+
+	dh_clean  --exclude ./debian.orig
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k  --exclude ./debian.orig
+	dh_installdirs
+
+	# Add here commands to install the package into debian/openl2tp.
+	$(MAKE) PPPD_VERSION=2.4.4 \
+		KERNEL_SRCDIR=/usr/src/linux-headers-`uname -r` \
+		DESTDIR=$(CURDIR)/debian/openl2tp install
+
+	# Move some files to openl2tp-dev
+	-mkdir -p $(CURDIR)/debian/openl2tp-dev/usr/lib/openl2tp
+	mv -f $(CURDIR)/debian/openl2tp/usr/lib/openl2tp/*.[hx] $(CURDIR)/debian/openl2tp-dev/usr/lib/openl2tp/ 
+
+
+# Build architecture-independent files here.
+binary-indep: build install
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs CHANGES
+	dh_installdocs
+	dh_installexamples
+#	dh_installmenu
+#	dh_installdebconf	
+#	dh_installlogrotate	
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+	dh_installinit
+#	dh_installcron
+#	dh_installinfo
+	dh_installman
+	dh_link
+	dh_strip
+	dh_compress 
+	dh_fixperms
+#	dh_perl
+#	dh_python
+	dh_makeshlibs
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure

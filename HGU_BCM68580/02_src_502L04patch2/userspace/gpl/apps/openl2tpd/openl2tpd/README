@@ -1,0 +1,128 @@
+OpenL2TP Software
+=================
+
+OpenL2TP is a complete implementation of RFC2661 - Layer Two Tunneling
+Protocol Version 2, able to operate as both a server and a client.
+
+OpenL2TP has been written specifically for Linux. It consists of
+
+- a daemon, openl2tpd, handling the L2TP control protocol exchanges
+  for all tunnels and sessions
+
+- a plugin for pppd to allow its PPP connections to run over L2TP
+  sessions
+
+- a Linux kernel driver for efficient datapath (packaged separately).
+
+- a command line application for management.
+
+All data packets are handled by the Linux kernel in order that the
+datapath be as efficient as possible. The Linux PPP-over-L2TP kernel
+driver (pppol2tp.o) must be loaded either dynamically as a kernel
+module or linked in statically.
+
+OpenL2TP was written from scratch although it borrows some concepts
+(in particular, the use of profiles) from an earlier L2TP project,
+http://www.sourceforge.net/projects/l2tp.
+
+The original PPP-over-L2TP kernel driver was written by Martijn van
+Oosterhout <kleptog@svana.org>. Until now it has never been integrated
+into an L2TP implementation. Katalix Systems Ltd have made significant
+feature enhancements and are actively working on this driver, seeking
+to have it incorporated in the Linux kernel source tree.
+
+OpenL2TP is dual licensed. See LICENSE file for details. The Linux
+kernel driver is distributed under the same license terms as the Linux
+kernel itself, Copyright Martijn van Oosterhout.
+
+To get started, go to the openl2tp(7) man page. For the impatient, a
+Quick Start guide is available online at
+http://opensource.katalix.com/openl2tp/quick_start.html.
+
+If you have a host configuration where prebuilt binary packages are
+not available, please consider building one and contributing your
+work. For RedHat Fedora, see instructions in the redhat subdirectory.
+
+Planned Work
+============
+
+The following features (in priority order) are planned for a future
+release:-
+
+- PPP proxy, for B-RAS applications. The management interface already
+  includes proxy attributes but they are currently unused.
+
+- Add L2TPv3 support. Possibly...
+
+Suggested Projects
+==================
+
+- A GUI management application using the RPC binary interface. A Java
+  application would be ideal, using one of the Java RPC tools to
+  implement the API, e.g. http://netbula.com/ or
+  http://www.onc-rpc-xdr.com/.
+
+License
+=======
+
+See the LICENSE file in this directory. 
+
+Related Work
+============
+
+- http://www.l2tpd.org/downloads/
+
+  Derived from early work by Mark Spencer (1998), this version has had
+  several maintainers/developers.
+
+- http://sourceforge.net/projects/l2tp/
+
+  Now defunct (?), this Linux implementation by B. Baumann promised
+  much but never really caught on, was buggy and was difficult to set
+  up. No new versions since 2002.
+
+- http://sourceforge.net/projects/rp-l2tp/
+
+  This was written from scratch by Roaring Penguin Software. No kernel
+  datapath support. rp-l2tp is packaged with some Linux distributions
+  and tends to be used in smaller setups, most often as an L2TP client
+  for the desktop.
+
+- http://sourceforge.net/projects/l2tpns/
+
+  This is a userspace L2TP/PPP daemon for serving thousands of
+  L2TP/PPP sessions. Its L2TP protocol implementation is not as
+  complete as OpenL2TP's and its datapath is in userspace.
+
+- http://www.xelerance.com/software/xl2tpd/
+
+  This is a fork of the original l2tpd.org l2tp project.
+
+
+Why a new implementation then? 
+
+Linux is being widely deployed in commercial networking products and
+in servers in corporate offices. These environments demand an L2TP
+server implementation that will scale to support many simultaneous
+users, each with potentially different configuration. We also wanted
+an infrastructure that would be able to support PPP Proxy in the
+future for use in B-RAS environments. The existing L2TP
+implementations weren't designed for these environments.
+
+Note that OpenL2TP may be used as an L2TP client, possibly replacing
+rp-l2tp in some setups. OpenL2TP may suit environments where more
+flexible configuration is needed.
+
+About Katalix Systems Ltd
+=========================
+
+Katalix Systems Ltd is a privately held company based Reading, UK
+specializing in custom Embedded Linux work.
+
+Please visit us at http://www.katalix.com
+
+Suggestions for feature enhancements are always welcome. Send them to
+openl2tp-users@lists.sourceforge.net which is an open mailing list for
+OpenL2TP users. Subscription to the list is required in order to send
+unmoderated posts.
+

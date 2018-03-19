@@ -1,0 +1,3 @@
+# this lib depends on nfnetlink, so build in Layer1 after nfnetlink has been built
+dependson: nfnetlink
+

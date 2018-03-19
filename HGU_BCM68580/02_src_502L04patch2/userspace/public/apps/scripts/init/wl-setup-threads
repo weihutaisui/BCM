@@ -1,0 +1,252 @@
+#!/bin/sh
+
+# This script is used to set CPU pinning and priority for wlan related process
+# instead of configuring by Wlmngr.
+
+MAX_WLAN_ADAPTER=4
+NUM_PSR=`cat /proc/cpuinfo | grep -c "processor"`
+NUM_WL_INTF=`ls -al /sys/class/net/wl* 2>&1 | grep -c "wl. "`
+BCM_MODEL=`cat /proc/device-tree/model`
+radio=0
+
+# echo "Number of Processor=$NUM_PSR"
+# echo "Number of WL Interface=$NUM_WL_INTF"
+# echo "BCM_MODEL=$BCM_MODEL"
+
+getPidByName() 
+{
+        local name=$1
+        local ps_info=`ps | grep -v grep | grep ${name}`
+        local pid=0
+
+        for pid in $ps_info;
+        do
+                break;
+        done
+        # echo "the pid of process:$name is ($pid)"
+        eval $2=$pid
+}
+
+get_event_pid() 
+{
+        local name
+        local tp_id=`wl -i wl$1 tp_id 2>/dev/null`
+        local pid_events=0
+
+        # echo tp_id=$tp_id
+        if [ -n "$tp_id" ]; then
+                if [ $tp_id == 0 ]; then
+                        name="events/0"
+                elif [ $tp_id == 1 ]; then
+                        name="events/1"
+                fi
+        fi
+        # echo name=$name
+        if [ -n "$name" ]; then
+                getPidByName $name pid_events
+                # echo "the pid of process:$name is ($pid_events)"
+        fi
+
+        eval $2=$pid_events
+}
+
+wlmngr_setupTPs_3() 
+{
+        while [ $radio -lt $MAX_WLAN_ADAPTER ];
+        do
+                getPidByName dhd${radio}_dpc pid_wl
+                #echo pid_wl=$pid_wl
+
+                if [ "$pid_wl" -le "0" ]; then
+                        # echo "could not find pid of dhd${radio}_dpc"
+                        getPidByName wl${radio}-kthrd pid_wl
+                fi
+
+                if [ "$pid_wl" -gt "0" ]; then
+                        # echo "pid_wl=$pid_wl"
+
+                        getPidByName wfd${radio}-thrd pid_wfd
+                        # echo "pid_wfd=$pid_wfd"
+                        
+						# tp=`expr $radio % $NUM_PSR`
+                        cpu_mask=$((1 << (radio%NUM_PSR)))
+                        # echo "cpu_mask=$cpu_mask"
+
+                        taskset -p $cpu_mask $pid_wl > /dev/null 2>&1
+                        if [ "$?" != "0" ]; then
+                                echo "sched_setaffinity failed, rc=$?, wl$radio, pid=$pid_wl"
+                        fi
+
+                        if [ "$pid_wfd" -gt "0" ]; then
+                                taskset -p $cpu_mask $pid_wfd > /dev/null 2>&1
+                                if [ "$?" != "0" ]; then
+                                        echo "sched_setaffinity failed, rc=$?, wl$radio, pid=$pid_wfd"
+                                fi
+                        fi
+
+                fi
+                radio=`expr $radio + 1`
+        done
+}
+
+wlmngr_setupTPs_2() 
+{
+        getPidByName wl0-kthrd pid_nic_0
+        getPidByName wl1-kthrd pid_nic_1
+        getPidByName dhd0_dpc pid_dhd_0
+        getPidByName dhd1_dpc pid_dhd_1
+        getPidByName wfd0-thrd pid_wfd_0
+        getPidByName wfd1-thrd pid_wfd_1
+
+        # if there exists only one adapter, put it to TP1.
+        # if there exists two adapters, put wl0 on TP0, wl1 on TP1.
+        # if there exists three adapters, put wl0 on TP0, wl1 on TP1. wl2 on TP0
+        if [ $NUM_WL_INTF -ge 2 ]; then
+                # there exists 2 active adapters - nic/nic, dhd/nic, dhd/dhd
+                if [ "$pid_dhd_0" -gt "0" ]; then
+                        pid_wl0=$pid_dhd_0 # first adapter is dhd
+                else
+                        pid_wl0=$pid_nic_0 # first adapter is nic
+                fi
+                
+                # /* bind to TP0 */
+                cpu_mask=$((1 << 0))
+                # echo "cpu_mask=$cpu_mask"
+                
+                taskset -p $cpu_mask $pid_wl0 > /dev/null 2>&1
+                if [ "$?" != "0" ]; then
+                        echo "sched_setaffinity failed, rc=$?, pid_wl0=$pid_wl0"
+                fi
+
+                if [ "$pid_dhd_1" -gt "0" ]; then
+                        pid_wl1=$pid_dhd_1 # second adapter is dhd
+                else
+                        pid_wl1=$pid_nic_1 # second adapter is nic
+                fi
+                
+                # /* bind to TP1 */
+                cpu_mask=$((1 << 1))
+                # echo "cpu_mask=$cpu_mask"
+                
+                taskset -p $cpu_mask $pid_wl1 > /dev/null 2>&1
+                if [ "$?" != "0" ]; then
+                        echo "sched_setaffinity failed, rc=$?, pid_wl1=$pid_wl1"
+                fi
+        elif [ $NUM_WL_INTF -eq 1 ]; then
+                # there exists only one active adapter
+                if [ "$pid_dhd_0" -gt "0" ]; then
+                        pid_wl0=$pid_dhd_0 # adapter is dhd
+                        # bind dhd0_dpc to TP0
+                        cpu_mask=$((1 << 0))
+                else
+                        pid_wl0=$pid_nic_0 # adapter is nic
+                        # bind wl0-kthrd to TP1
+                        cpu_mask=$((1 << 1))
+                fi
+                # echo "cpu_mask=$cpu_mask"
+
+                taskset -p $cpu_mask $pid_wl0 > /dev/null 2>&1
+                if [ "$?" != "0" ]; then
+                        echo "sched_setaffinity failed, rc=$?, pid_wl0=$pid_wl0"
+                fi
+                taskset -p $cpu_mask $pid_wfd_0 > /dev/null 2>&1
+                if [ "$?" != "0" ]; then
+                        echo "sched_setaffinity failed, rc=$?, pid_wfd_0=$pid_wfd_0"
+                fi
+        fi
+}
+
+wlmngr_setupTPs_1() 
+{
+        ps | grep -v "grep" | grep -e "wl.-kthrd" > /dev/null 2>&1
+        [ "$?" == "0" ] || exit 0;
+
+        tp=0
+        cat /proc/version  | grep "SMP" > /dev/null 2>&1
+        if [ "$?" == "0" ]; then
+                tp=1
+                # echo tp=$tp
+        fi
+
+        WL_WIFI_RADIO_NUMBER=0
+        for intf in `(cd /sys/class/net ; echo wl*)`
+        do
+            WL_WIFI_RADIO_NUMBER=`expr $WL_WIFI_RADIO_NUMBER + 1`
+        done
+        # echo WL_WIFI_RADIO_NUMBER=$WL_WIFI_RADIO_NUMBER
+
+        # if there exists only one adapter, put it to TP1.
+        # if there exists two adapters, put wl0 on TP0, wl1 on TP1.
+        # if there exists three adapters, put wl0 on TP0, wl1 on TP1. wl2 on TP0
+        if [ $NUM_WL_INTF -ge 2 ]; then
+                wlctl -i wl0 tp_id 0
+                wlctl -i wl1 tp_id $tp
+                if [ $NUM_WL_INTF -eq 3 ]; then
+                        wlctl -i wl2 tp_id 0
+                fi
+        elif [ $NUM_WL_INTF -eq 1 ] && [ $WL_WIFI_RADIO_NUMBER -gt 1 ]; then
+                for intf in `(cd /sys/class/net ; echo wl*)`
+                do
+                        if [ "x`cat /sys/class/net/$intf/operstate 2>/dev/null`" != "xdown" ]; then
+                                wlctl -i $intf tp_id $tp
+                                break;
+                        fi
+                done
+        fi
+}
+
+wlmngr_setpriority()
+{
+        radio=0
+        sched_priority=5
+        while [ $radio -lt $MAX_WLAN_ADAPTER ];
+        do
+                getPidByName wl$radio-kthrd pid_nic
+                if [ "$pid_nic" -le "0" ]; then
+                        get_event_pid $radio pid_nic
+                fi
+
+                getPidByName wfd$radio-thrd pid_wfd
+                # echo pid_nic=$pid_nic, pid_wfd=$pid_wfd
+
+                if [ "$pid_nic" -gt "0" ]; then
+                        chrt -p $sched_priority $pid_nic > /dev/null 2>&1
+                        if [ "$?" != "0" ]; then
+                                echo "Failed to make wlan processing on unit $radio realtime, pid_nic=$pid_nic"
+                        fi
+                fi
+                if [ "$pid_wfd" -gt "0" ]; then
+                        chrt -p $sched_priority $pid_wfd > /dev/null 2>&1
+                        if [ "$?" != "0" ]; then
+                                echo "Failed to make wlan processing on unit $radio realtime, pid_wfd=$pid_wfd"
+                        fi
+                fi
+                radio=`expr $radio + 1`
+        done
+}
+
+case "$1" in
+        start)
+                echo "Configuing wlan related threads..."
+                if [ $NUM_WL_INTF -gt 0 ]; then
+                        # set CPU pinning
+                        if [ "$BCM_MODEL" == "Broadcom BCM963381" ]; then  # Low end old platforms (no-fap, no-wfd)
+                                wlmngr_setupTPs_1
+                        elif [ "$BCM_MODEL" == "Broadcom BCM963268" ]; then  # FAP based platforms
+                                wlmngr_setupTPs_2
+                        else  # High-end wfd based platforms
+                                wlmngr_setupTPs_3
+                        fi
+
+                        # set priority
+                        wlmngr_setpriority
+                fi
+                exit 0
+                ;;
+
+        *)
+                echo "$0: unrecognized option $1"
+                exit 1
+                ;;
+
+esac
