@@ -1,0 +1,168 @@
+# wlbcmshared shared library makefile
+#
+# Linux router shared code Makefile
+#
+# Copyright (C) 2016, Broadcom. All Rights Reserved.
+# 
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+# OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+# CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+# $Id: Makefile 636868 2016-05-11 00:14:09Z $
+#
+include $(SRCBASE)/router/.config
+BUILD_DIR=$(word 1, $(subst /bcmdrivers, /bcmdrivers,$(shell pwd)))
+#include $(BUILD_DIR)/make.common
+
+
+CFLAGS	+= -I. -I../httpd -I$(SRCBASE)/include ${WLAN_StdIncPathA} -I$(SRCBASE)/common/include -Wall -fPIC
+CFLAGS	+= $(WLAN_ComponentIncPath)
+
+CFLAGS += -I$(BUILD_DIR)/userspace/private/libs/wlcsm/include
+CFLAGS += -I../../include
+CFLAGS += -I../../common/include
+CFLAGS += -I../../wps/brcm_apps/include
+CFLAGS += -I../../shared
+CFLAGS += -I../../shared/bcmwifi/include
+CFLAGS += -I../www/broadcom/cgi
+CFLAGS += -DBCMSUP_PSK
+CFLAGS += -DBCMSUPPL
+CFLAGS += -DBCMWPS
+CFLAGS += -DBCMWPA2
+CFLAGS += -DDSLCPE -DDSLCPE_ENDIAN
+CFLAGS += -Wall
+CFLAGS += -fomit-frame-pointer
+CFLAGS += -DMFP
+
+LDFLAGS = -shared
+LDFLAGS += -Os
+
+ifneq (2_4,$(LINUX_VERSION))
+ifeq ($(strip $(BCA_HNDROUTER)),)
+CFLAGS += -I$(LINUXDIR)/include
+endif
+CFLAGS += -DLINUX26
+ifneq (2_6,$(LINUX_VERSION))
+CFLAGS += -DAUTOFW_PORT_DEPRECATED
+endif
+endif
+#CFLAGS	+= -g -DDEBUG
+CFLAGS	+= -s -O2
+ifeq ($(CONFIG_RTR_OPTIMIZE_SIZE),y)
+CFLAGS  += -Os
+else
+CFLAGS  += -O2
+endif
+LDFLAGS += -L.
+
+
+OBJS := nvparse.o shutils.o wl.o wl_linux.o linux_timer.o defaults.o wlif_utils.o bcmwifi_channels.o et_linux.o confmtd_utils.o common_utils.o passpoint_nvparse.o appevent_util.o
+OBJS += bcm_usched.o
+#OBJS += bcmutils.o
+
+ifeq ($(CONFIG_WBD),y)
+OBJS += wbd_rc_shared.o
+endif
+
+ifeq ($(CONFIG_PLC),y)
+OBJS += dict.o
+endif
+
+
+# Actually all builds use the new 11ac ratespec/chanspec
+CFLAGS  += -DD11AC_IOTYPES
+vpath %.c $(WLAN_StdSrcDirsA) $(WLAN_ComponentSrcDirs)
+vpath %.c ./
+vpath %.c ../../shared ../../shared/bcmwifi/src
+vpath %.c ../www/broadcom/cgi
+%.o: %.c
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+
+all dynamic: libwlbcmshared.so 
+
+
+ifneq ($(strip $(OBJS)),)
+libwlbcmshared.so: $(OBJS) 
+else
+dynamic:libwlbcmshared.so
+endif
+
+libwlbcmshared.so: $(OBJS) 
+ifneq ($(strip $(OBJS)),)
+ifeq ($(BRCM_WAPI),y)
+	$(CC) $(LDFLAGS) -o libwlbcmshared_wapi.so $^
+	cp -f libwlbcmshared_wapi.so libwlbcmshared_wapi.so-$(EXT_CPU_ARCH_NAME)
+else
+	$(CC) $(LDFLAGS) -o libwlbcmshared.so $^
+	cp -f libwlbcmshared.so libwlbcmshared.so-$(EXT_CPU_ARCH_NAME)
+endif
+else
+ifeq ($(BRCM_WAPI),y)
+	cp -f libwlbcmshared_wapi.so-$(EXT_CPU_ARCH_NAME) libwlbcmshared_wapi.so
+else
+	cp -f libwlbcmshared.so-$(EXT_CPU_ARCH_NAME) libwlbcmshared.so
+endif
+endif
+
+ifneq ($(strip $(OBJS)),)
+$(WIFI_HTTP_LIB): passpoint_gui.o $(CGI_OBJS) passpoint_nvparse.o common_utils.o
+else
+$(WIFI_HTTP_LIB):
+endif
+ifneq ($(strip $(OBJS)),)
+	$(CC) $(LDFLAGS) -o $@  $^
+	cp -f $(WIFI_HTTP_LIB) $(WIFI_HTTP_LIB)-$(EXT_CPU_ARCH_NAME) 
+else
+	cp -f $(WIFI_HTTP_LIB)-$(EXT_CPU_ARCH_NAME) $(WIFI_HTTP_LIB) 
+endif
+
+
+static: $(OBJS)
+ifneq ($(strip $(OBJS)),)
+ifeq ($(BRCM_WAPI),y)
+	$(AR) -rcs libwlbcmshared_wapi.a $^
+else
+	$(AR) -rcs libwlbcmshared.a $^
+endif
+endif
+
+
+install: dynamic
+ifeq ($(BRCM_WAPI),y)
+	install -m 755 libwlbcmshared_wapi.so $(INSTALL_DIR)/lib/libwlbcmshared.so
+else
+	install -m 755 libwlbcmshared.so $(INSTALL_DIR)/lib/libwlbcmshared.so
+endif
+
+
+clean:
+	rm -f $(OBJS) *.d
+	rm -f libwlbcmshared.so
+	rm -f libwlbcmshared_wapi.so
+ifneq ($(strip $(OBJS)),)
+	rm -f libwlbcmshared.a
+	rm -f libwlbcmshared_wapi.a
+endif
+	rm -rf $(WIFI_HTTP_LIB)
+
+
+#
+# Include the rule for making dependency files.
+# The '-' in front of the second include suppresses
+# error messages when make cannot find the .d files.
+# It will just regenerate them.
+# See Section 4.14 of Gnu Make.
+#
+
+include $(BUILD_DIR)/make.deprules
+
+-include $(OBJS:.o=.d)

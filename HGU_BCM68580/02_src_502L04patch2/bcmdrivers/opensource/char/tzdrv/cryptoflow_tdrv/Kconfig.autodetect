@@ -1,0 +1,8 @@
+config BCM_CRYPTOFLOW_TDRV
+	tristate "Support for BCM_CRYPTOFLOW_TDRV"
+	default m if BCM_ASTRA
+	
+config BCM_CRYPTOFLOW_TDRV_IMPL
+	int "Implementation index for BCM_CRYPTOFLOW_TDRV"
+	depends on BCM_CRYPTOFLOW_TDRV
+	default 1

@@ -1,0 +1,51 @@
+#
+# Linux ssd Makefile
+#
+# Copyright (C) 2014, Broadcom Corporation
+# All Rights Reserved.
+#
+# This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom Corporation;
+# the contents of this file may not be disclosed to third parties, copied
+# or duplicated in any form, in whole or in part, without the prior
+# written permission of Broadcom Corporation.
+#
+# $Id: Makefile $
+#
+
+CFLAGS	+= -I. -I$(TOP)/shared -I$(SRCBASE)/include -I$(SRCBASE)/common/include -Wall -Werror
+CFLAGS	+= $(if $(WLAN_ComponentIncPath),$(WLAN_ComponentIncPath),$(addprefix -I,$(wildcard $(SRCBASE)/shared/bcmwifi/include))) -DDSLCPE_ENDIAN -DDSLCPE
+#CFLAGS	+= -DSSD_DEBUG
+CFLAGS	+= -s -O2
+#ifdef DSLCPE
+LDFLAGS += -L$(INSTALLDIR)/lib -lnvram -lwlcsm -lwlbcmcrypto -lwlbcmshared
+#else
+#LDFLAGS += -L$(TOP)/nvram -L$(INSTALLDIR)/nvram/usr/lib -lnvram
+#LDFLAGS += -L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared
+#endif
+LDFLAGS += $(EXTRA_LDFLAGS)
+
+
+vpath %.c $(SRCBASE)/shared $(WLAN_ComponentSrcDirs)
+
+all: ssd
+
+OBJS = ssd.o
+
+install: all
+#ifdef DSLCPE
+	install -d $(INSTALLDIR)/bin/
+	install ssd $(INSTALLDIR)/bin/
+	$(STRIP) $(INSTALLDIR)/bin/ssd
+#else
+#	install -d $(INSTALLDIR)/usr/sbin/
+#	install ssd $(INSTALLDIR)/usr/sbin/
+#	$(STRIP) $(INSTALLDIR)/usr/sbin/ssd
+#endif
+
+clean:
+	rm -f *.o *.a *.so ssd
+
+${OBJS}: ssd.h
+
+ssd: ${OBJS}
+	$(CC) $(CFLAGS) $^ -o $@  $(LDFLAGS)

@@ -1,0 +1,12 @@
+# utils Makefile
+
+all: $(APPS_UTILS_DIR)/WlGetDriverCfg.sh $(APPS_UTILS_DIR)/WlGetDriverStats.sh
+
+clean:
+	rm -f $(INSTALLDIR)/bin/WlGetDriverCfg.sh
+	rm -f $(INSTALLDIR)/bin/WlGetDriverStats.sh
+
+install: all
+	install -d $(INSTALLDIR)/bin
+	install -D -m 755 $(APPS_UTILS_DIR)/WlGetDriverCfg.sh $(INSTALLDIR)/bin/WlGetDriverCfg.sh
+	install -D -m 755 $(APPS_UTILS_DIR)/WlGetDriverCfg.sh $(INSTALLDIR)/bin/WlGetDriverStats.sh

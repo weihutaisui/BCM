@@ -1,0 +1,8 @@
+config BCM_ASTRA_DRV
+	tristate "Support for BCM_ASTRA_DRV"
+	default m if BCM_ASTRA
+	
+config BCM_ASTRA_DRV_IMPL
+	int "Implementation index for BCM_ASTRA_DRV"
+	depends on BCM_ASTRA_DRV
+	default 1

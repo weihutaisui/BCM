@@ -1,0 +1,95 @@
+#
+# Linux acsd Makefile
+#
+# Broadcom Proprietary and Confidential. Copyright (C) 2017,
+# All Rights Reserved.
+# 
+# This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom;
+# the contents of this file may not be disclosed to third parties, copied
+# or duplicated in any form, in whole or in part, without the prior
+# written permission of Broadcom.
+#
+# $Id: Makefile 401201 2013-05-09 03:06:42Z $
+#
+
+BUILD_DIR=$(word 1, $(subst /bcmdrivers, /bcmdrivers,$(shell pwd)))
+include $(SRCBASE)/router/.config
+
+CFLAGS += -I.
+CFLAGS += -I.
+CFLAGS += -I../../include
+CFLAGS += -I../../common/include
+CFLAGS += -I../../bcmcrypto
+CFLAGS += -I../../shared
+CFLAGS += -I../../router/shared
+CFLAGS += -I../../router/bshared/include
+CFLAGS += -I../../shared/bcmwifi/include
+CFLAGS += -I../../router/appeventd
+CFLAGS += -DDSLCPE -DDSLCPE_ENDIAN
+CFLAGS += -Wall
+
+LDFLAGS = -O2
+LDFLAGS += -L$(EXTRALIBDIR)
+LDFLAGS += -lc
+LDFLAGS += -lgcc_s
+LDFLAGS += -L$(INSTALL_DIR)/lib
+ifeq ($(DSLCPE_WLCSM_EXT),1)
+LDFLAGS += -lwlcsm
+endif
+
+LDFLAGS += -lnvram
+LDFLAGS += -lwlbcmcrypto
+LDFLAGS += -lwlbcmshared
+LDFLAGS += -lbshared
+
+BSD_SRCFILES = bsd_main.c bsd.c bsd_engine.c bsd_util.c bsd_comm.c bsd_default.c bsd_appevent.c bcmwifi_channels.c
+ifeq ($(CONFIG_WBD),y)
+BSD_SRCFILES +=  bsd_wbd.c
+CFLAGS += -DBCM_WBD
+endif
+BSD_OBJS = $(foreach x, $(BSD_SRCFILES), $(shell find . -name "$x" -exec echo $(x:.c=.o) ";"))
+$(warning BSD_OBJS=$(BSD_OBJS))
+
+#endif
+#vpath %.c ./
+vpath %.c ../../shared/ ../../shared/bcmwifi/src/
+#$(warning $(BSD_OBJS))
+
+%.o: %.c
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+ifneq ($(strip $(BSD_OBJS)),)
+bsd: $(BSD_OBJS)
+	$(CC) $(CFLAGS) $^ -o $@  $(LDFLAGS)
+	cp -f $@ $@-$(EXT_CPU_ARCH_NAME)
+else
+bsd:
+	cp -f $@-$(EXT_CPU_ARCH_NAME) $@
+endif
+
+install: bsd
+	install -m 755 $< $(INSTALL_DIR)/bin/$<
+	$(STRIP) $(INSTALL_DIR)/bin/$<
+
+clean:
+	rm -f $(BSD_OBJS) *.d
+	rm -f bsd
+
+
+dynamic static: bsd
+
+
+OBJS = $(BSD_OBJS)
+
+
+#
+# Include the rule for making dependency files.
+# The '-' in front of the second include suppresses
+# error messages when make cannot find the .d files.
+# It will just regenerate them.
+# See Section 4.14 of Gnu Make.
+#
+
+include $(BUILD_DIR)/make.deprules
+
+-include $(OBJS:.o=.d)

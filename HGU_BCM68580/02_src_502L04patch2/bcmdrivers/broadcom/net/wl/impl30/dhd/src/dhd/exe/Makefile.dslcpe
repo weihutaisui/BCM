@@ -1,0 +1,115 @@
+#
+# Makefile for dhd utility.
+#
+CURR_DIR := $(shell pwd)
+BUILD_DIR:=$(subst /bcmdriver, /bcmdriver,$(CURR_DIR))
+BUILD_DIR:=$(word 1, $(BUILD_DIR))
+
+include $(BUILD_DIR)/make.common
+PROGRAM_NAME:= dhdctl
+
+CFLAGS +=-s -Os -fomit-frame-pointer -I$(INC_BRCMDRIVER_PUB_PATH)/$(BRCM_BOARD) -I$(INC_BRCMDRIVER_PRIV_PATH)/$(BRCM_BOARD) -I$(INC_BRCMSHARED_PUB_PATH)/$(BRCM_BOARD) -I$(INC_BRCMSHARED_PRIV_PATH)/$(BRCM_BOARD)
+CFLAGS += -I$(TOOLCHAIN)/include  -lgcc_s
+
+CFLAGS += -DLINUX
+CFLAGS += -fno-strict-aliasing
+
+
+LDFLAGS=-Os -Wl,-allow-shlib-undefined
+CFLAGS_EXTRA =
+
+ifeq ($(ARCH), arm)
+EXTRA_LDFLAGS += -z muldefs
+endif
+
+WIRELESS_DRIVER_PATH=$(BRCMDRIVERS_DIR)/broadcom/net/wl/bcm9$(BRCM_CHIP)/dhd/src
+INC_WIRELESS_DRIVER_PATH=$(WIRELESS_DRIVER_PATH)/include
+SHARED_WIRELESS_DRIVER_PATH=$(WIRELESS_DRIVER_PATH)/shared
+SHARED_WIRELESS_ROUTER_PATH=$(WIRELESS_DRIVER_PATH)/../../main/src/router/shared
+BCMWIFI_WIRELESS_ROUTER_PATH=$(WIRELESS_DRIVER_PATH)/shared/bcmwifi/src
+COMM_WIRELESS_DRIVER_PATH=$(WIRELESS_DRIVER_PATH)/../components/shared
+WLCTL_OBJS_PATH=$(WIRELESS_DRIVER_PATH)/wl/exe
+
+CFLAGS += -Wall -I$(INC_WIRELESS_DRIVER_PATH) -I$(COMM_WIRELESS_DRIVER_PATH) -I$(COMM_WIRELESS_DRIVER_PATH)/proto -DDSLCPE -DD11AC_IOTYPES -I$(WIRELESS_DRIVER_PATH)/shared/bcmwifi/include 
+CFLAGS += -I$(SHARED_WIRELESS_ROUTER_PATH)
+
+
+# Append DSLCPE_WLAN_VERSION to EPI_VERSION_STR
+include $(WIRELESS_DRIVER_PATH)/dslcpe_wlan_minor_version
+DSLCPE_WLAN_VERSION=cpe$(BRCM_VERSION).$(BRCM_VERSION)$(BRCM_RELEASE).$(DSLCPE_WLAN_MINOR_VERSION)
+CFLAGS += -DDSLCPE_WLAN_VERSION=\"$(DSLCPE_WLAN_VERSION)\"
+
+ifeq ($(strip $(BUILD_DHDCTL)), static)
+CFLAGS += -DBUILD_STATIC 
+endif
+
+# use nl80211 for driver access (ioctl replacement)
+ifdef NL80211
+CFLAGS += -DNL80211
+endif
+
+#ifdef BCMWPA2
+CFLAGS += -DBCMWPA2
+#endif
+# Always include pktgen commands in the application
+CFLAGS += -DSDTEST
+#ifndef OEM_ANDROID
+CFLAGS += -DBCMSPI
+#endif
+
+#ifdef WLCNT
+CFLAGS += -DWLCNT
+#endif
+
+
+CFLAGS += -DWLBTAMP
+CFLAGS += -DWLPFN -DLINUX -g -I$(WIRELESS_DRIVER_PATH)/wl/exe
+#CFLAGS += -DLINUX -g -I$(WIRELESS_DRIVER_PATH)/wl/exe
+
+
+ifeq ($(DSLCPE_DT_BUILD),1)
+CFLAGS	+= -DRADIUS_RESTRICTION
+endif
+
+
+CFLAGS += -DDSLCPE -DDSLCPE_SCBLIST
+
+### Packet Chaining ####
+CFLAGS += -DPKTC
+
+# DHD Runner Acceleration
+CFLAGS += -DBCM_DHD_RUNNER
+
+WLCTLOBJS = wlu_client_shared.o wlu_pipe_linux.o wlu_pipe.o wlu_common.o
+DHDCTLOBJS = dhdu.o dhdu_linux.o ucode_download.o bcmxtlv.o
+SHAREDOBJS = bcmutils.o bcmwifi_channels.o miniopt.o bcm_app_utils.o
+ROUTERSHAREDOBJS = 
+
+OBJS = $(WLCTLOBJS) $(DHDCTLOBJS) $(SHAREDOBJS) $(ROUTERSHAREDOBJS) $(WLPPROBJS)
+
+ifneq ($(wildcard $(SHARED_WIRELESS_DRIVER_PATH) $(BCMWIFI_WIRELESS_DRIVER_PATH)),)
+vpath %.c $(SHARED_WIRELESS_DRIVER_PATH) $(CRYPTO_WIRELESS_DRIVER_PATH) $(SHARED_WIRELESS_ROUTER_PATH) $(BCMWIFI_WIRELESS_ROUTER_PATH) $(WLPPR_WIRELESS_DRIVER_PATH) $(WLCTL_OBJS_PATH)
+else
+OBJS := $(foreach obj,$(OBJS),$(SHARED_WIRELESS_DRIVER_PATH)/$(OBJS)),$(CRYPTO_WIRELESS_DRIVER_PATH)/$(OBJS),$(SHARED_WIRELESS_ROUTER_PATH)/$(OBJS),$(BCMWIFI_WIRELESS_ROUTER_PATH)/$(OBJS),$(WLPPR_WIRELESS_DRIVER_PATH)/$(OBJS),$(WLCTL_OBJS_PATH)/$(OBJS)
+endif
+
+include netlink.inc
+
+all: $(PROGRAM_NAME)
+
+install: $(PROGRAM_NAME)
+	install -m 755 $(PROGRAM_NAME) $(INSTALL_DIR)/bin
+	$(STRIP) $(INSTALL_DIR)/bin/$(PROGRAM_NAME)
+	if [ -e lib$(PROGRAM_NAME).so ]; then cp -av lib$(PROGRAM_NAME).so $(INSTALL_DIR)/lib; fi
+	ln -sf $(PROGRAM_NAME) $(INSTALL_DIR)/bin/dhd
+
+dynamic: all install
+
+.c.o:
+	$(CC) -DPROTOTYPES $(CFLAGS) $(CFLAGS_EXTRA) -DRWL_SOCKET -DRWL_WIFI -DRWL_DONGLE -c $<
+
+$(PROGRAM_NAME): $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(PROGRAM_NAME) $(OBJS)
+
+clean:
+	-rm -f $(PROGRAM_NAME) *.o  $(PROGRAM_NAME).a

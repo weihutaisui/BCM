@@ -1,0 +1,61 @@
+#
+# Linux appeventd Makefile
+#
+# $Copyright Broadcom Corporation$
+# $Id:  $
+#
+
+BUILD_DIR=$(word 1, $(subst /bcmdrivers, /bcmdrivers,$(shell pwd)))
+include $(BUILD_DIR)/make.common
+
+CFLAGS += -I.
+CFLAGS += -I../../include
+CFLAGS += -I../../common/include
+CFLAGS += -I../../bcmcrypto
+CFLAGS += -I../../shared
+CFLAGS += -I../../router/shared
+CFLAGS += -I../../shared/bcmwifi/include
+CFLAGS += -DDSLCPE -DDSLCPE_ENDIAN
+CFLAGS += -Wall
+
+
+ifeq ($(CONFIG_BCMBSD),y)
+CFLAGS += -DBCM_BSD
+endif
+
+ifeq ($(BUILD_WBD),y)
+CFLAGS += -DBCM_WBD
+endif
+
+LDFLAGS = -s -O2
+LDFLAGS += -L$(EXTRALIBDIR)
+LDFLAGS += -lc
+LDFLAGS += -lgcc_s
+LDFLAGS += -L$(INSTALL_DIR)/lib
+
+ifeq ($(DSLCPE_WLCSM_EXT),1)
+LDFLAGS += -lwlcsm
+endif
+
+LDFLAGS += -lnvram
+LDFLAGS += -lwlbcmcrypto
+LDFLAGS += -lwlbcmshared
+
+vpath %.c ./ ../../shared
+
+all: appeventd
+
+OBJS = appeventd_main.o
+
+install: all
+	install -d $(INSTALLDIR)/bin/
+	install -m 755 appeventd $(INSTALLDIR)/bin/
+	$(STRIP) $(INSTALLDIR)/bin/appeventd
+
+clean:
+	rm -f *.o *.a *.so appeventd
+
+${OBJS}: appeventd.h
+
+appeventd: bcmutils.o ${OBJS}
+	$(CC) $(CFLAGS) $^ -o $@  $(LDFLAGS)

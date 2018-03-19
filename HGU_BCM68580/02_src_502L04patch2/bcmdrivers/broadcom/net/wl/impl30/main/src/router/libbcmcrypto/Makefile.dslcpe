@@ -1,0 +1,76 @@
+#
+# Linux router libbcmcrypto Makefile
+#
+# Broadcom Proprietary and Confidential. Copyright (C) 2016,
+# All Rights Reserved.
+# 
+# This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom;
+# the contents of this file may not be disclosed to third parties, copied
+# or duplicated in any form, in whole or in part, without the prior
+# written permission of Broadcom.
+#
+# $Id: Makefile 403251 2013-05-20 05:15:55Z $
+#
+include $(TOP)/.config
+
+BUILD_DIR=$(word 1, $(subst /bcmdrivers, /bcmdrivers,$(shell pwd)))
+include $(BUILD_DIR)/make.common
+
+CFLAGS	+= -Wsign-compare -I. -I../httpd -I$(SRCBASE)/include ${WLAN_StdIncPathA} -I$(SRCBASE)/common/include -Wall -fPIC
+#CFLAGS	+= -g -DDEBUG
+CFLAGS	+= -s
+LDFLAGS += -L.
+
+
+vpath %.c $(SRCBASE)/bcmcrypto
+vpath %.o $(SRCBASE)/router/libbcmcrypto/prebuilt
+CFLAGS += -I../include
+CFLAGS += -I../common/include
+CFLAGS += -I../include/bcmcrypto
+CFLAGS += -s
+CFLAGS += -Os
+CFLAGS += -fomit-frame-pointer
+CFLAGS += -Wall 
+CFLAGS += -DDSLCPE
+
+
+OBJS := aes.o aeskeywrap.o rijndael-alg-fst.o dh.o bn.o sha1.o passhash.o prf.o md5.o hmac.o rc4.o random.o
+# For customer backwords compatibility, for now we keep CONFIG_WSCCMD here and can be removed when
+# all customers migrate to new SDK (no CONFIG_WSCCMD in configration files).
+ifneq ($(CONFIG_WPS)$(CONFIG_WSCCMD)$(CONFIG_MFP),)
+OBJS += sha256.o hmac_sha256.o
+endif
+
+CFILES = $(shell find $(SRCBASE)/bcmcrypto -name aes.c 2>/dev/null)
+
+%.o: %.c
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+ifneq ($(strip $(CFILES)),)
+dynamic: $(OBJS)
+	$(CC) -shared -Os -o libwlbcmcrypto.so $^
+	cp -f libwlbcmcrypto.so libwlbcmcrypto.so-$(EXT_CPU_ARCH_NAME)
+else
+dynamic:
+	cp -f libwlbcmcrypto.so-$(EXT_CPU_ARCH_NAME) libwlbcmcrypto.so 
+endif
+
+ifneq ($(strip $(CFILES)),)
+static: $(OBJS)
+	$(AR) -rcs libwlbcmcrypto.a $^
+	cp -f libwlbcmcrypto.a libwlbcmcrypto.a-$(EXT_CPU_ARCH_NAME)
+else
+static:
+	cp -f libwlbcmcrypto.a-$(EXT_CPU_ARCH_NAME) libwlbcmcrypto.a 
+endif
+
+install: dynamic
+	install -m 755 libwlbcmcrypto.so $(INSTALL_DIR)/lib
+
+clean:
+	rm -rf *.o *.so
+ifneq ($(strip $(RELEASE_BUILD)), 1)
+	if [ -e "aes.c" ]; then \
+		rm -f $(OBJS) libwlbcmcrypto.*; \
+	fi
+endif

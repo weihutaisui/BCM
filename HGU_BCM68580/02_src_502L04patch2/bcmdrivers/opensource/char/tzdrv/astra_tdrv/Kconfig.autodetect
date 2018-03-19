@@ -1,0 +1,8 @@
+config BCM_ASTRA_TDRV
+	tristate "Support for BCM_ASTRA_TDRV"
+	default m if BCM_ASTRA
+
+config BCM_ASTRA_TDRV_IMPL
+	int "Implementation index for BCM_ASTRA_TDRV"
+	depends on BCM_ASTRA_TDRV
+	default 1

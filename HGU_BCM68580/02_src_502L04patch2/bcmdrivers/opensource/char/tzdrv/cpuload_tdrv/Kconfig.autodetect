@@ -1,0 +1,8 @@
+config BCM_CPULOAD_TDRV
+	tristate "Support for BCM_CPULOAD_TDRV"
+	default m if BCM_ASTRA
+	
+config BCM_CPULOAD_TDRV_IMPL
+	int "Implementation index for BCM_CPULOAD_TDRV"
+	depends on BCM_CPULOAD_TDRV
+	default 1

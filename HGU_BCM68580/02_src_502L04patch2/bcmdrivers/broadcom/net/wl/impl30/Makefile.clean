@@ -1,0 +1,24 @@
+clean:
+	@echo Making Clean in WLAN driver dir
+	-$(MAKE) -C $(BUILD_DIR)/userspace/private/apps/wlan clean 
+	-$(MAKE) -C $(BUILD_DIR)/userspace/private/libs/wlcsm clean 
+	-$(MAKE) -C $(BUILD_DIR)/userspace/private/apps/httpd clean 
+	files="\
+		`find . -name 'build' | sed 's/tools\///' `\
+		`find . -type l`\
+		`find . -name '*.o'` \
+		`find . -name '*.d'` \
+		`find . -name '*.ko'`\
+		`find . -name '*.oo'`\
+		`find . -name '*.bin' ! -iname 'rtecdc.bin' ! -iname 'rtecdc_nodhdhdr.bin' ! -iname 'roml.bin' `\
+		`find . -name '.config'`\
+		`find . -name 'dummy.c'`\
+		`find . -name 'epivers'`\
+		`find . -name 'rver'`\
+	";\
+	for x in $$files; do\
+		rm -rf $$x;\
+	done;\
+	rm -f $(BRCMDRIVERS_DIR)/broadcom/net/wl/shared/impl1/srom/*.bin
+	rm -f main/src/router/.config
+	rm -rf $(BUILD_DIR)/targets/$(PROFILE)/fs.install/etc/wlan

@@ -1,0 +1,58 @@
+# aspmd makefile
+
+BUILD_DIR=$(word 1, $(subst /bcmdrivers, /bcmdrivers,$(shell pwd)))
+include $(BUILD_DIR)/make.common
+
+CFLAGS += -I.
+CFLAGS += -I../../include
+CFLAGS += -I../../common/include
+CFLAGS += -I../../shared
+CFLAGS += -I../../router/shared
+CFLAGS += -I../../shared/bcmwifi/include
+CFLAGS += -DDSLCPE -DDSLCPE_ENDIAN
+CFLAGS += -Wall
+
+LDFLAGS = -Os 
+LDFLAGS += -L$(EXTRALIBDIR)
+LDFLAGS += -lc
+LDFLAGS += -lgcc_s
+LDFLAGS += -L$(INSTALL_DIR)/lib
+LDFLAGS += -lnvram
+ifeq ($(DSLCPE_WLCSM_EXT),1)
+LDFLAGS += -lwlcsm
+endif
+LDFLAGS += -lwlbcmcrypto
+LDFLAGS += -lwlbcmshared
+
+-include files
+
+FILES = aspmd_main.c
+
+OBJS = $(foreach x, $(FILES), $(shell find . -name "$x" -exec echo $(x:.c=.o) ";"))
+
+%.o: %.c
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+aspmd: $(OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+install: aspmd
+	install -m 755 $< $(INSTALL_DIR)/bin/$<
+
+clean:
+	rm -f $(OBJS) *.d
+	rm -f aspmd
+
+dynamic static: aspmd
+
+#
+# Include the rule for making dependency files.
+# The '-' in front of the second include suppresses
+# error messages when make cannot find the .d files.
+# It will just regenerate them.
+# See Section 4.14 of Gnu Make.
+#
+
+include $(BUILD_DIR)/make.deprules
+
+-include $(OBJS:.o=.d)

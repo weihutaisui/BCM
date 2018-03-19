@@ -1,0 +1,96 @@
+#
+# 802.1x Authenticator (Network Access Server) Embedded Linux Build Makefile
+#
+# Copyright 2017 Broadcom
+#
+# This program is the proprietary software of Broadcom and/or
+# its licensors, and may only be used, duplicated, modified or distributed
+# pursuant to the terms and conditions of a separate, written license
+# agreement executed between you and Broadcom (an "Authorized License").
+# Except as set forth in an Authorized License, Broadcom grants no license
+# (express or implied), right to use, or waiver of any kind with respect to
+# the Software, and Broadcom expressly reserves all rights in and to the
+# Software and all intellectual property rights therein.  IF YOU HAVE NO
+# AUTHORIZED LICENSE, THEN YOU HAVE NO RIGHT TO USE THIS SOFTWARE IN ANY
+# WAY, AND SHOULD IMMEDIATELY NOTIFY BROADCOM AND DISCONTINUE ALL USE OF
+# THE SOFTWARE.
+#
+# Except as expressly set forth in the Authorized License,
+#
+# 1. This program, including its structure, sequence and organization,
+# constitutes the valuable trade secrets of Broadcom, and you shall use
+# all reasonable efforts to protect the confidentiality thereof, and to
+# use this information only in connection with your use of Broadcom
+# integrated circuit products.
+#
+# 2. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED
+# "AS IS" AND WITH ALL FAULTS AND BROADCOM MAKES NO PROMISES,
+# REPRESENTATIONS OR WARRANTIES, EITHER EXPRESS, IMPLIED, STATUTORY, OR
+# OTHERWISE, WITH RESPECT TO THE SOFTWARE.  BROADCOM SPECIFICALLY
+# DISCLAIMS ANY AND ALL IMPLIED WARRANTIES OF TITLE, MERCHANTABILITY,
+# NONINFRINGEMENT, FITNESS FOR A PARTICULAR PURPOSE, LACK OF VIRUSES,
+# ACCURACY OR COMPLETENESS, QUIET ENJOYMENT, QUIET POSSESSION OR
+# CORRESPONDENCE TO DESCRIPTION. YOU ASSUME THE ENTIRE RISK ARISING
+# OUT OF USE OR PERFORMANCE OF THE SOFTWARE.
+#
+# 3. TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL
+# BROADCOM OR ITS LICENSORS BE LIABLE FOR (i) CONSEQUENTIAL, INCIDENTAL,
+# SPECIAL, INDIRECT, OR EXEMPLARY DAMAGES WHATSOEVER ARISING OUT OF OR
+# IN ANY WAY RELATING TO YOUR USE OF OR INABILITY TO USE THE SOFTWARE EVEN
+# IF BROADCOM HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES; OR (ii)
+# ANY AMOUNT IN EXCESS OF THE AMOUNT ACTUALLY PAID FOR THE SOFTWARE ITSELF
+# OR U.S. $1, WHICHEVER IS GREATER. THESE LIMITATIONS SHALL APPLY
+# NOTWITHSTANDING ANY FAILURE OF ESSENTIAL PURPOSE OF ANY LIMITED REMEDY.
+#
+# $Id: Makefile 660908 2016-09-22 10:46:46Z $
+#
+
+include $(SRCBASE_ROUTER)/.config
+
+CFLAGS	+= -I.. -I$(SRCBASE)/include ${WLAN_StdIncPathA} -I$(SRCBASE)/common/include -I$(SRCBASE)/router/shared -Wall -Werror
+CFLAGS	+= $(WLAN_ComponentIncPath)
+
+#CFLAGS	+= -g -DDEBUG
+CFLAGS	+= -s
+CFLAGS  += -DNAS_WKSP_BUILD_NAS_AUTH
+CFLAGS  += -DNAS_WKSP_BUILD_NAS_SUPPL
+#CFLAGS  += -DNAS_GTK_PER_STA
+CFLAGS  += -DNAS_RADIUS
+CFLAGS  += -DNAS_WKSP_ON_DEMAND
+
+CFLAGS	+= -DBCMSUPPL
+
+# EAPD include path
+CFLAGS	+= -I$(SRCBASE)/router/eapd
+
+# NAS FBT include path
+CFLAGS	+= -I$(SRCBASE_ROUTER)/nas/nas_fbt
+
+LDFLAGS += -L$(TOP)/nvram -L$(INSTALLDIR)/nvram/usr/lib -lnvram
+LDFLAGS += -L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared
+LDFLAGS += -L$(TOP)/libbcmcrypto -L$(INSTALLDIR)/libbcmcrypto/usr/lib -lbcmcrypto
+LDFLAGS += $(EXTRA_LDFLAGS)
+
+vpath %.c $(SRCBASE)/router/nas $(SRCBASE_ROUTER)/nas/nas_fbt $(SRCBASE)/shared $(SRCBASE)/router/shared
+
+# build target
+NASOBJS = mppe.o wpa.o nas.o nas_linux.o nas_wl.o nas_wksp.o
+NASOBJS += nas_radius.o nas_wksp_radius.o
+ifeq ($(CONFIG_FBT),y)
+NASOBJS += wpa_common.o wpa_auth_ft.o eloop.o l2_packet.o
+endif
+UTLOBJS = bcmwpa.o bcmutils.o
+
+all: nas
+
+nas: $(NASOBJS) $(UTLOBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+# install to target
+install: all
+	install -D nas $(INSTALLDIR)/usr/sbin/nas
+	$(STRIP) $(INSTALLDIR)/usr/sbin/nas
+
+# clean up mess
+clean:
+	rm -f *.o *~ nas

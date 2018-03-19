@@ -1,0 +1,111 @@
+#
+# 802.1x Authenticator (Network Access Server) Embedded Linux Build Makefile
+#
+# Broadcom Proprietary and Confidential. Copyright (C) 2017,
+# All Rights Reserved.
+# 
+# This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom;
+# the contents of this file may not be disclosed to third parties, copied
+# or duplicated in any form, in whole or in part, without the prior
+# written permission of Broadcom.
+#
+# $Id: Makefile 403251 2013-05-20 05:15:55Z $
+#
+
+BUILD_DIR=$(word 1, $(subst /bcmdrivers, /bcmdrivers,$(shell pwd)))
+#include $(BUILD_DIR)/make.common
+
+CFLAGS	+= -I.. -I$(SRCBASE)/include ${WLAN_StdIncPathA} -I$(SRCBASE)/common/include -I$(SRCBASE)/router/shared -Wall 
+CFLAGS	+= $(WLAN_ComponentIncPath)
+
+#CFLAGS	+= -g -DDEBUG
+CFLAGS	+= -s
+CFLAGS  += -DNAS_WKSP_BUILD_NAS_AUTH
+CFLAGS  += -DNAS_WKSP_BUILD_NAS_SUPPL
+#CFLAGS  += -DNAS_GTK_PER_STA
+CFLAGS  += -DNAS_RADIUS
+CFLAGS  += -DNAS_WKSP_ON_DEMAND
+
+
+CFLAGS	+= -DBCMSUPPL
+CFLAGS  += -DDSLCPE -DDSLCPE_ENDIAN
+CFLAGS  += -Werror -fno-strict-aliasing
+# EAPD include path
+CFLAGS	+= -I$(SRCBASE)/router/eapd
+
+# NAS FBT include path
+CFLAGS	+= -I$(SRCBASE)/router/nas/nas_fbt
+
+LDFLAGS += -L$(TOP)/nvram -L$(INSTALLDIR)/nvram/usr/lib -lnvram
+#LDFLAGS += -L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared
+#LDFLAGS += -L$(TOP)/libbcmcrypto -L$(INSTALLDIR)/libbcmcrypto/usr/lib -lbcmcrypto
+LDFLAGS += $(EXTRA_LDFLAGS)
+vpath %.c $(SRCBASE)/router/nas $(SRCBASE)/router/nas/nas_fbt $(SRCBASE)/shared $(SRCBASE)/router/shared
+
+CFLAGS += -I../
+CFLAGS += -I../../../include
+CFLAGS += -I../../../common/include
+CFLAGS += -I../../../bcmcrypto
+CFLAGS += -I../../../shared
+CFLAGS += -I../../../router/eapd
+CFLAGS += -I../../../router/shared
+CFLAGS += -I$(SRCBASE)/shared/bcmwifi/include
+LDFALGS += -L$(EXTRALIBDIR)
+LDFLAGS += -lc
+LDFLAGS += -lgcc_s
+LDFLAGS += -L$(INSTALL_DIR)/lib
+LDFLAGS += -lnvram
+LDFLAGS += -lwlcsm 
+LDFLAGS += -lwlbcmcrypto
+LDFLAGS += -lwlbcmshared
+
+# build target
+NASOBJS = mppe.o wpa.o nas.o nas_linux.o nas_wl.o nas_wksp.o
+NASOBJS += nas_radius.o nas_wksp_radius.o
+ifeq ($(CONFIG_FBT),y)
+NASOBJS += wpa_common.o wpa_auth_ft.o eloop.o l2_packet.o
+endif
+UTLOBJS = bcmwpa.o bcmutils.o
+CFILES := $(shell find ../ -name *.c)
+
+all: nas
+
+%.o: %.c
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+ifneq ($(strip $(CFILES)),)
+nas: $(NASOBJS) $(UTLOBJS)
+	$(CC) -o $@ $^ $(LDFLAGS) 
+	cp -f $@ $@-$(EXT_CPU_ARCH_NAME)
+else
+nas:
+	cp -f $@-$(EXT_CPU_ARCH_NAME) $@
+endif
+
+# install to target
+
+
+install: nas
+	install -m 755 $< $(INSTALL_DIR)/bin
+	$(STRIP) $(INSTALL_DIR)/bin/$<
+	ln -sf ../bin/$< $(INSTALL_DIR)/bin/nas4not
+
+clean:
+	rm -f *.o *.d
+	rm -f nas
+
+
+dynamic: all
+
+
+#
+# Include the rule for making dependency files.
+# The '-' in front of the second include suppresses
+# error messages when make cannot find the .d files.
+# It will just regenerate them.
+# See Section 4.14 of Gnu Make.
+#
+
+include $(BUILD_DIR)/make.deprules
+
+-include $(OBJS:.o=.d)

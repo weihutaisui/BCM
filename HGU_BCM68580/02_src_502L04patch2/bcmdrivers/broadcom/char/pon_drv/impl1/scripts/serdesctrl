@@ -1,0 +1,171 @@
+#!/bin/sh
+# Serdes Debug CLI, work via /porc entry of Serdes driver
+# Create by Fuguo Xu <fuguo.xu@broadcom.com>, 2016/01/08
+
+
+proc_entry_help="/proc/serdes/wan/help"
+proc_entry_reg="/proc/serdes/wan/reg"
+proc_entry_prbs="/proc/serdes/wan/prbs"
+proc_entry_display="/proc/serdes/wan/display"
+proc_entry_pllsel="/proc/serdes/wan/pllsel"
+proc_entry_tx_amp="/proc/serdes/wan/tx_amp"
+proc_entry_tx_fir="/proc/serdes/wan/tx_fir"
+proc_entry_rmt_lpbk="/proc/serdes/wan/rmt_lpbk"
+
+help_all()
+{
+    echo "$0 reg addr                          : read register"
+    echo "$0 reg addr value                    : write register"
+    echo help > $proc_entry_reg
+    cat $proc_entry_help
+
+    echo
+    echo "$0 prbs                              : show prbs status"
+    echo "$0 prbs [pm1] [pm2] [pm3] [pm4]      : enable/disable prbs"
+    echo help > $proc_entry_prbs
+    cat $proc_entry_help
+
+    echo
+    echo "$0 show [pm1] [pm2] ...              : show diag data, lane state legend, etc."
+    echo help > $proc_entry_display
+    cat $proc_entry_help
+    
+    echo "$0 pllsel                            : read pll selection"
+    echo "$0 pllsel <0|1>                      : write pll selection"
+    echo help > $proc_entry_pllsel
+    cat $proc_entry_help
+    
+    echo "$0 tx_amp                            : read tx amplitude control"
+    echo "$0 tx_amp [value]                    : write tx amplitude control"
+    echo help > $proc_entry_tx_amp
+    cat $proc_entry_help
+    
+    echo "$0 tx_fir [type]                     : read tx FIR "
+    echo "$0 tx_fir [type] [value]             : write tx FIR"
+    echo help > $proc_entry_tx_fir
+    cat $proc_entry_help
+    
+    echo "$0 rmt_lpbk [enable]                 : enable or disable remote loopback"
+    echo help > $proc_entry_rmt_lpbk
+    cat $proc_entry_help
+}
+
+reg_access()
+{
+    if [ "$2" = "" ]; then
+        # read
+        echo "$1" > $proc_entry_reg
+        cat $proc_entry_reg
+        echo
+    else
+        # write
+        echo "$1 $2" > $proc_entry_reg
+    fi
+}
+
+prbs_ctrl()
+{
+    if [ "$1" = "" ]; then
+        # show status
+        cat $proc_entry_prbs
+        echo
+    else
+        echo "$1 $2 $3 $4" > $proc_entry_prbs
+    fi
+}
+
+show_data()
+{
+    echo "$1 $2" > $proc_entry_display
+}
+
+pll_sel()
+{
+    if [ "$1" = "" ]; then
+        # read
+        cat $proc_entry_pllsel
+        echo
+    else
+        # write
+        echo "$1" > $proc_entry_pllsel
+    fi
+}
+
+tx_amplitude()
+{
+    if [ "$1" = "" ]; then
+        # read
+        cat $proc_entry_tx_amp
+        echo
+    else
+        # write
+        echo "$1" > $proc_entry_tx_amp
+    fi
+}
+
+fir_ctrl()
+{
+    if [ "$2" = "" ]; then
+        # read
+        echo "$1" > $proc_entry_tx_fir
+        cat $proc_entry_tx_fir
+        echo
+    else
+        # write
+        echo "$1 $2" > $proc_entry_tx_fir
+    fi
+}
+
+rmt_lpbk()
+{
+    echo "$1" > $proc_entry_rmt_lpbk
+}
+
+# main
+case "$1" in
+    reg)
+        reg_access $2 $3
+        exit 0
+        ;;
+        
+    pllsel)
+        pll_sel $2
+        exit 0
+        ;;
+
+    prbs)
+        prbs_ctrl $2 $3 $4 $5
+        exit 0
+        ;;
+
+    show)
+        show_data $2 $3
+        exit 0
+        ;;
+
+    tx_amp)
+        tx_amplitude $2 
+        exit 0
+        ;;        
+
+    tx_fir)
+        fir_ctrl $2 $3
+        exit 0
+        ;;  
+
+    rmt_lpbk)
+        rmt_lpbk $2
+        exit 0
+        ;; 
+
+    -h | --help)
+        help_all
+        exit 0
+        ;;
+
+     *)
+        echo "$0: unrecognized option [$1]"
+        help_all
+        exit 1
+        ;;
+esac

@@ -1,0 +1,116 @@
+#Linux Makefile
+BUILD_DIR=$(word 1, $(subst /bcmdrivers, /bcmdrivers,$(shell pwd)))
+SRCBASE=$(BRCMDRIVERS_DIR)/broadcom/net/wl/bcm9$(BRCM_CHIP)/main/src
+#include $(BUILD_DIR)/make.common
+
+INCLUDE += -I$(SRCBASE)/hspot/include -I$(SRCBASE)/hspot/dsp -I$(SRCBASE)/hspot/wlan -I$(SRCBASE)/hspot/tcp_srv -I$(SRCBASE)/hspot/pkt -I$(SRCBASE)/hspot/pro
+INCLUDE += -I. -I.. -I$(SRCBASE)/include -I$(SRCBASE)/common/include -I$(SRCBASE)/shared -I$(SRCBASE)/router/shared -I$(SRCBASE)/wl/exe
+INCLUDE += -I$(SRCBASE)/security/secfrw/include -I$(SRCBASE)/supp/include -I$(SRCBASE)/shared/bcmwifi/include
+
+CFLAGS += $(INCLUDE)
+CFLAGS += -DWIFI_ACT_FRAME -DHOTSPOT_AP -DWLTDLS -Wall
+
+        
+INCLUDE += -I$(BUILD_DIR)/userspace/private/libs/wlcsm/include
+
+ICON_FILES=$(wildcard *.png)
+
+CFLAGS += -DNAS_GTK_PER_STA -DHSPOT_OSEN
+CFLAGS  += -s
+CFLAGS += -D__CONFIG_DHDAP__
+
+#CFLAGS += -c -g -m32 -Wextra -Werror
+#LDFLAGS += -m32 --cref -lpthread -lrt
+#LDFLAGS += -Wl,-Map,hspotap.map
+
+ifeq ($(DSLCPE_WLCSM_EXT),1)
+LDFLAGS += -L. -L$(TOP)/nvram -L$(INSTALL_DIR)/lib -lnvram  -lwlcsm 
+else
+LDFLAGS += -L. -L$(TOP)/nvram -L$(INSTALL_DIR)/lib -lnvram
+endif
+
+LDFLAGS += -lwlbcmcrypto
+LDFLAGS += -lwlbcmshared
+LDFLAGS += -lwlctl
+LDFLAGS += -L$(TOP)/shared -L$(INSTALL_DIR)/shared/usr/lib
+
+vpath=$(SRCBASE)/hspot/util
+
+vpath %.c $(SRCBASE)/wl/exe
+vpath %.c $(SRCBASE)/shared
+vpath %.c $(SRCBASE)/shared/bcmwifi/src
+vpath %.c $(SRCBASE)/security/secfrw/tmr
+vpath %.c $(SRCBASE)/security/secfrw/utils
+vpath %.c $(SRCBASE)/router/hspot_ap
+vpath %.c $(SRCBASE)/router/shared
+vpath %.c $(SRCBASE)/hspot/util
+vpath %.c $(SRCBASE)/hspot/pkt
+vpath %.c $(SRCBASE)/hspot/dsp
+vpath %.c $(SRCBASE)/hspot/wlan
+vpath %.c $(SRCBASE)/hspot/pro
+vpath %.c $(SRCBASE)/hspot/tcp_srv
+
+TESTOBJ= $(shell  find ../../hspot -name trace.c 2>/dev/null)
+
+OBJS = trace.o
+OBJS += bcm_encode.o bcm_decode.o
+OBJS += bcm_encode_ie.o bcm_decode_ie.o bcm_decode_p2p.o
+OBJS += bcm_encode_gas.o bcm_decode_gas.o
+OBJS += bcm_encode_anqp.o bcm_decode_anqp.o
+OBJS += bcm_encode_qos.o bcm_decode_qos.o
+OBJS += bcm_encode_hspot_anqp.o bcm_decode_hspot_anqp.o
+OBJS += bcm_encode_wnm.o bcm_decode_wnm.o
+OBJS += dsp_ap.o tmr.o
+OBJS += wlu_api.o wlu_linux_api.o
+OBJS += bcmxtlv.o bcm_app_utils.o bcmseclib_linux_timer.o bcmseclib_timer.o bcm_llist.o
+OBJS += bcm_gas.o
+OBJS += bcmevent.o
+OBJS += tcp_srv.o
+OBJS += common_utils.o passpoint_nvparse.o
+
+all: hspotap
+ifneq ($(strip $(TESTOBJ)),)
+libhspotap.so: $(OBJS)
+	$(CC) -s -Os -shared -o libhspotap.so  $(OBJS)
+	cp -f libhspotap.so libhspotap.so-$(EXT_CPU_ARCH_NAME)
+else
+libhspotap.so:
+	cp -f libhspotap.so-$(EXT_CPU_ARCH_NAME) libhspotap.so
+endif
+	install -m 755 libhspotap.so $(INSTALL_DIR)/lib
+
+hspotap: libhspotap.so  hspotap.o
+ifneq ($(strip $(TESTOBJ)),)
+hspotap: libhspotap.so  hspotap.o
+	$(CC)  -s -Os -o $@  hspotap.o -lhspotap $(LDFLAGS)  -lgcc_s
+	cp -f $@ $@-$(EXT_CPU_ARCH_NAME)
+else
+hspotap: libhspotap.so 
+	cp -f $@-$(EXT_CPU_ARCH_NAME) $@
+endif
+
+
+install: all
+	install -d $(INSTALL_DIR)/bin
+	install hspotap $(INSTALL_DIR)/bin
+	install -m 755 libhspotap.so $(INSTALL_DIR)/lib
+ifneq ($(ICON_FILES),)
+	install -d $(INSTALL_DIR)$(ICONPATH)
+	install $(ICON_FILES)  $(INSTALL_DIR)$(ICONPATH)
+endif
+
+clean:
+	rm -f *.o *.map hspotap *.d
+	rm -f libhspotap.so
+
+#
+# Include the rule for making dependency files.
+# The '-' in front of the second include suppresses
+# error messages when make cannot find the .d files.
+# It will just regenerate them.
+# See Section 4.14 of Gnu Make.
+#
+
+include $(BUILD_DIR)/make.deprules
+
+-include $(OBJS:.o=.d)

@@ -1,0 +1,156 @@
+# Broadcom 802.11 Networking Device Driver Configuration file
+#
+# Copyright 2013, Broadcom Corporation
+# All Rights Reserved.
+# 
+# THIS SOFTWARE IS OFFERED "AS IS", AND BROADCOM GRANTS NO WARRANTIES OF ANY
+# KIND, EXPRESS OR IMPLIED, BY STATUTE, COMMUNICATION OR OTHERWISE. BROADCOM
+# SPECIFICALLY DISCLAIMS ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS
+# FOR A SPECIFIC PURPOSE OR NONINFRINGEMENT CONCERNING THIS SOFTWARE.
+#
+# $Id$
+#
+# src/wl/dhd driver config file
+
+
+# IMPL0/9/11 are only for Internal Nightly Build. No Security and WPS feature are included. 
+# Security will be removed when building impl0/9/11
+
+
+CONFIG_EMF_ENABLED=y
+
+EXTRA_CFLAGS += -DDSLCPE_DONGLE -DDSLCPE -DDSLCPE_ENDIAN
+EXTRA_CFLAGS += -I$(INC_BRCMSHARED_PUB_PATH)/$(BRCM_BOARD)
+EXTRA_CFLAGS += -I$(INC_BRCMDRIVER_PUB_PATH)/$(BRCM_BOARD)
+EXTRA_CFLAGS += -I$(INC_BRCMDRIVER_PRIV_PATH)/$(BRCM_BOARD)
+
+EXTRA_CFLAGS += -I$(DHDSRCBASE)/../components/shared
+EXTRA_CFLAGS += -I$(DHDSRCBASE)/shared/bcmwifi/include
+EXTRA_CFLAGS += -I$(DHDSRCBASE)/emf/emf
+EXTRA_CFLAGS += -I$(DHDSRCBASE)/emf/igs
+EXTRA_CFLAGS += -I$(DHDSRCBASE)/../../main/src/router/emf/emf
+EXTRA_CFLAGS += -I$(DHDSRCBASE)/../../main/src/router/emf/igs
+EXTRA_CFLAGS += -I$(DHDSRCBASE)/include/emf/emf
+EXTRA_CFLAGS += -I$(DHDSRCBASE)/include/emf/igs
+EXTRA_CFLAGS += -I$(BRCMDRIVERS_DIR)/broadcom/char/wlcsm_ext/impl1/include
+EXTRA_CFLAGS += -I$(DHDSRCBASE)/../../../shared/impl1
+
+ifeq ($(strip $(BRCM_CHIP)),63138)
+EXTRA_CFLAGS += -DDSL_63138
+endif
+
+ifeq ($(strip $(BRCM_CHIP)),63148)
+EXTRA_CFLAGS += -DDSL_63148
+endif
+
+ifeq ($(strip $(BRCM_CHIP)),4908)
+EXTRA_CFLAGS += -DWL4908
+endif
+
+EXTRA_CFLAGS += -DBRCM_DHD_IFNAME=wl
+
+DHDFILES_SRC += src/shared/nvram_ro.c
+DHDFILES_SRC += ../../shared/impl1/bcmsromio.c
+EXTRA_CFLAGS += -DDSLCPE_DONGLEHOST_WOMBO
+
+DHDFILES_SRC += ../../shared/impl1/dhd_linux_dslcpe.c
+
+# pre-allocated buffers using CTFPOOL
+EXTRA_CFLAGS    += -DCTFPOOL
+DHDFILES_SRC    += ../../shared/impl1/dhd_prealloc.c
+
+# WME
+EXTRA_CFLAGS += -DWME
+
+# Aggregation
+DHDFLAGS        += -DDHD_LBR_AGGR_BCM_ROUTER
+DHDFILES_SRC    += src/dhd/sys/dhd_aggr.c
+DHDFILES_SRC    += src/dhd/sys/dhd_lbr_aggr_linux.c
+
+# NBUFF (fkb/skb)
+ifneq ($(strip $(CONFIG_BCM_KF_NBUFF)),)
+EXTRA_CFLAGS    += -DBCM_NBUFF
+EXTRA_CFLAGS    += $(INC_RDP_FLAGS)
+DHDFILES_SRC += ../../shared/impl1/dhd_nbuff.c
+endif
+
+# BLOG/FCACHE
+ifneq ($(strip $(CONFIG_BLOG)),)
+EXTRA_CFLAGS    += -DBCM_BLOG
+DHDFILES_SRC += ../../shared/impl1/dhd_blog.c
+endif
+
+# Use common nbuff defines between dhd and wl
+EXTRA_CFLAGS	+= -DBCM_NBUFF_COMMON
+
+# No WOFA
+EXTRA_CFLAGS    += -DBCM_NO_WOFA
+
+# DHDHDR
+EXTRA_CFLAGS += -DBCM_DHDHDR
+
+ifeq ($(strip $(CONFIG_CPU_BIG_ENDIAN)),y)
+EXTRA_CFLAGS    += -DIL_BIGENDIAN
+endif
+
+
+ifeq ($(strip $(ARCH)),$(filter $(strip $(ARCH)),arm arm64))
+#PCIe
+EXTRA_CFLAGS += -DDSLCPE_PCI_DOMAIN
+
+ifeq ($(strip $(CONFIG_PCI_MSI)),y)
+    ifeq ($(DSLCPE_WLANPCIMSI),1)
+        EXTRA_CFLAGS += -DDSLCPE_WLAN_MSI
+    endif
+endif
+endif
+
+#Coherent memory instead of kmalloc for flow rings
+#(not used)
+#EXTRA_CFLAGS += -DDHD_USE_COHERENT_MEM_FOR_RING
+
+ifneq ($(strip $(CONFIG_BCM_WIFI_FORWARDING_DRV)),)
+  EXTRA_CFLAGS += -DBCM_WFD
+  EXTRA_CFLAGS += -DBCM_GMAC3
+  DHDFILES_SRC += ../../shared/impl1/dhd_wfd.c
+endif
+
+ifneq ($(strip $(CONFIG_BCM_PKTRUNNER)),)
+EXTRA_CFLAGS    += -DDSLCPE_PLATFORM_WITH_RUNNER
+endif
+
+# Build with Runner support
+ifneq ($(strip $(CONFIG_BCM_DHD_RUNNER)),)
+DHDFLAGS        += -DBCM_DHD_RUNNER
+
+# DSLCPE DHD Include Paths
+EXTRA_CFLAGS += -I$(INC_RDPA_MW_PATH)
+
+# DSLCPE DHD Source file
+DHDFILES_SRC += ../../shared/impl1/dhd_runner.c
+else
+# RX PKT CHAINING
+ifneq ($(strip $(CONFIG_BCM_WIFI_FORWARDING_DRV)),)
+  EXTRA_CFLAGS += -DPKTC -DPKTC_TBL
+  DHDFILES_SRC += ../../shared/impl1/dhd_pktc.c
+else
+ifeq ($(strip $(BRCM_CHIP)),$(filter $(strip $(BRCM_CHIP)),6838 6848 6858))
+else
+  EXTRA_CFLAGS += -DPKTC -DPKTC_TBL
+  DHDFILES_SRC += ../../shared/impl1/dhd_pktc.c
+endif
+endif
+endif
+
+
+ifeq ($(strip $(BRCM_CHIP)),$(filter $(strip $(BRCM_CHIP)),63268 6362 6838 6848))
+EXTRA_CFLAGS += -DDSLCPE_CACHE_SMARTINVAL
+endif
+
+# Cache Smart Flush
+EXTRA_CFLAGS += -DDSLCPE_CACHE_SMARTFLUSH
+
+# RPCAPD (monitor)
+#ifeq ($(CONFIG_RPCAPD),y)
+WL_MONITOR=1
+#endif

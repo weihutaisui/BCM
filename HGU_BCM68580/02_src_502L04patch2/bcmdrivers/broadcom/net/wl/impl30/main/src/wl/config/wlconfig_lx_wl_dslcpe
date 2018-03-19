@@ -1,0 +1,244 @@
+# Broadcom 802.11abg Networking Device Driver Configuration file
+#
+# Copyright 2016, Broadcom. All Rights Reserved.
+# 
+# THIS SOFTWARE IS OFFERED "AS IS", AND BROADCOM GRANTS NO WARRANTIES OF ANY
+# KIND, EXPRESS OR IMPLIED, BY STATUTE, COMMUNICATION OR OTHERWISE. BROADCOM
+# SPECIFICALLY DISCLAIMS ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS
+# FOR A SPECIFIC PURPOSE OR NONINFRINGEMENT CONCERNING THIS SOFTWARE.
+#
+# $Id$
+#
+# src/wl/linux driver config file
+
+
+# IMPL0/9/11 are only for Internal Nightly Build. No Security and WPS feature are included. 
+# Security will be removed when building impl0/9/11
+NIGHTLY_IMPLS := 0 9 11
+
+#still used for userspace for wlcsm access or traditional nvram access
+CONFIG_DSLCPE_WLCSM_EXT=y
+ifeq ($(strip $(CONFIG_DSLCPE_WLCSM_EXT)),y) 
+DSLCPE_WLCSM_EXT=1
+WLFLAGS += -DDSLCPE_WLCSM_EXT
+endif
+
+ifneq ($(WLAN_USERSPACE_CFG),1)
+override WL=1
+#no need to PIO
+WLPIO=0
+
+#disable this, platform dependent
+ROUTER_COMA=0
+
+#sample collect feature, enabled by default  
+SAMPLE_COLLECT=1
+
+#disable, not needed
+WLOLPC=0
+
+#WirelessOnChip
+BRCM_WOC_SUPPORTED = 6362 63268
+ifneq ($(strip $(filter $(BRCM_WOC_SUPPORTED),$(strip $(BRCM_CHIP)))),)
+EXTRA_CFLAGS	+= -DDSLCPE_WOC  -DSI_ENUM_BASE_VARIABLE
+#DSLCPEWOC=1
+DSLCPE_WLFILES += ubutils.c
+endif
+
+#extra files
+DSLCPE_WLFILES += nvramstubs.c bcmsromio.c si_dslcpe.c
+
+ifeq ($(strip $(CONFIG_BCM_WLAN)),y) 
+DSLCPE_WLFILES += bcm4318_map.c bcm4312_map.c bcm4322_map.c bcm4306_map.c bcm4321_map.c bcm43222_map.c
+DSLCPE_WLFILES += bcm6362_map.c bcm43226_map.c
+WLFLAGS += -DDSLCPE_WOMBO_BUILTIN_SROM
+endif
+
+ifeq ($(DSLCPE),1)
+	WLFLAGS += -DDSLCPE
+	ifeq ($(DSLCPE_SCBLIST),1)
+		WLFLAGS += -DDSLCPE_SCBLIST
+	endif
+endif	
+
+
+ifeq ($(strip $(ARCH)),arm)
+WLFLAGS += -DDSLCPE_PCI_DOMAIN
+
+#uncomment below line to enable MSI interrupt for WLAN
+#DSLCPE_WLANPCIMSI=1
+ifeq ($(strip $(CONFIG_PCI_MSI)),y)
+	ifeq ($(DSLCPE_WLANPCIMSI),1)
+		WLFLAGS += -DDSLCPE_WLAN_MSI
+	endif
+endif
+endif
+
+ifeq ($(strip $(PROFILE)),ikos)
+BCMQT=1
+EXTRA_CFLAGS	+= -DDSLCPE_CANNEDTX
+endif
+
+
+#$(warning Copy $(WLTUNEFILE))
+#$(shell cp -f $(WLCFGDIR)/$(WLTUNEFILE) $(WLCFGDIR)/../sys/wlconf.h)
+
+#
+# compiler flags
+#
+#define wl ifname
+EXTRA_CFLAGS	+=-DBRCM_WLAN_IFNAME=wl%d
+
+EXTRA_CFLAGS	+= -I$(BRCMDRIVERS_DIR)/broadcom/char/wlcsm_ext/impl1/include
+EXTRA_CFLAGS	+= -I$(BRCMDRIVERS_DIR)/broadcom/net/wl/shared/impl1
+ifneq ($(strip $(OVERRIDEBASE)),)
+DSLCPEOVERRIDE=1
+EXTRA_CFLAGS	+= -I$(WLSRCBASE)/$(OVERRIDEBASE)
+endif
+EXTRA_CFLAGS	+= -I$(WLSRCBASE)/include
+EXTRA_CFLAGS	+= -I$(WLSRCBASE)/common/include
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/shared
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/wl/sys
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/wl/phy
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/shared/bcmwifi/include
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/wl/clm/include
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/wl/ppr/include
+EXTRA_CFLAGS	+= -I$(WLSRCBASE)/wl/olpc/include
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/emf/emf
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/emf/igs
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/router/shared
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/router/emf/emf
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/router/emf/igs
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/include/emf/emf
+EXTRA_CFLAGS    += -I$(WLSRCBASE)/include/emf/igs
+EXTRA_CFLAGS 	+= -I$(INC_BRCMDRIVER_PUB_PATH)/$(BRCM_BOARD)
+EXTRA_CFLAGS    += -I$(INC_BRCMDRIVER_PRIV_PATH)/$(BRCM_BOARD)
+EXTRA_CFLAGS    += -I$(INC_BRCMSHARED_PUB_PATH)/$(BRCM_BOARD)
+EXTRA_CFLAGS    += -I$(INC_BRCMSHARED_PRIV_PATH)/$(BRCM_BOARD)
+EXTRA_CFLAGS    += -I$(INC_BRCMBOARDPARMS_PATH)/$(BRCM_BOARD)
+EXTRA_CFLAGS	+= -I$(TOOLCHAIN)/include
+EXTRA_CFLAGS	+= -DBCM_NBUFF
+EXTRA_CFLAGS    += $(INC_RDP_FLAGS)
+ifeq ($(strip $(CONFIG_CPU_BIG_ENDIAN)),y)
+EXTRA_CFLAGS	+= -DIL_BIGENDIAN
+endif
+EXTRA_CFLAGS	+= -DBCMDRIVER
+EXTRA_CFLAGS	+= -DDSLCPE_DGASP
+EXTRA_CFLAGS	+= -DDSLCPE_WOMBO
+EXTRA_CFLAGS	+= $(WLFLAGS)
+
+EXTRA_CFLAGS	+= -DDSLCPE_WDSSEC
+EXTRA_CFLAGS   += -DDSLCPE_FAST_TIMEOUT
+
+include $(KERNEL_DIR)/.config
+ifneq ($(NIGHTLY_WL),)
+IMPL := $(patsubst IMPL%,%,$(NIGHTLY_WL))
+else
+IMPL := $(CONFIG_BCM_WLAN_IMPL)
+endif
+ifeq ($(findstring $(IMPL),$(NIGHTLY_IMPLS)),) 
+#EXTRA_CFLAGS	+= -DWLTEST
+else 
+EXTRA_CFLAGS	+= -DBCMDBG -DBCMDBG_ERR -DBCMDBG_DUMP
+endif
+EXTRA_CFLAGS	+= -DDSLCPE_PREALLOC_SKB -DDSLCPE_TX_PRIO
+
+EXTRA_CFLAGS	+= -DDSLCPE_CACHE_SMARTFLUSH
+
+ifneq ($(strip $(CONFIG_SMP)),y)
+#EXTRA_CFLAGS	+= -DDSLCPE_YIELD_DELAY
+endif
+
+EXTRA_CFLAGS	+= -DSUPPORT_IGMP_V3
+#EXTRA_CFLAGS	+= -DBCMDBG -DBCMDBG_ERR -DBCMDBG_DUMP
+#EXTRA_CFLAGS	+= -DBCMDBG -DBCMDBG_ERR 
+
+EXTRA_CFLAGS	+= -Werror
+
+#
+# For 4331mch5
+#
+EXTRA_CFLAGS	+= -DBCMHOSTVARS
+
+
+ifneq ($(strip $(CONFIG_BCM_WIFI_FORWARDING_DRV)),)
+EXTRA_CFLAGS += -DBCM_WFD
+EXTRA_CFLAGS += -DPKTC_TBL
+EXTRA_CFLAGS += -DPKTC
+DSLCPE_WLFILES += ../../shared/impl1/wl_wfd.c
+DSLCPE_WLFILES += ../../shared/impl1/wl_pktc.c
+DSLCPE_WLFILES += ../../shared/impl1/wl_thread.c
+else
+ifeq ($(strip $(BRCM_CHIP)),$(filter $(strip $(BRCM_CHIP)),6838 6848 6858))
+else
+  EXTRA_CFLAGS += -DPKTC
+  EXTRA_CFLAGS += -DPKTC_TBL
+endif
+endif
+
+ifneq ($(strip $(CONFIG_BLOG)),)
+EXTRA_CFLAGS += -DBCM_BLOG
+DSLCPE_WLFILES += ../../shared/impl1/wl_blog.c
+endif
+
+# Use common nbuff defines between dhd and wl
+EXTRA_CFLAGS    += -DBCM_NBUFF_COMMON
+
+
+# Dependency on ETH driver
+ifneq ($(CONFIG_BCM_ENET),)
+EXTRA_CFLAGS	+= -DDSLCPE_PHYCAL_OVERRIDE_ON_TRAFFIC
+endif
+
+ifneq ($(strip $(BUILD_IEEE1905)),)
+WL_1905=1
+EXTRA_CFLAGS	+= -DDSLCPE_1905
+endif
+
+ifneq ($(strip $(CONFIG_BCM_DHD_RUNNER)),)
+EXTRA_CFLAGS    += -DBCM_DHD_RUNNER
+endif
+
+ifneq ($(strip $(CONFIG_BCM_PKTRUNNER)),)
+EXTRA_CFLAGS    += -DDSLCPE_PLATFORM_WITH_RUNNER
+endif
+
+ifneq ($(strip $(BUILD_WLHSPOT)),)
+HSPOT=1
+WLWNM_AP=1
+endif
+
+EXTRA_CFLAGS += -DPHYCONF_DEFAULTS
+#
+# For WAR
+#
+
+# fix low throughput issue exiting from rxchain pwrsave 
+# EXTRA_CFLAGS	+= -DDSLCPE_C601911 
+# fix the problem about stability of wifi
+EXTRA_CFLAGS	+= -DDSLCPE_C583851
+# for AES IOT performance
+EXTRA_CFLAGS    += -DDSLCPE_C610384
+# fix a queue stuck issue with 11g tablet 
+EXTRA_CFLAGS    += -DDSLCPE_C715578
+
+# fix non-aggr BK in speedtest
+EXTRA_CFLAGS    += -DDSLCPE_SPEEDTEST_WAR
+
+else
+#
+# WLAN_USERSPACE_CFG
+#
+EXT_ACS=y
+EXT_WPS_VER2=y
+EXT_WL11AC=y
+EXT_WLCONF=y
+EXT_BCMBSD=y
+EXT_MFP=y
+EXT_SSD=y
+EXT_TOAD=y
+ifeq ($(strip $(BRCM_CHIP)),60333)
+EXT_DSLCPE_WPS_SEC_CLONE=y
+endif
+
+endif

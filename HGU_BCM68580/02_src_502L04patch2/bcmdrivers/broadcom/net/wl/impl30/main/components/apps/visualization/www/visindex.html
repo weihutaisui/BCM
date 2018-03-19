@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<link rel="stylesheet" href="visstyle.css"/>
+<link rel="stylesheet" href="tablestyle.css"/>
+<script language="javascript">
+       var sessionKey = '<%ejGetOther(sessionKey)%>';
+</script>
+<script src="jquery-2.0.3.min.js"></script>
+<script src="jquery.cookie.js"></script>
+<!--<script src="jquery.flot.min.js"></script>-->
+<script src="jquery.flot.js"></script>
+<script src="curvedLines.js"></script>
+<script src="jquery.flot.navigate.min.js"></script>
+<script src="jquery.flot.axislabels.js"></script>
+<script src="common.js"></script>
+<script src="jquery.tablesorter.min.js"></script>
+<script src="highlightseries.js"></script>
+<script src="main.js"></script>
+<title>Visualization</title>
+</head>
+<body>
+	<div id="main_div">
+		
+		<div id="contentarea" class="blkbrdr btmbrdr">
+		<div id="showerrmessage">
+		</div>
+		<div id="frequencybandselector">
+		
+		<form id="frequencybandform">
+			<fieldset id="radioselectors" class="fontfamly cmnbrdr border  cmgraphbgcolor">
+				<!--<input type="radio" name="frequencyband" id="24ghzband" checked="checked">2.4 GHz</input>
+				<input type="radio" name="frequencyband" id="5ghzband">5 GHz</input>-->
+				<select id="bandselectcntrl" class="selectbandctrl">
+				<option>2.4 GHz</option>
+				<option>5 GHz</option>
+				</select>
+				<select id="chnlselectcntrl" class="selectctrl"></select>
+				
+				<select id="bndwthselectcntrl" class="selectctrl">
+				<option>Select Bandwidth</option>
+				<option>20</option>
+				<option>40</option>
+				<option>80</option>
+				</select>
+				
+				<!--select id="ntwrktypeselectcntrl" class="selectctrl">
+				<option>Select Type</option>
+				<option>a</option>
+				<option>b</option>
+				<option>g</option>
+				<option>n</option>
+				<option>ac</option>
+				</select-->
+				
+			</fieldset>
+			<!--<button id="scanbutton" type="button" class="cmclr cmnbrdr border">Scan</button>-->
+		</form>
+		</div>
+		
+		<div id="rssigraphplaceholder1">
+		<table id ="sitesurveygraphtableid" class="sitesurveygraphtable fontfamly cmnbrdr" style="margin-bottom:10px;" bgcolor="white"><thead class="cmclr"><tr><th>AP's Around</th></tr></thead><tbody><tr><td>
+		<div id='rssigraphplaceholder' style="margin-left:10px;width:98%;height:480px; padding:0px; position:relative;"></div></td>
+		</tr></tbody></table>
+		</div>
+		<div id="aplistplaceholder">
+		<table id="aplisttableid" class="aplisttable fontfamly cmnbrdr">
+		<thead class="cmclr">
+		<tr><th><span>Network Name</span></th><th><span>Network Address</span></th><th><span>Signal [dBm]</span></th><th width="4%"><span>SNR </br>[dB]</span></th><th width="4%"><span>Bandwidth</br>[MHz]</span></th><th width="4%"><span>Center</br>Channel</span></th><th width="4%"><span>Control</br>Channel</span></th><th width="10%"><span>Max PHY</br>Rate [Mbps]</span></th><th><span>802.11</span></th><th><span>Security</span></th><tr></thead>
+		<tbody></tbody></table>
+		</div>
+		
+		</div>
+		
+	</div>
+</body>
+</html>

@@ -1,0 +1,75 @@
+#
+# Linux WBD Makefile
+#
+# Copyright (C) 2017, Broadcom. All Rights Reserved.
+# 
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+# OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+# CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+# $Id: Makefile 624321 2016-03-11 05:45:28Z $
+#
+
+CURR_DIR := $(shell pwd)
+BUILD_DIR=$(word 1, $(subst /bcmdrivers, /bcmdrivers,$(shell pwd)))
+#include $(BUILD_DIR)/make.common
+include $(KERNEL_DIR)/.config
+export CFLAGS
+
+
+dirs = cli slave master 
+#WBDINSTALLDIR = $(INSTALLDIR)/wbd
+WBDINSTALLDIR = $(INSTALLDIR)
+PREBUILTDIR = prebuilt
+LIBWBDSHARED = $(PREBUILTDIR)/libwbdshared.so-$(EXT_CPU_ARCH_NAME)
+WBDMASTER = $(PREBUILTDIR)/wbd_master-$(EXT_CPU_ARCH_NAME)
+WBDSLAVE = $(PREBUILTDIR)/wbd_slave-$(EXT_CPU_ARCH_NAME)
+WBDCLI = $(PREBUILTDIR)/wb_cli-$(EXT_CPU_ARCH_NAME)
+WBDWWW = ./www
+WBDPAGES += $(WBDWWW)/wbd_demo.asp $(WBDWWW)/wbd_demo.css $(WBDWWW)/wbd_demo.js
+
+
+.PHONY: all $(dirs) shared
+all: $(dirs)
+
+$(dirs): shared
+	if [ -e $@/Makefile.dslcpe ]; then \
+	$(MAKE) -C $@ -f Makefile.dslcpe install || exit $$? ; \
+	fi
+
+shared: $(PREBUILTDIR)
+	if [ -e shared/Makefile.dslcpe ]; then \
+	$(MAKE) -C shared -f Makefile.dslcpe install || exit $$? ; \
+	fi
+
+$(PREBUILTDIR):
+	install -d $(PREBUILTDIR)
+
+.PHONY: install
+install: all
+	install -d $(PREBUILTDIR)
+	install -d $(WBDINSTALLDIR)/bin/
+	install -d $(WBDINSTALLDIR)/webs/wlrouter
+	install -m 755 $(LIBWBDSHARED) $(WBDINSTALLDIR)/lib/libwbdshared.so
+	install -m 755 $(WBDMASTER) $(WBDINSTALLDIR)/bin/wbd_master
+	install -m 755 $(WBDSLAVE) $(WBDINSTALLDIR)/bin/wbd_slave
+	install -m 755 $(WBDCLI) $(WBDINSTALLDIR)/bin/wb_cli
+	install -m 644 $(WBDPAGES) $(WBDINSTALLDIR)/webs/wlrouter
+
+.PHONY: clean shared_clean
+clean: shared_clean
+	@for i in $(dirs); do \
+		[ ! -d $$i ] || $(MAKE) -C $$i -f Makefile.dslcpe clean ; \
+	done
+shared_clean:
+	if [ -e shared/Makefile.dslcpe ]; then \
+	$(MAKE) -C shared -f Makefile.dslcpe clean || exit $$? ; \
+	fi

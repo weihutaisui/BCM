@@ -1,0 +1,56 @@
+#
+# Router Wireless Interface Configuration Utility Makefile
+#
+# Broadcom Proprietary and Confidential. Copyright (C) 2017,
+# All Rights Reserved.
+# 
+# This is UNPUBLISHED PROPRIETARY SOURCE CODE of Broadcom;
+# the contents of this file may not be disclosed to third parties, copied
+# or duplicated in any form, in whole or in part, without the prior
+# written permission of Broadcom.
+#
+# $Id: Makefile 403251 2013-05-20 05:15:55Z $
+#
+
+include $(SRCBASE)/router/.config
+
+BUILD_DIR=$(word 1, $(subst /bcmdrivers, /bcmdrivers,$(shell pwd)))
+#include $(BUILD_DIR)/make.common
+
+CFLAGS	+= -I. -I$(TOP)/shared -I$(SRCBASE)/include ${WLAN_StdIncPathA} -I$(SRCBASE)/common/include -Wall
+CFLAGS	+= $(WLAN_ComponentIncPath)
+#CFLAGS	+= -g -DDEBUG
+CFLAGS	+= -s
+ifeq ($(CONFIG_RTR_OPTIMIZE_SIZE),y)
+CFLAGS  += -Os
+else
+CFLAGS  += -O2
+endif
+#LDFLAGS	+= -L$(TOP)/nvram -lnvram -L$(TOP)/shared -lshared
+LDFLAGS += $(EXTRA_LDFLAGS)
+LDFLAGS += $(SSP_TYP_LIBS)
+
+CFLAGS += -I$(SRCBASE)/shared/bcmwifi/include  -DDSLCPE_ENDIAN -DDSLCPE -DDSLCPE_WLCONF_MAIN -DBCMDBG
+
+LDFLAGS += -L$(EXTRALIBDIR)
+LDFLAGS += -lc
+LDFLAGS += -lgcc_s
+LDFLAGS += -L$(INSTALL_DIR)/lib
+LDFLAGS += -lnvram
+LDFLAGS += -lwlcsm
+LDFLAGS += -lwlbcmcrypto
+LDFLAGS += -lwlbcmshared
+OBJS := wlconf.o
+
+all: wlconf
+
+clean:
+	rm -f *.o wlconf
+
+install: all
+	install -d $(INSTALLDIR)/bin
+	install -m 0755 wlconf $(INSTALLDIR)/bin
+	$(STRIP) $(INSTALLDIR)/bin/wlconf
+
+wlconf: $(OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)

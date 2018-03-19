@@ -1,0 +1,8 @@
+config BCM_TZIOC_TDRV
+	tristate "Support for BCM_TZIOC_TDRV"
+	default m if BCM_ASTRA
+	
+config BCM_TZIOC_TDRV_IMPL
+	int "Implementation index for BCM_TZIOC_TDRV"
+	depends on BCM_TZIOC_TDRV
+	default 1
